@@ -12,3 +12,4 @@ This folder contains SQL migrations for the core schema.
 - Row Level Security is enabled for all tables.
 - Policies assume join code enrollment and teacher ownership.
 - Use the service role key for server side jobs (never in client code).
+- Create a private storage bucket named `materials` for class uploads.
