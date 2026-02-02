@@ -17,9 +17,11 @@ pnpm dev
 ## Core Features (WIP)
 - Auth with Supabase
 - Class creation and join code enrollment
+- Materials upload with PDF extraction
 - Course blueprint pipeline
 - AI powered learning activities
 
 ## Notes
 - Database migrations live in `supabase/` at the repo root.
 - Run Supabase migrations before testing class creation.
+- Ensure the `materials` storage bucket exists for uploads.
