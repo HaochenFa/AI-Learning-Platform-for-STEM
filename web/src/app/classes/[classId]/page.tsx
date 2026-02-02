@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -57,9 +58,12 @@ export default async function ClassOverviewPage({
               Generate a structured blueprint from uploaded materials to unlock
               AI activities.
             </p>
-            <button className="mt-6 rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950">
-              Generate blueprint (coming soon)
-            </button>
+            <Link
+              href={`/classes/${classRow.id}/blueprint`}
+              className="mt-6 inline-flex rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950"
+            >
+              Open blueprint studio
+            </Link>
           </div>
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <h2 className="text-lg font-semibold">Enrollment</h2>
