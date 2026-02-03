@@ -8,7 +8,13 @@ This is the Next.js application for the STEM Learning Platform.
 
 ## Setup
 1. Copy `web/.env.example` to `web/.env.local` and fill in keys.
-2. Run the dev server:
+2. From the repo root, install dependencies:
+
+```bash
+pnpm install
+```
+
+3. Run the dev server:
 
 ```bash
 pnpm dev

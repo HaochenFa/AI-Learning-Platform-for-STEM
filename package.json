@@ -1,0 +1,11 @@
+{
+  "name": "stem-learning-platform",
+  "private": true,
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev": "pnpm --dir web dev",
+    "build": "pnpm --dir web build",
+    "start": "pnpm --dir web start",
+    "lint": "pnpm --dir web lint"
+  }
+}
