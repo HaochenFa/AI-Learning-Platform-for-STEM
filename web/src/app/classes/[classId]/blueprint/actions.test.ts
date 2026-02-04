@@ -62,6 +62,7 @@ function makeBuilder(result: unknown) {
   builder.single = vi.fn(async () => resolveResult());
   builder.insert = vi.fn(() => builder);
   builder.update = vi.fn(() => builder);
+  builder.upsert = vi.fn(() => builder);
   builder.delete = vi.fn(() => builder);
   builder.then = (onFulfilled: (value: unknown) => unknown, onRejected: (reason: unknown) => unknown) =>
     Promise.resolve(resolveResult()).then(onFulfilled, onRejected);
@@ -76,6 +77,7 @@ function makeBuilder(result: unknown) {
     single: () => Promise<unknown>;
     insert: () => typeof builder;
     update: () => typeof builder;
+    upsert: () => typeof builder;
     delete: () => typeof builder;
     then: (onFulfilled: (value: unknown) => unknown, onRejected: (reason: unknown) => unknown) => Promise<unknown>;
   };
@@ -92,6 +94,22 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
     }
     throw error;
   }
+}
+
+function mockTeacherAccess() {
+  supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+  supabaseFromMock.mockImplementation((table: string) => {
+    if (table === "classes") {
+      return makeBuilder({
+        data: { id: "class-1", owner_id: "u1", title: "Math" },
+        error: null,
+      });
+    }
+    if (table === "enrollments") {
+      return makeBuilder({ data: null, error: null });
+    }
+    return makeBuilder({ data: null, error: null });
+  });
 }
 
 describe("generateBlueprint", () => {
@@ -254,7 +272,7 @@ describe("blueprint workflow actions", () => {
         });
       }
       if (table === "objectives") {
-        return makeBuilder({ error: null });
+        return makeBuilder({ data: [], error: null });
       }
       return makeBuilder({ data: null, error: null });
     });
@@ -279,6 +297,202 @@ describe("blueprint workflow actions", () => {
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
       "/classes/class-1/blueprint?saved=1"
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("rejects duplicate topic sequences", async () => {
+    mockTeacherAccess();
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            title: "Limits",
+            description: "Intro",
+            sequence: 1,
+            objectives: [{ statement: "Define limits." }],
+          },
+          {
+            title: "Derivatives",
+            description: "Rates",
+            sequence: 1,
+            objectives: [{ statement: "Differentiate functions." }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?error=Topic%202%20sequence%20must%20be%20unique."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("rejects out-of-range or non-integer sequences", async () => {
+    mockTeacherAccess();
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            title: "Limits",
+            description: "Intro",
+            sequence: 0,
+            objectives: [{ statement: "Define limits." }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?error=Topic%201%20sequence%20must%20be%20between%201%20and%201000."
+    );
+
+    mockTeacherAccess();
+    const nonInteger = new FormData();
+    nonInteger.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            title: "Limits",
+            description: "Intro",
+            sequence: 1.5,
+            objectives: [{ statement: "Define limits." }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", nonInteger),
+      "/classes/class-1/blueprint?error=Topic%201%20sequence%20must%20be%20an%20integer."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("rejects invalid topic ids in the payload", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    adminFromMock.mockImplementation((table: string) => {
+      if (table === "blueprints") {
+        return makeBuilder({
+          data: { id: "bp-1", status: "draft" },
+          error: null,
+        });
+      }
+      if (table === "topics") {
+        return makeBuilder({
+          data: [{ id: "t1", prerequisite_topic_ids: [] }],
+          error: null,
+        });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            id: "t2",
+            title: "Limits",
+            description: "Intro",
+            sequence: 1,
+            objectives: [{ statement: "Define limits." }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?error=Invalid%20topic%20reference."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("rejects invalid objective ids in the payload", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    adminFromMock.mockImplementation((table: string) => {
+      if (table === "blueprints") {
+        return makeBuilder({
+          data: { id: "bp-1", status: "draft" },
+          error: null,
+        });
+      }
+      if (table === "topics") {
+        return makeBuilder({
+          data: [{ id: "t1", prerequisite_topic_ids: [] }],
+          error: null,
+        });
+      }
+      if (table === "objectives") {
+        return makeBuilder({
+          data: [{ id: "o-1", topic_id: "t1" }],
+          error: null,
+        });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            id: "t1",
+            title: "Limits",
+            description: "Intro",
+            sequence: 1,
+            objectives: [
+              { id: "o-2", statement: "Define limits.", level: "Remember" },
+            ],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?error=Invalid%20objective%20reference."
     );
     expect(redirect).toHaveBeenCalled();
   });

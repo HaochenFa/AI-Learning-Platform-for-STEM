@@ -108,6 +108,7 @@ function parseDraftPayload(raw: FormDataEntryValue | null): DraftPayload {
     throw new Error("At least one topic is required.");
   }
 
+  const seenSequences = new Set<number>();
   payload.topics.forEach((topic, index) => {
     if (!isNonEmptyString(topic.title)) {
       throw new Error(`Topic ${index + 1} title is required.`);
@@ -115,6 +116,16 @@ function parseDraftPayload(raw: FormDataEntryValue | null): DraftPayload {
     if (typeof topic.sequence !== "number" || Number.isNaN(topic.sequence)) {
       throw new Error(`Topic ${index + 1} sequence must be a number.`);
     }
+    if (!Number.isInteger(topic.sequence)) {
+      throw new Error(`Topic ${index + 1} sequence must be an integer.`);
+    }
+    if (topic.sequence < 1 || topic.sequence > 1000) {
+      throw new Error(`Topic ${index + 1} sequence must be between 1 and 1000.`);
+    }
+    if (seenSequences.has(topic.sequence)) {
+      throw new Error(`Topic ${index + 1} sequence must be unique.`);
+    }
+    seenSequences.add(topic.sequence);
     if (!Array.isArray(topic.objectives) || topic.objectives.length === 0) {
       throw new Error(`Topic ${index + 1} must include objectives.`);
     }
@@ -376,23 +387,6 @@ export async function saveDraft(
     summary: payload.summary.trim(),
   };
 
-  if (blueprint.status !== "draft") {
-    updatePayload.status = "draft";
-    updatePayload.approved_by = null;
-    updatePayload.approved_at = null;
-    updatePayload.published_by = null;
-    updatePayload.published_at = null;
-  }
-
-  const { error: updateError } = await admin
-    .from("blueprints")
-    .update(updatePayload)
-    .eq("id", blueprint.id);
-
-  if (updateError) {
-    redirectWithError(`/classes/${classId}/blueprint`, updateError.message);
-  }
-
   const { data: existingTopics, error: existingTopicsError } = await admin
     .from("topics")
     .select("id,prerequisite_topic_ids")
@@ -413,6 +407,23 @@ export async function saveDraft(
     if (!existingTopicIds.has(id)) {
       redirectWithError(`/classes/${classId}/blueprint`, "Invalid topic reference.");
     }
+  }
+
+  if (blueprint.status !== "draft") {
+    updatePayload.status = "draft";
+    updatePayload.approved_by = null;
+    updatePayload.approved_at = null;
+    updatePayload.published_by = null;
+    updatePayload.published_at = null;
+  }
+
+  const { error: updateError } = await admin
+    .from("blueprints")
+    .update(updatePayload)
+    .eq("id", blueprint.id);
+
+  if (updateError) {
+    redirectWithError(`/classes/${classId}/blueprint`, updateError.message);
   }
 
   const topicsById = new Map(
@@ -500,36 +511,77 @@ export async function saveDraft(
     }
   }
 
+  const savedTopicIdList = Array.from(savedTopicIds);
+  const { data: existingObjectives, error: existingObjectivesError } = await admin
+    .from("objectives")
+    .select("id,topic_id")
+    .in("topic_id", savedTopicIdList);
+
+  if (existingObjectivesError) {
+    redirectWithError(`/classes/${classId}/blueprint`, existingObjectivesError.message);
+  }
+
+  const objectivesById = new Map(
+    (existingObjectives ?? []).map((objective) => [objective.id, objective.topic_id])
+  );
+  const payloadObjectiveIds = new Set<string>();
+
   for (const topic of savedTopics) {
     if (!topic.id) {
       continue;
     }
-    const { error: deleteObjectivesError } = await admin
-      .from("objectives")
-      .delete()
-      .eq("topic_id", topic.id);
-
-    if (deleteObjectivesError) {
-      redirectWithError(`/classes/${classId}/blueprint`, deleteObjectivesError.message);
+    for (const objective of topic.objectives) {
+      if (!objective.id) {
+        continue;
+      }
+      const existingTopicId = objectivesById.get(objective.id);
+      if (!existingTopicId || existingTopicId !== topic.id) {
+        redirectWithError(`/classes/${classId}/blueprint`, "Invalid objective reference.");
+      }
+      payloadObjectiveIds.add(objective.id);
     }
+  }
 
+  for (const topic of savedTopics) {
+    if (!topic.id) {
+      continue;
+    }
     const objectives = topic.objectives.map((objective) => ({
+      id: objective.id ?? crypto.randomUUID(),
       topic_id: topic.id,
       statement: objective.statement.trim(),
       level: objective.level?.trim() || null,
     }));
 
     if (objectives.length > 0) {
-      const { error: insertObjectivesError } = await admin
+      const { error: upsertObjectivesError } = await admin
         .from("objectives")
-        .insert(objectives);
+        .upsert(objectives, { onConflict: "id" });
 
-      if (insertObjectivesError) {
+      if (upsertObjectivesError) {
         redirectWithError(
           `/classes/${classId}/blueprint`,
-          insertObjectivesError.message
+          upsertObjectivesError.message
         );
       }
+    }
+  }
+
+  const objectivesToDelete =
+    existingObjectives?.filter((objective) => !payloadObjectiveIds.has(objective.id)) ??
+    [];
+
+  if (objectivesToDelete.length > 0) {
+    const { error: deleteObjectivesError } = await admin
+      .from("objectives")
+      .delete()
+      .in(
+        "id",
+        objectivesToDelete.map((objective) => objective.id)
+      );
+
+    if (deleteObjectivesError) {
+      redirectWithError(`/classes/${classId}/blueprint`, deleteObjectivesError.message);
     }
   }
 
@@ -642,12 +694,13 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     );
   }
 
-  const { error: archiveError } = await admin
+  const { data: archivedBlueprints, error: archiveError } = await admin
     .from("blueprints")
     .update({ status: "archived" })
     .eq("class_id", classId)
     .eq("status", "published")
-    .neq("id", blueprint.id);
+    .neq("id", blueprint.id)
+    .select("id");
 
   if (archiveError) {
     redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
@@ -663,6 +716,15 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     .eq("id", blueprint.id);
 
   if (publishError) {
+    if (archivedBlueprints && archivedBlueprints.length > 0) {
+      await admin
+        .from("blueprints")
+        .update({ status: "published" })
+        .in(
+          "id",
+          archivedBlueprints.map((row) => row.id)
+        );
+    }
     redirectWithError(`/classes/${classId}/blueprint`, publishError.message);
   }
 
