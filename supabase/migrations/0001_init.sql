@@ -86,28 +86,49 @@ create table if not exists blueprints (
 
 create index if not exists blueprints_class_id_idx on blueprints(class_id);
 
+create index if not exists blueprints_draft_rank_idx
+  on blueprints (class_id, version desc, created_at desc, id desc)
+  where status = 'draft';
+
 -- Enforce a single draft per class to prevent concurrent draft creation.
 -- Clean up any existing duplicate drafts per class before creating the index.
-with ranked_drafts as (
-  select
-    id,
-    class_id,
-    row_number() over (
-      partition by class_id
-      order by version desc, created_at desc, id desc
-    ) as rn
-  from blueprints
-  where status = 'draft'
-)
-update blueprints b
-set status = 'archived'
-from ranked_drafts r
-where b.id = r.id
-  and r.rn > 1;
+do $$
+begin
+  if exists (
+    select 1
+    from blueprints
+    where status = 'draft'
+    group by class_id
+    having count(*) > 1
+  ) then
+    with ranked_drafts as (
+      select
+        id,
+        class_id,
+        row_number() over (
+          partition by class_id
+          order by version desc, created_at desc, id desc
+        ) as rn
+      from blueprints
+      where status = 'draft'
+    )
+    update blueprints b
+    set status = 'archived'
+    from ranked_drafts r
+    where b.id = r.id
+      and r.rn > 1;
+  end if;
+end;
+$$;
 
 create unique index if not exists blueprints_single_draft_per_class
   on blueprints (class_id)
   where status = 'draft';
+
+-- Enforce a single published blueprint per class.
+create unique index if not exists blueprints_single_published_per_class
+  on blueprints (class_id)
+  where status = 'published';
 
 -- Topics
 create table if not exists topics (
@@ -295,7 +316,7 @@ create or replace function join_class_by_code(code text)
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public
 as $$
 declare
   target_class_id uuid;
@@ -309,7 +330,7 @@ begin
   end if;
 
   select id into target_class_id
-  from classes
+  from public.classes
   where upper(join_code) = upper(code)
   limit 1;
 
@@ -317,7 +338,7 @@ begin
     return null;
   end if;
 
-  insert into enrollments (class_id, user_id, role)
+  insert into public.enrollments (class_id, user_id, role)
   values (target_class_id, auth.uid(), 'student')
   on conflict (class_id, user_id) do nothing;
 
@@ -334,10 +355,23 @@ create or replace function publish_blueprint(
 )
 returns void
 language plpgsql
+security definer
+set search_path = pg_catalog, public
 as $$
 declare
   v_status blueprint_status;
 begin
+  if not (
+    is_admin()
+    or exists (
+      select 1 from public.classes c
+      where c.id = p_class_id
+        and c.owner_id = auth.uid()
+    )
+  ) then
+    raise exception 'Not authorized to publish blueprint.';
+  end if;
+
   -- Advisory transaction lock scoped to the class to serialize publish operations.
   perform pg_advisory_xact_lock(
     ('x' || substr(replace(p_class_id::text, '-', ''), 1, 16))::bit(64)::bigint,
@@ -346,7 +380,7 @@ begin
 
   select status
     into v_status
-    from blueprints
+    from public.blueprints
    where id = p_blueprint_id
      and class_id = p_class_id
    for update;
@@ -363,19 +397,22 @@ begin
     raise exception 'Blueprint must be approved before publishing.';
   end if;
 
-  update blueprints
+  update public.blueprints
      set status = 'archived'
    where class_id = p_class_id
      and id <> p_blueprint_id
      and status in ('approved', 'published');
 
-  update blueprints
+  update public.blueprints
      set status = 'published',
          published_by = auth.uid(),
          published_at = now()
    where id = p_blueprint_id;
 end;
 $$;
+
+revoke execute on function publish_blueprint(uuid, uuid) from public;
+grant execute on function publish_blueprint(uuid, uuid) to authenticated;
 
 -- Row Level Security
 alter table profiles enable row level security;
@@ -672,6 +709,13 @@ with check (
       and c.owner_id = auth.uid()
   )
   and blueprints.status in ('published', 'archived')
+  and (
+    blueprints.status <> 'published'
+    or (
+      blueprints.published_by = auth.uid()
+      and blueprints.published_at is not null
+    )
+  )
 );
 
 create policy blueprints_update_owner_published
@@ -716,9 +760,6 @@ using (
   )
 );
 
-create policy blueprints_select_admin on blueprints for select
-using (is_admin());
-
 -- Topics policies
 create policy topics_select_member
 on topics for select
@@ -759,9 +800,6 @@ with check (
       and (c.owner_id = auth.uid() or e.role in ('teacher', 'ta'))
   )
 );
-
-create policy topics_select_admin on topics for select
-using (is_admin());
 
 -- Objectives policies
 create policy objectives_select_member
@@ -806,9 +844,6 @@ with check (
       and (c.owner_id = auth.uid() or e.role in ('teacher', 'ta'))
   )
 );
-
-create policy objectives_select_admin on objectives for select
-using (is_admin());
 
 -- Activities policies
 create policy activities_select_member
