@@ -26,6 +26,7 @@ create table if not exists material_chunks (
   section_title text,
   text text not null,
   token_count int not null,
+  -- NOTE: Update 1536 to match EMBEDDING_DIM in web/.env.local when using different embedding models.
   embedding vector(1536),
   embedding_provider text,
   embedding_model text,
@@ -68,6 +69,27 @@ create policy material_processing_jobs_insert_teacher
 on material_processing_jobs for insert
 with check (
   exists (
+    select 1
+    from materials m
+    join classes c on c.id = m.class_id
+    where m.id = material_processing_jobs.material_id
+      and m.class_id = material_processing_jobs.class_id
+      and (
+        c.owner_id = auth.uid()
+        or exists (
+          select 1 from enrollments e
+          where e.class_id = m.class_id
+            and e.user_id = auth.uid()
+            and e.role in ('teacher', 'ta')
+        )
+      )
+  )
+);
+
+create policy material_processing_jobs_update_teacher
+on material_processing_jobs for update
+using (
+  exists (
     select 1 from classes c
     where c.id = material_processing_jobs.class_id
       and c.owner_id = auth.uid()
@@ -80,8 +102,29 @@ with check (
   )
 );
 
-create policy material_processing_jobs_update_teacher
+create policy material_processing_jobs_update_teacher_check
 on material_processing_jobs for update
+with check (
+  exists (
+    select 1
+    from materials m
+    join classes c on c.id = m.class_id
+    where m.id = material_processing_jobs.material_id
+      and m.class_id = material_processing_jobs.class_id
+      and (
+        c.owner_id = auth.uid()
+        or exists (
+          select 1 from enrollments e
+          where e.class_id = m.class_id
+            and e.user_id = auth.uid()
+            and e.role in ('teacher', 'ta')
+        )
+      )
+  )
+);
+
+create policy material_processing_jobs_delete_teacher
+on material_processing_jobs for delete
 using (
   exists (
     select 1 from classes c
@@ -131,6 +174,38 @@ with check (
   )
 );
 
+create policy material_chunks_update_teacher
+on material_chunks for update
+using (
+  exists (
+    select 1 from classes c
+    where c.id = material_chunks.class_id
+      and c.owner_id = auth.uid()
+  )
+  or exists (
+    select 1 from enrollments e
+    where e.class_id = material_chunks.class_id
+      and e.user_id = auth.uid()
+      and e.role in ('teacher', 'ta')
+  )
+);
+
+create policy material_chunks_delete_teacher
+on material_chunks for delete
+using (
+  exists (
+    select 1 from classes c
+    where c.id = material_chunks.class_id
+      and c.owner_id = auth.uid()
+  )
+  or exists (
+    select 1 from enrollments e
+    where e.class_id = material_chunks.class_id
+      and e.user_id = auth.uid()
+      and e.role in ('teacher', 'ta')
+  )
+);
+
 create policy material_chunks_select_admin on material_chunks for select
 using (is_admin());
 
@@ -151,6 +226,7 @@ execute function set_material_processing_updated_at();
 
 create or replace function match_material_chunks(
   p_class_id uuid,
+  -- NOTE: Update 1536 to match EMBEDDING_DIM in web/.env.local when using different embedding models.
   query_embedding vector(1536),
   match_count int
 )

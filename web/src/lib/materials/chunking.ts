@@ -40,6 +40,7 @@ export function chunkSegments(segments: MaterialSegment[]) {
     }
 
     const words = segment.text.split(/\s+/g);
+    const wordLengths = words.map((word) => word.length);
     let start = 0;
     while (start < words.length) {
       let end = start;
@@ -69,9 +70,44 @@ export function chunkSegments(segments: MaterialSegment[]) {
         break;
       }
 
-      start = Math.max(0, end - DEFAULT_CHUNK_OVERLAP);
+      if (!current) {
+        const longWord = words[start];
+        chunks.push({
+          text: longWord,
+          sourceType: segment.sourceType,
+          sourceIndex: segment.sourceIndex,
+          sectionTitle: segment.sectionTitle,
+          extractionMethod: segment.extractionMethod,
+          qualityScore: segment.qualityScore,
+          tokenCount: estimateTokenCount(longWord),
+        });
+        start = Math.min(start + 1, words.length);
+        continue;
+      }
+
+      const overlapWords = countOverlapWords(wordLengths, end, DEFAULT_CHUNK_OVERLAP);
+      const maxOverlap = Math.max(0, end - start - 1);
+      const safeOverlap = Math.min(overlapWords, maxOverlap);
+      start = Math.max(0, end - safeOverlap);
     }
   }
 
   return chunks;
+}
+
+function countOverlapWords(wordLengths: number[], end: number, overlapTokens: number) {
+  if (!Number.isFinite(overlapTokens) || overlapTokens <= 0) {
+    return 0;
+  }
+
+  let overlapChars = 0;
+  let overlapWords = 0;
+  for (let index = end - 1; index >= 0; index -= 1) {
+    overlapChars += wordLengths[index] + (overlapWords > 0 ? 1 : 0);
+    overlapWords += 1;
+    if (Math.ceil(overlapChars / 4) >= overlapTokens) {
+      break;
+    }
+  }
+  return overlapWords;
 }

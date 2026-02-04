@@ -50,7 +50,7 @@ This repo is aligned to the roadmap in `ROADMAP.md`, with core services and blue
 pnpm install
 ```
 
-1. Run the dev server from the repo root:
+3. Run the dev server from the repo root:
 
 ```bash
 pnpm dev
@@ -77,6 +77,7 @@ pnpm dev
 - Inputs validated on every API route and server action.
 - File uploads are size-limited and content-type checked.
 - AI context restricted to approved materials and the blueprint.
+- Set `CRON_SECRET` to protect `POST /api/materials/process` (requires `x-cron-secret` header). If unset, restrict access at the infrastructure layer (e.g., IP allowlist).
 
 **Docs**
 

@@ -12,6 +12,8 @@ export type OcrPageResult = OcrResult & {
 
 const DEFAULT_OCR_LANGUAGE = process.env.OCR_LANGUAGE ?? "eng";
 const MAX_PDF_OCR_PAGES = Number(process.env.OCR_MAX_PDF_PAGES ?? 30);
+const MIN_OCR_TEXT_LENGTH = Number(process.env.OCR_MIN_TEXT_LENGTH ?? 30);
+const SHORT_TEXT_CONFIDENCE = Number(process.env.OCR_SHORT_TEXT_CONFIDENCE ?? 85);
 
 export async function runOcrOnImage(buffer: Buffer) {
   const worker = await createWorker(DEFAULT_OCR_LANGUAGE);
@@ -49,7 +51,7 @@ export async function runOcrOnPdf(buffer: Buffer) {
 
 export function isLowQualityText(text: string, confidence: number) {
   const trimmed = text.trim();
-  if (trimmed.length < 30) {
+  if (trimmed.length < MIN_OCR_TEXT_LENGTH && confidence < SHORT_TEXT_CONFIDENCE) {
     return true;
   }
   if (confidence < 60) {
