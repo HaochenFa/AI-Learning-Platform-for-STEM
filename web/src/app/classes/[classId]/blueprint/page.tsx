@@ -12,6 +12,7 @@ type SearchParams = {
   saved?: string;
   approved?: string;
   published?: string;
+  draft?: string;
 };
 
 export default async function BlueprintPage({
@@ -52,6 +53,10 @@ export default async function BlueprintPage({
   const isOwner = classRow.owner_id === user.id;
   const isTeacher = isOwner || enrollment?.role === "teacher" || enrollment?.role === "ta";
 
+  if (!isTeacher) {
+    redirect(`/classes/${classId}/blueprint/published`);
+  }
+
   const { data: blueprint } = await supabase
     .from("blueprints")
     .select("id,summary,status,version,created_at")
@@ -63,7 +68,7 @@ export default async function BlueprintPage({
   const { data: topics } = blueprint
     ? await supabase
         .from("topics")
-        .select("id,title,description,sequence,prerequisite_topic_ids")
+        .select("id,title,description,section,sequence,prerequisite_topic_ids")
         .eq("blueprint_id", blueprint.id)
         .order("sequence", { ascending: true })
     : { data: null };
@@ -114,6 +119,8 @@ export default async function BlueprintPage({
       : null;
   const publishedMessage =
     resolvedSearchParams?.published === "1" ? "Blueprint published." : null;
+  const draftedMessage =
+    resolvedSearchParams?.draft === "1" ? "New draft version created." : null;
 
   const initialDraft = blueprint
     ? {
@@ -121,9 +128,12 @@ export default async function BlueprintPage({
         topics:
           topics?.map((topic) => ({
             id: topic.id,
+            clientId: topic.id,
             title: topic.title,
             description: topic.description ?? "",
+            section: topic.section ?? "",
             sequence: topic.sequence,
+            prerequisiteClientIds: topic.prerequisite_topic_ids ?? [],
             objectives: (objectivesByTopic.get(topic.id) ?? []).map((objective) => ({
               id: objective.id,
               statement: objective.statement,
@@ -170,6 +180,11 @@ export default async function BlueprintPage({
         {publishedMessage ? (
           <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
             {publishedMessage}
+          </div>
+        ) : null}
+        {draftedMessage ? (
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+            {draftedMessage}
           </div>
         ) : null}
 

@@ -1,23 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { publishBlueprint } from "@/app/classes/[classId]/blueprint/actions";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = {
-  approved?: string;
-};
-
-export default async function BlueprintOverviewPage({
+export default async function BlueprintPublishedPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ classId: string }>;
-  searchParams?: Promise<SearchParams>;
 }) {
   const { classId } = await params;
-  const resolvedSearchParams = await searchParams;
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -29,7 +21,7 @@ export default async function BlueprintOverviewPage({
 
   const { data: classRow } = await supabase
     .from("classes")
-    .select("id,title,subject,level,owner_id")
+    .select("id,title,subject,level")
     .eq("id", classId)
     .single();
 
@@ -37,27 +29,19 @@ export default async function BlueprintOverviewPage({
     redirect("/dashboard");
   }
 
-  if (classRow.owner_id !== user.id) {
-    redirect(
-      `/classes/${classId}/blueprint?error=${encodeURIComponent(
-        "Only the class owner can view the overview."
-      )}`
-    );
-  }
-
   const { data: blueprint } = await supabase
     .from("blueprints")
-    .select("id,summary,status,version,approved_at,published_at")
+    .select("id,summary,version,published_at")
     .eq("class_id", classId)
-    .in("status", ["approved", "published"])
+    .eq("status", "published")
     .order("version", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (!blueprint) {
     redirect(
-      `/classes/${classId}/blueprint?error=${encodeURIComponent(
-        "No approved blueprint available."
+      `/classes/${classId}?error=${encodeURIComponent(
+        "No published blueprint available."
       )}`
     );
   }
@@ -68,15 +52,16 @@ export default async function BlueprintOverviewPage({
     .eq("blueprint_id", blueprint.id)
     .order("sequence", { ascending: true });
 
-  const { data: objectives } = topics && topics.length > 0
-    ? await supabase
-        .from("objectives")
-        .select("topic_id,statement,level")
-        .in(
-          "topic_id",
-          topics.map((topic) => topic.id)
-        )
-    : { data: null };
+  const { data: objectives } =
+    topics && topics.length > 0
+      ? await supabase
+          .from("objectives")
+          .select("topic_id,statement,level")
+          .in(
+            "topic_id",
+            topics.map((topic) => topic.id)
+          )
+      : { data: null };
 
   const objectivesByTopic = new Map<
     string,
@@ -93,18 +78,13 @@ export default async function BlueprintOverviewPage({
     titleById.set(topic.id, topic.title);
   });
 
-  const approvedMessage =
-    resolvedSearchParams?.approved === "1"
-      ? "Blueprint approved. Review the compiled overview before publishing."
-      : null;
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Blueprint Overview
+              Published Blueprint
             </p>
             <h1 className="text-3xl font-semibold">{classRow.title}</h1>
             <p className="text-sm text-slate-400">
@@ -112,18 +92,12 @@ export default async function BlueprintOverviewPage({
             </p>
           </div>
           <Link
-            href={`/classes/${classRow.id}/blueprint`}
+            href={`/classes/${classRow.id}`}
             className="text-xs uppercase tracking-[0.3em] text-slate-400 hover:text-slate-200"
           >
-            Back to editor
+            Back to class
           </Link>
         </header>
-
-        {approvedMessage ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
-            {approvedMessage}
-          </div>
-        ) : null}
 
         <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -131,22 +105,16 @@ export default async function BlueprintOverviewPage({
               <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
                 Version {blueprint.version}
               </p>
-              <p className="text-sm text-slate-300">Status: {blueprint.status}</p>
+              <p className="text-sm text-slate-300">
+                Published{" "}
+                {blueprint.published_at
+                  ? new Date(blueprint.published_at).toLocaleDateString()
+                  : ""}
+              </p>
             </div>
-            {blueprint.status === "approved" ? (
-              <form action={publishBlueprint.bind(null, classRow.id, blueprint.id)}>
-                <button
-                  type="submit"
-                  className="rounded-full bg-cyan-400/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950"
-                >
-                  Publish blueprint
-                </button>
-              </form>
-            ) : (
-              <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-emerald-200">
-                Published
-              </span>
-            )}
+            <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-emerald-200">
+              Published
+            </span>
           </div>
         </div>
 
@@ -209,12 +177,14 @@ export default async function BlueprintOverviewPage({
                       </p>
                     ) : null}
                     <ul className="mt-4 space-y-2 text-sm text-slate-700">
-                      {(objectivesByTopic.get(topic.id) ?? []).map((objective, index) => (
-                        <li key={`${topic.id}-objective-${index}`}>
-                          - {objective.statement}
-                          {objective.level ? ` (${objective.level})` : ""}
-                        </li>
-                      ))}
+                      {(objectivesByTopic.get(topic.id) ?? []).map(
+                        (objective, index) => (
+                          <li key={`${topic.id}-objective-${index}`}>
+                            - {objective.statement}
+                            {objective.level ? ` (${objective.level})` : ""}
+                          </li>
+                        )
+                      )}
                     </ul>
                   </div>
                 ))

@@ -58,6 +58,15 @@ export default async function ClassOverviewPage({
         .order("created_at", { ascending: false })
     : { data: null };
 
+  const { data: publishedBlueprint } = await supabase
+    .from("blueprints")
+    .select("id,version")
+    .eq("class_id", classId)
+    .eq("status", "published")
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const errorMessage =
     typeof resolvedSearchParams?.error === "string"
       ? resolvedSearchParams.error
@@ -218,10 +227,24 @@ export default async function ClassOverviewPage({
             </div>
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
               <h2 className="text-lg font-semibold">Blueprint status</h2>
-              <p className="mt-2 text-sm text-slate-400">
-                Awaiting teacher approval. Check back soon for AI powered
-                activities.
-              </p>
+              {publishedBlueprint ? (
+                <>
+                  <p className="mt-2 text-sm text-slate-400">
+                    The latest blueprint is published and ready.
+                  </p>
+                  <Link
+                    href={`/classes/${classRow.id}/blueprint/published`}
+                    className="mt-4 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200"
+                  >
+                    View published blueprint
+                  </Link>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-slate-400">
+                  Awaiting teacher approval. Check back soon for AI powered
+                  activities.
+                </p>
+              )}
             </div>
           </section>
         )}
