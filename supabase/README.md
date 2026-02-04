@@ -5,11 +5,12 @@ This folder contains SQL migrations for the core schema.
 **Apply migrations**
 
 - Use Supabase CLI or the dashboard SQL editor to apply migrations in order.
-- Start with `supabase/migrations/0001_init.sql`.
+- Start with `supabase/migrations/0001_init.sql` (baseline schema).
+- Historical migrations have been archived to `supabase/migrations_archive/` and are not applied by the CLI.
 
 **Notes**
 
 - Row Level Security is enabled for all tables.
 - Policies assume join code enrollment and teacher ownership.
 - Use the service role key for server side jobs (never in client code).
-- Create a private storage bucket named `materials` for class uploads.
+- The `materials` storage bucket is created by the baseline migration if it does not exist.
