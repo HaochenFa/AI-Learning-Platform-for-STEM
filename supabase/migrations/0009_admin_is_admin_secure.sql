@@ -4,7 +4,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public, pg_catalog
+set search_path = pg_catalog, public
 as $$
   select exists (
     select 1 from public.admin_users where user_id = auth.uid()
