@@ -89,7 +89,14 @@ type TopicMapLayout = {
   width: number;
   height: number;
   hasCycle: boolean;
+  errorMessage?: string;
 };
+
+class CycleError extends Error {
+  constructor() {
+    super("cycle");
+  }
+}
 
 function buildTopicMap(topics: DraftTopicState[]): TopicMapLayout {
   const graph = new Map<string, string[]>();
@@ -105,7 +112,7 @@ function buildTopicMap(topics: DraftTopicState[]): TopicMapLayout {
       return depthCache.get(node) ?? 0;
     }
     if (visiting.has(node)) {
-      throw new Error("cycle");
+      throw new CycleError();
     }
     visiting.add(node);
     const prereqs = graph.get(node) ?? [];
@@ -120,8 +127,19 @@ function buildTopicMap(topics: DraftTopicState[]): TopicMapLayout {
 
   try {
     topics.forEach((topic) => depth(topic.clientId));
-  } catch {
-    return { nodes: [], edges: [], width: 0, height: 0, hasCycle: true };
+  } catch (error) {
+    if (error instanceof CycleError) {
+      return { nodes: [], edges: [], width: 0, height: 0, hasCycle: true };
+    }
+    console.error("Failed to build topic map", error);
+    return {
+      nodes: [],
+      edges: [],
+      width: 0,
+      height: 0,
+      hasCycle: false,
+      errorMessage: "Unable to render topic map.",
+    };
   }
 
   const layers = new Map<number, DraftTopicState[]>();
@@ -323,6 +341,24 @@ export function BlueprintEditor({
       ])
     );
   }, [draft.topics]);
+  const dependencySummary = useMemo(() => {
+    if (draft.topics.length === 0) {
+      return "No topics are available.";
+    }
+    return draft.topics
+      .map((topic) => {
+        const title = topic.title || "Untitled";
+        const prereqs = topic.prerequisiteClientIds ?? [];
+        if (prereqs.length === 0) {
+          return `${title} has no prerequisites.`;
+        }
+        const names = prereqs
+          .map((id) => topicTitleById.get(id) ?? "Untitled")
+          .join(", ");
+        return `${title} depends on ${names}.`;
+      })
+      .join(" ");
+  }, [draft.topics, topicTitleById]);
 
   const serializedDraft = useMemo(() => {
     return JSON.stringify(toPayload(draft));
@@ -964,6 +1000,11 @@ export function BlueprintEditor({
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
               {draft.topics.length === 0 ? (
                 <p className="text-sm text-slate-400">Add topics to see the map.</p>
+              ) : topicMap.errorMessage ? (
+                <div className="space-y-2 text-sm text-amber-200">
+                  <p>{topicMap.errorMessage}</p>
+                  <p className="text-xs text-amber-100">{dependencySummary}</p>
+                </div>
               ) : topicMap.hasCycle ? (
                 <div className="space-y-3 text-sm text-amber-200">
                   <p>Cycle detected in prerequisites. Fix the loop to view the map.</p>
@@ -987,73 +1028,79 @@ export function BlueprintEditor({
                   const mapHeight = Math.max(topicMap.height + padding * 2, 240);
 
                   return (
-                    <svg
-                      className="w-full"
-                      viewBox={`0 0 ${mapWidth} ${mapHeight}`}
-                      role="img"
-                      aria-label="Topic dependency map"
-                    >
-                      <rect
-                        x={0}
-                        y={0}
-                        width={mapWidth}
-                        height={mapHeight}
-                        rx={24}
-                        fill="#0f172a"
-                      />
-                      {topicMap.edges.map((edge) => {
-                        const from = nodeById.get(edge.from);
-                        const to = nodeById.get(edge.to);
-                        if (!from || !to) {
-                          return null;
-                        }
-                        const startX = from.x + MAP_NODE_WIDTH + padding;
-                        const startY = from.y + MAP_NODE_HEIGHT / 2 + padding;
-                        const endX = to.x + padding;
-                        const endY = to.y + MAP_NODE_HEIGHT / 2 + padding;
-                        return (
-                          <line
-                            key={`${edge.from}-${edge.to}`}
-                            x1={startX}
-                            y1={startY}
-                            x2={endX}
-                            y2={endY}
-                            stroke="#38bdf8"
-                            strokeWidth={2}
-                            opacity={0.6}
-                          />
-                        );
-                      })}
-                      {topicMap.nodes.map((node) => {
-                        const label =
-                          node.title.length > 18
-                            ? `${node.title.slice(0, 18)}...`
-                            : node.title;
-                        return (
-                          <g key={node.id}>
-                            <rect
-                              x={node.x + padding}
-                              y={node.y + padding}
-                              width={MAP_NODE_WIDTH}
-                              height={MAP_NODE_HEIGHT}
-                              rx={16}
-                              fill="#1e293b"
-                              stroke="#334155"
+                    <>
+                      <svg
+                        className="w-full"
+                        viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+                        role="img"
+                        aria-label="Topic dependency map"
+                        aria-describedby="topic-map-desc"
+                      >
+                        <title>Topic dependency map</title>
+                        <desc id="topic-map-desc">{dependencySummary}</desc>
+                        <rect
+                          x={0}
+                          y={0}
+                          width={mapWidth}
+                          height={mapHeight}
+                          rx={24}
+                          fill="#0f172a"
+                        />
+                        {topicMap.edges.map((edge) => {
+                          const from = nodeById.get(edge.from);
+                          const to = nodeById.get(edge.to);
+                          if (!from || !to) {
+                            return null;
+                          }
+                          const startX = from.x + MAP_NODE_WIDTH + padding;
+                          const startY = from.y + MAP_NODE_HEIGHT / 2 + padding;
+                          const endX = to.x + padding;
+                          const endY = to.y + MAP_NODE_HEIGHT / 2 + padding;
+                          return (
+                            <line
+                              key={`${edge.from}-${edge.to}`}
+                              x1={startX}
+                              y1={startY}
+                              x2={endX}
+                              y2={endY}
+                              stroke="#38bdf8"
+                              strokeWidth={2}
+                              opacity={0.6}
                             />
-                            <text
-                              x={node.x + padding + MAP_NODE_WIDTH / 2}
-                              y={node.y + padding + MAP_NODE_HEIGHT / 2 + 4}
-                              textAnchor="middle"
-                              fill="#e2e8f0"
-                              fontSize="12"
-                              fontFamily="sans-serif"
-                            >
-                              {label}
-                            </text>
-                          </g>
-                        );
-                      })}
-                    </svg>
+                          );
+                        })}
+                        {topicMap.nodes.map((node) => {
+                          const label =
+                            node.title.length > 18
+                              ? `${node.title.slice(0, 18)}...`
+                              : node.title;
+                          return (
+                            <g key={node.id}>
+                              <rect
+                                x={node.x + padding}
+                                y={node.y + padding}
+                                width={MAP_NODE_WIDTH}
+                                height={MAP_NODE_HEIGHT}
+                                rx={16}
+                                fill="#1e293b"
+                                stroke="#334155"
+                              />
+                              <text
+                                x={node.x + padding + MAP_NODE_WIDTH / 2}
+                                y={node.y + padding + MAP_NODE_HEIGHT / 2 + 4}
+                                textAnchor="middle"
+                                fill="#e2e8f0"
+                                fontSize="12"
+                                fontFamily="sans-serif"
+                              >
+                                {label}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                      <div className="sr-only">{dependencySummary}</div>
+                    </>
                   );
                 })()
               )}

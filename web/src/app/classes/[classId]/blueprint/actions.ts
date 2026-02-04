@@ -208,6 +208,7 @@ function validatePrerequisites(topics: DraftTopicInput[]) {
   const graph = new Map<string, string[]>();
 
   for (const topic of topics) {
+    // Ensure every topic is represented even if it has no prerequisites.
     const prereqs = topic.prerequisiteClientIds ?? [];
     for (const prereq of prereqs) {
       if (!clientIds.has(prereq)) {
@@ -355,7 +356,8 @@ export async function generateBlueprint(classId: string) {
     return;
   }
 
-  if (!access.classRow) {
+  const classRow = access.classRow;
+  if (!classRow) {
     redirectWithError(`/classes/${classId}/blueprint`, "Class not found");
     return;
   }
@@ -376,9 +378,9 @@ export async function generateBlueprint(classId: string) {
 
   const materialText = buildMaterialContext(materials);
   const prompt = buildBlueprintPrompt({
-    classTitle: access.classRow.title,
-    subject: access.classRow.subject,
-    level: access.classRow.level,
+    classTitle: classRow.title,
+    subject: classRow.subject,
+    level: classRow.level,
     materialCount: materials.length,
     materialText,
   });
@@ -1075,10 +1077,16 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
   if (publishError) {
     if (otherBlueprintsBeforeArchive && otherBlueprintsBeforeArchive.length > 0) {
       for (const row of otherBlueprintsBeforeArchive) {
-        await supabase
+        const { error: rollbackError } = await supabase
           .from("blueprints")
           .update({ status: row.status })
           .eq("id", row.id);
+        if (rollbackError) {
+          console.error("Failed to rollback blueprint status", {
+            blueprintId: row.id,
+            error: rollbackError.message,
+          });
+        }
       }
     }
     redirectWithError(`/classes/${classId}/blueprint`, publishError.message);

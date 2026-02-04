@@ -37,7 +37,7 @@ begin
 
   select id into target_class_id
   from classes
-  where join_code = upper(code)
+  where upper(join_code) = upper(code)
   limit 1;
 
   if target_class_id is null then

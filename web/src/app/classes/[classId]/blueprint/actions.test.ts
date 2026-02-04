@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   approveBlueprint,
+  createDraftFromPublished,
   generateBlueprint,
   publishBlueprint,
   saveDraft,
@@ -456,6 +457,169 @@ describe("blueprint workflow actions", () => {
     await expectRedirect(
       () => saveDraft("class-1", "bp-1", formData),
       "/classes/class-1/blueprint?error=Prerequisite%20cannot%20reference%20itself."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("creates a draft from a published blueprint", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    let blueprintsCall = 0;
+    let topicsCall = 0;
+    let objectivesCall = 0;
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "blueprints") {
+        blueprintsCall += 1;
+        if (blueprintsCall === 1) {
+          return makeBuilder({ data: { id: "bp-pub", summary: "Summary" }, error: null });
+        }
+        if (blueprintsCall === 2) {
+          return makeBuilder({ data: { version: 1 }, error: null });
+        }
+        if (blueprintsCall === 3) {
+          return makeBuilder({ data: { id: "bp-new" }, error: null });
+        }
+        return makeBuilder({ error: null });
+      }
+      if (table === "topics") {
+        topicsCall += 1;
+        if (topicsCall === 1) {
+          return makeBuilder({
+            data: [
+              {
+                id: "t1",
+                title: "Limits",
+                description: null,
+                section: null,
+                sequence: 1,
+                prerequisite_topic_ids: [],
+              },
+            ],
+            error: null,
+          });
+        }
+        if (topicsCall === 2) {
+          return makeBuilder({ data: { id: "t1-new" }, error: null });
+        }
+        return makeBuilder({ error: null });
+      }
+      if (table === "objectives") {
+        objectivesCall += 1;
+        if (objectivesCall === 1) {
+          return makeBuilder({
+            data: [
+              {
+                id: "o1",
+                topic_id: "t1",
+                statement: "Define limits.",
+                level: "Remember",
+              },
+            ],
+            error: null,
+          });
+        }
+        return makeBuilder({ error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => createDraftFromPublished("class-1"),
+      "/classes/class-1/blueprint?draft=1"
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("redirects when no published blueprint exists", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "blueprints") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => createDraftFromPublished("class-1"),
+      "/classes/class-1/blueprint?error=No%20published%20blueprint%20found."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("redirects when draft creation fails", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    let blueprintsCall = 0;
+    let topicsCall = 0;
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "blueprints") {
+        blueprintsCall += 1;
+        if (blueprintsCall === 1) {
+          return makeBuilder({ data: { id: "bp-pub", summary: "Summary" }, error: null });
+        }
+        if (blueprintsCall === 2) {
+          return makeBuilder({ data: { version: 1 }, error: null });
+        }
+        if (blueprintsCall === 3) {
+          return makeBuilder({ data: { id: "bp-new" }, error: null });
+        }
+        return makeBuilder({ error: null });
+      }
+      if (table === "topics") {
+        topicsCall += 1;
+        if (topicsCall === 1) {
+          return makeBuilder({
+            data: [
+              {
+                id: "t1",
+                title: "Limits",
+                description: null,
+                section: null,
+                sequence: 1,
+                prerequisite_topic_ids: [],
+              },
+            ],
+            error: null,
+          });
+        }
+        if (topicsCall === 2) {
+          return makeBuilder({ data: null, error: { message: "insert failed" } });
+        }
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => createDraftFromPublished("class-1"),
+      "/classes/class-1/blueprint?error=insert%20failed"
     );
     expect(redirect).toHaveBeenCalled();
   });
