@@ -13,9 +13,7 @@ export default async function LoginPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const errorMessage =
-    typeof resolvedSearchParams?.error === "string"
-      ? resolvedSearchParams.error
-      : null;
+    typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
   const verify = resolvedSearchParams?.verify === "1";
 
   return (

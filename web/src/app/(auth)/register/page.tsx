@@ -12,18 +12,14 @@ export default async function RegisterPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const errorMessage =
-    typeof resolvedSearchParams?.error === "string"
-      ? resolvedSearchParams.error
-      : null;
+    typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center px-6 py-16">
         <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-900/40">
           <div className="mb-8 space-y-2">
-            <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
-              Launch Your Class
-            </p>
+            <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Launch Your Class</p>
             <h1 className="text-3xl font-semibold">Create an account</h1>
             <p className="text-sm text-slate-400">
               Start building course blueprints from your materials.

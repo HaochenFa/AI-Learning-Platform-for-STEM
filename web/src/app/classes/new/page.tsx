@@ -12,21 +12,16 @@ export default async function NewClassPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const errorMessage =
-    typeof resolvedSearchParams?.error === "string"
-      ? resolvedSearchParams.error
-      : null;
+    typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto w-full max-w-4xl px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Teacher Studio
-          </p>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Teacher Studio</p>
           <h1 className="text-3xl font-semibold">Create a class</h1>
           <p className="text-sm text-slate-400">
-            Set the subject and level. A join code will be generated for
-            students.
+            Set the subject and level. A join code will be generated for students.
           </p>
         </header>
 
@@ -83,7 +78,7 @@ export default async function NewClassPage({
               name="description"
               rows={4}
               className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
-              placeholder="Optional context about the class." 
+              placeholder="Optional context about the class."
             />
           </div>
 
@@ -94,10 +89,7 @@ export default async function NewClassPage({
             >
               Create class
             </button>
-            <Link
-              className="text-sm text-slate-400 hover:text-slate-200"
-              href="/dashboard"
-            >
+            <Link className="text-sm text-slate-400 hover:text-slate-200" href="/dashboard">
               Back to dashboard
             </Link>
           </div>

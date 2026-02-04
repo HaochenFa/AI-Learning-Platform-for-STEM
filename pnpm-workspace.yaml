@@ -1,6 +1,8 @@
 packages:
-  - "web"
+  - web
 
 ignoredBuiltDependencies:
+  - esbuild
   - sharp
+  - tesseract.js
   - unrs-resolver

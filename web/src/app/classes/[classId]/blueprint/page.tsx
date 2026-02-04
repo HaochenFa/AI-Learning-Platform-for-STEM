@@ -64,9 +64,7 @@ export default async function BlueprintPage({
 
     if (!publishedBlueprint) {
       redirect(
-        `/classes/${classId}?error=${encodeURIComponent(
-          "No published blueprint available."
-        )}`
+        `/classes/${classId}?error=${encodeURIComponent("No published blueprint available.")}`,
       );
     }
 
@@ -96,7 +94,7 @@ export default async function BlueprintPage({
           .select("id,topic_id,statement,level")
           .in(
             "topic_id",
-            topics.map((topic) => topic.id)
+            topics.map((topic) => topic.id),
           )
       : { data: null };
 
@@ -120,23 +118,14 @@ export default async function BlueprintPage({
     .eq("class_id", classId);
 
   const errorMessage =
-    typeof resolvedSearchParams?.error === "string"
-      ? resolvedSearchParams.error
-      : null;
+    typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
   const generatedMessage =
-    resolvedSearchParams?.generated === "1"
-      ? "Blueprint generated in draft mode."
-      : null;
-  const savedMessage =
-    resolvedSearchParams?.saved === "1" ? "Draft saved." : null;
+    resolvedSearchParams?.generated === "1" ? "Blueprint generated in draft mode." : null;
+  const savedMessage = resolvedSearchParams?.saved === "1" ? "Draft saved." : null;
   const approvedMessage =
-    resolvedSearchParams?.approved === "1"
-      ? "Blueprint approved. Overview is ready."
-      : null;
-  const publishedMessage =
-    resolvedSearchParams?.published === "1" ? "Blueprint published." : null;
-  const draftedMessage =
-    resolvedSearchParams?.draft === "1" ? "New draft version created." : null;
+    resolvedSearchParams?.approved === "1" ? "Blueprint approved. Overview is ready." : null;
+  const publishedMessage = resolvedSearchParams?.published === "1" ? "Blueprint published." : null;
+  const draftedMessage = resolvedSearchParams?.draft === "1" ? "New draft version created." : null;
 
   const initialDraft = blueprint
     ? {
@@ -163,9 +152,7 @@ export default async function BlueprintPage({
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Course Blueprint
-          </p>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Course Blueprint</p>
           <h1 className="text-3xl font-semibold">{classRow.title}</h1>
           <p className="text-sm text-slate-400">
             {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}

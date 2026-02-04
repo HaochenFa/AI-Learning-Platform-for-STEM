@@ -15,9 +15,7 @@ const validPayload = {
       description: "Foundations of limits.",
       sequence: 1,
       prerequisites: [],
-      objectives: [
-        { statement: "Define a limit formally.", level: "understand" },
-      ],
+      objectives: [{ statement: "Define a limit formally.", level: "understand" }],
       assessmentIdeas: ["Exit ticket on limit notation."],
     },
   ],
@@ -89,9 +87,7 @@ describe("validateBlueprintPayload", () => {
       ],
     });
     expect(result.ok).toBe(false);
-    expect(
-      result.errors.some((error) => error.includes("sequence must be a number"))
-    ).toBe(true);
+    expect(result.errors.some((error) => error.includes("sequence must be a number"))).toBe(true);
   });
 
   it("rejects objectives without statements", () => {
@@ -105,23 +101,16 @@ describe("validateBlueprintPayload", () => {
       ],
     });
     expect(result.ok).toBe(false);
-    expect(
-      result.errors.some((error) => error.includes("statement is required"))
-    ).toBe(true);
+    expect(result.errors.some((error) => error.includes("statement is required"))).toBe(true);
   });
 
   it("rejects duplicate topic keys", () => {
     const result = validateBlueprintPayload({
       ...validPayload,
-      topics: [
-        { ...validPayload.topics[0] },
-        { ...validPayload.topics[0] },
-      ],
+      topics: [{ ...validPayload.topics[0] }, { ...validPayload.topics[0] }],
     });
     expect(result.ok).toBe(false);
-    expect(result.errors.some((error) => error.includes("duplicated"))).toBe(
-      true
-    );
+    expect(result.errors.some((error) => error.includes("duplicated"))).toBe(true);
   });
 
   it("rejects non-array prerequisites", () => {
@@ -135,9 +124,9 @@ describe("validateBlueprintPayload", () => {
       ],
     });
     expect(result.ok).toBe(false);
-    expect(
-      result.errors.some((error) => error.includes("prerequisites must be an array"))
-    ).toBe(true);
+    expect(result.errors.some((error) => error.includes("prerequisites must be an array"))).toBe(
+      true,
+    );
   });
 });
 
@@ -150,9 +139,7 @@ describe("parseBlueprintResponse", () => {
   });
 
   it("throws when no JSON is present", () => {
-    expect(() => parseBlueprintResponse("No JSON here.")).toThrow(
-      "No JSON object found"
-    );
+    expect(() => parseBlueprintResponse("No JSON here.")).toThrow("No JSON object found");
   });
 
   it("throws when JSON does not match schema", () => {

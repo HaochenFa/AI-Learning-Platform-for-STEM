@@ -49,10 +49,7 @@ describe("auth actions", () => {
     formData.set("email", "test@example.com");
     formData.set("password", "bad");
 
-    await expectRedirect(
-      () => signIn(formData),
-      "/login?error=Invalid%20login"
-    );
+    await expectRedirect(() => signIn(formData), "/login?error=Invalid%20login");
     expect(redirect).toHaveBeenCalled();
   });
 
@@ -76,10 +73,7 @@ describe("auth actions", () => {
     formData.set("email", "test@example.com");
     formData.set("password", "goodpass");
 
-    await expectRedirect(
-      () => signUp(formData),
-      "/register?error=Email%20already%20used"
-    );
+    await expectRedirect(() => signUp(formData), "/register?error=Email%20already%20used");
     expect(redirect).toHaveBeenCalled();
   });
 

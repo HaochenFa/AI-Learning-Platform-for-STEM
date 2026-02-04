@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import LoginPage from "@/app/(auth)/login/page";
 
@@ -13,7 +14,7 @@ describe("LoginPage", () => {
 
   it("shows verify notice when verify=1", async () => {
     const html = renderToStaticMarkup(
-      await LoginPage({ searchParams: Promise.resolve({ verify: "1" }) })
+      await LoginPage({ searchParams: Promise.resolve({ verify: "1" }) }),
     );
 
     expect(html).toContain("Check your email to verify your account");
@@ -23,7 +24,7 @@ describe("LoginPage", () => {
     const html = renderToStaticMarkup(
       await LoginPage({
         searchParams: Promise.resolve({ error: "Invalid login" }),
-      })
+      }),
     );
 
     expect(html).toContain("Invalid login");

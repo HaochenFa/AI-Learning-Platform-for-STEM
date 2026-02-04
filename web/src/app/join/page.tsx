@@ -12,17 +12,13 @@ export default async function JoinClassPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const errorMessage =
-    typeof resolvedSearchParams?.error === "string"
-      ? resolvedSearchParams.error
-      : null;
+    typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto w-full max-w-lg px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Student Hub
-          </p>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Student Hub</p>
           <h1 className="text-3xl font-semibold">Join a class</h1>
           <p className="text-sm text-slate-400">
             Enter the join code from your teacher to access assignments.
@@ -56,10 +52,7 @@ export default async function JoinClassPage({
             >
               Join class
             </button>
-            <Link
-              className="text-sm text-slate-400 hover:text-slate-200"
-              href="/dashboard"
-            >
+            <Link className="text-sm text-slate-400 hover:text-slate-200" href="/dashboard">
               Back to dashboard
             </Link>
           </div>

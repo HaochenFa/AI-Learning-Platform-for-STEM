@@ -26,8 +26,7 @@ export default async function DashboardPage() {
     .eq("user_id", user.id);
 
   const enrollmentMap = new Map(
-    enrollments?.map((enrollment) => [enrollment.class_id, enrollment.role]) ??
-      []
+    enrollments?.map((enrollment) => [enrollment.class_id, enrollment.role]) ?? [],
   );
 
   return (
@@ -35,9 +34,7 @@ export default async function DashboardPage() {
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-16">
         <header className="flex flex-wrap items-center justify-between gap-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Dashboard
-            </p>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Dashboard</p>
             <h1 className="text-3xl font-semibold">Welcome, {user.email}</h1>
             <p className="text-sm text-slate-400">
               Manage classes, materials, and student assignments.

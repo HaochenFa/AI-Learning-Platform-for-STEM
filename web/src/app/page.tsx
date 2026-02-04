@@ -29,13 +29,11 @@ export default function HomePage() {
             </p>
             <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
               Turn materials into
-              <span className="text-cyan-300"> structured learning</span>
-              , not generic AI.
+              <span className="text-cyan-300"> structured learning</span>, not generic AI.
             </h1>
             <p className="text-base text-slate-300 sm:text-lg">
-              Upload STEM materials, curate a course blueprint, and deliver AI
-              powered quizzes, flashcards, homework support, and exam review that
-              stay aligned to your class.
+              Upload STEM materials, curate a course blueprint, and deliver AI powered quizzes,
+              flashcards, homework support, and exam review that stay aligned to your class.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
@@ -55,33 +53,26 @@ export default function HomePage() {
 
           <div className="grid gap-4">
             <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
-                Blueprint
-              </p>
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Blueprint</p>
               <h2 className="mt-3 text-xl font-semibold">
                 Course map generated from your materials
               </h2>
               <p className="mt-2 text-sm text-slate-400">
-                Topics, objectives, prerequisites, and misconceptions organized
-                for teacher review.
+                Topics, objectives, prerequisites, and misconceptions organized for teacher review.
               </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
-                Activities
-              </p>
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Activities</p>
               <h2 className="mt-3 text-xl font-semibold">
                 AI learning tools grounded in class context
               </h2>
               <p className="mt-2 text-sm text-slate-400">
-                Chat, quizzes, flashcards, homework support, and exam review tied
-                to approved content.
+                Chat, quizzes, flashcards, homework support, and exam review tied to approved
+                content.
               </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
-                Insights
-              </p>
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Insights</p>
               <h2 className="mt-3 text-xl font-semibold">
                 Teacher control with student centered feedback
               </h2>

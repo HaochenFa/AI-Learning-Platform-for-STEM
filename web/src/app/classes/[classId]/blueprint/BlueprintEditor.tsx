@@ -9,14 +9,7 @@ import {
   saveDraft,
 } from "@/app/classes/[classId]/blueprint/actions";
 
-const BLOOM_LEVELS = [
-  "Remember",
-  "Understand",
-  "Apply",
-  "Analyze",
-  "Evaluate",
-  "Create",
-];
+const BLOOM_LEVELS = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"];
 
 const MAX_HISTORY_ENTRIES = 50;
 const MAX_DRAFT_BYTES = 1_000_000;
@@ -169,9 +162,7 @@ function buildTopicMap(topics: DraftTopicState[]): TopicMapLayout {
     layers.set(layer, list);
   });
 
-  const sortedLayers = Array.from(layers.entries()).sort(
-    ([a], [b]) => a - b
-  );
+  const sortedLayers = Array.from(layers.entries()).sort(([a], [b]) => a - b);
 
   const nodes: TopicMapNode[] = [];
   let width = 0;
@@ -353,12 +344,7 @@ export function BlueprintEditor({
     return new Map(topicMap.nodes.map((node) => [node.id, node]));
   }, [topicMap.nodes]);
   const topicTitleById = useMemo(() => {
-    return new Map(
-      draft.topics.map((topic) => [
-        topic.clientId,
-        topic.title || "Untitled",
-      ])
-    );
+    return new Map(draft.topics.map((topic) => [topic.clientId, topic.title || "Untitled"]));
   }, [draft.topics]);
   const dependencySummary = useMemo(() => {
     if (draft.topics.length === 0) {
@@ -371,9 +357,7 @@ export function BlueprintEditor({
         if (prereqs.length === 0) {
           return `${title} has no prerequisites.`;
         }
-        const names = prereqs
-          .map((id) => topicTitleById.get(id) ?? "Untitled")
-          .join(", ");
+        const names = prereqs.map((id) => topicTitleById.get(id) ?? "Untitled").join(", ");
         return `${title} depends on ${names}.`;
       })
       .join(" ");
@@ -389,14 +373,11 @@ export function BlueprintEditor({
 
   const canEdit = Boolean(
     blueprint &&
-      ((blueprint.status === "draft" && isTeacher) ||
-        (blueprint.status !== "draft" && isOwner))
+    ((blueprint.status === "draft" && isTeacher) || (blueprint.status !== "draft" && isOwner)),
   );
   const canApprove = Boolean(blueprint && isOwner && blueprint.status === "draft");
   const canViewOverview = Boolean(
-    blueprint &&
-      isOwner &&
-      (blueprint.status === "approved" || blueprint.status === "published")
+    blueprint && isOwner && (blueprint.status === "approved" || blueprint.status === "published"),
   );
 
   const warningMessage =
@@ -411,16 +392,13 @@ export function BlueprintEditor({
     });
   };
 
-  const handleTopicUpdate = (
-    topicId: string,
-    update: Partial<DraftTopicState>
-  ) => {
+  const handleTopicUpdate = (topicId: string, update: Partial<DraftTopicState>) => {
     dispatch({
       type: "set",
       next: {
         ...draft,
         topics: draft.topics.map((topic) =>
-          topic.clientId === topicId ? { ...topic, ...update } : topic
+          topic.clientId === topicId ? { ...topic, ...update } : topic,
         ),
       },
     });
@@ -429,7 +407,7 @@ export function BlueprintEditor({
   const handleObjectiveUpdate = (
     topicId: string,
     objectiveId: string,
-    update: Partial<DraftObjectiveState>
+    update: Partial<DraftObjectiveState>,
   ) => {
     dispatch({
       type: "set",
@@ -442,9 +420,7 @@ export function BlueprintEditor({
           return {
             ...topic,
             objectives: topic.objectives.map((objective) =>
-              objective.clientId === objectiveId
-                ? { ...objective, ...update }
-                : objective
+              objective.clientId === objectiveId ? { ...objective, ...update } : objective,
             ),
           };
         }),
@@ -452,10 +428,7 @@ export function BlueprintEditor({
     });
   };
 
-  const updatePrerequisites = (
-    topicId: string,
-    updater: (current: string[]) => string[]
-  ) => {
+  const updatePrerequisites = (topicId: string, updater: (current: string[]) => string[]) => {
     dispatch({
       type: "set",
       next: {
@@ -464,11 +437,9 @@ export function BlueprintEditor({
           topic.clientId === topicId
             ? {
                 ...topic,
-                prerequisiteClientIds: updater(
-                  topic.prerequisiteClientIds ?? []
-                ),
+                prerequisiteClientIds: updater(topic.prerequisiteClientIds ?? []),
               }
-            : topic
+            : topic,
         ),
       },
     });
@@ -476,21 +447,15 @@ export function BlueprintEditor({
 
   const handleAddPrerequisite = (topicId: string, prerequisiteId: string) => {
     updatePrerequisites(topicId, (current) =>
-      current.includes(prerequisiteId) ? current : [...current, prerequisiteId]
+      current.includes(prerequisiteId) ? current : [...current, prerequisiteId],
     );
   };
 
   const handleRemovePrerequisite = (topicId: string, prerequisiteId: string) => {
-    updatePrerequisites(topicId, (current) =>
-      current.filter((id) => id !== prerequisiteId)
-    );
+    updatePrerequisites(topicId, (current) => current.filter((id) => id !== prerequisiteId));
   };
 
-  const handleMovePrerequisite = (
-    topicId: string,
-    prerequisiteId: string,
-    direction: -1 | 1
-  ) => {
+  const handleMovePrerequisite = (topicId: string, prerequisiteId: string, direction: -1 | 1) => {
     updatePrerequisites(topicId, (current) => {
       const index = current.indexOf(prerequisiteId);
       if (index === -1) {
@@ -543,9 +508,7 @@ export function BlueprintEditor({
           }
           return {
             ...topic,
-            objectives: topic.objectives.filter(
-              (objective) => objective.clientId !== objectiveId
-            ),
+            objectives: topic.objectives.filter((objective) => objective.clientId !== objectiveId),
           };
         }),
       },
@@ -554,9 +517,7 @@ export function BlueprintEditor({
 
   const handleAddTopic = () => {
     const nextSequence =
-      draft.topics.length === 0
-        ? 1
-        : Math.max(...draft.topics.map((topic) => topic.sequence)) + 1;
+      draft.topics.length === 0 ? 1 : Math.max(...draft.topics.map((topic) => topic.sequence)) + 1;
 
     const newTopic: DraftTopicState = {
       clientId: makeClientId(),
@@ -670,10 +631,7 @@ export function BlueprintEditor({
 
       {isEditing ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
-          <form
-            action={saveDraft.bind(null, classId, blueprint.id)}
-            className="space-y-6"
-          >
+          <form action={saveDraft.bind(null, classId, blueprint.id)} className="space-y-6">
             <input type="hidden" name="draft" value={serializedDraft} />
 
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
@@ -695,7 +653,7 @@ export function BlueprintEditor({
                 const availablePrereqs = draft.topics.filter(
                   (option) =>
                     option.clientId !== topic.clientId &&
-                    !selectedPrereqs.includes(option.clientId)
+                    !selectedPrereqs.includes(option.clientId),
                 );
 
                 return (
@@ -808,13 +766,7 @@ export function BlueprintEditor({
                               <span>{topicTitleById.get(prereqId) ?? "Untitled"}</span>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  handleMovePrerequisite(
-                                    topic.clientId,
-                                    prereqId,
-                                    -1
-                                  )
-                                }
+                                onClick={() => handleMovePrerequisite(topic.clientId, prereqId, -1)}
                                 disabled={prereqIndex === 0}
                                 className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] disabled:opacity-40"
                               >
@@ -822,13 +774,7 @@ export function BlueprintEditor({
                               </button>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  handleMovePrerequisite(
-                                    topic.clientId,
-                                    prereqId,
-                                    1
-                                  )
-                                }
+                                onClick={() => handleMovePrerequisite(topic.clientId, prereqId, 1)}
                                 disabled={prereqIndex === selectedPrereqs.length - 1}
                                 className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] disabled:opacity-40"
                               >
@@ -836,9 +782,7 @@ export function BlueprintEditor({
                               </button>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  handleRemovePrerequisite(topic.clientId, prereqId)
-                                }
+                                onClick={() => handleRemovePrerequisite(topic.clientId, prereqId)}
                                 className="rounded-full border border-rose-400/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-rose-200"
                               >
                                 Remove
@@ -846,9 +790,7 @@ export function BlueprintEditor({
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-slate-500">
-                            No prerequisites selected yet.
-                          </p>
+                          <p className="text-xs text-slate-500">No prerequisites selected yet.</p>
                         )}
                       </div>
                       <select
@@ -897,10 +839,7 @@ export function BlueprintEditor({
                             <button
                               type="button"
                               onClick={() =>
-                                handleRemoveObjective(
-                                  topic.clientId,
-                                  objective.clientId
-                                )
+                                handleRemoveObjective(topic.clientId, objective.clientId)
                               }
                               disabled={topic.objectives.length <= 1}
                               className="text-xs uppercase tracking-[0.2em] text-rose-200 disabled:opacity-40"
@@ -918,11 +857,9 @@ export function BlueprintEditor({
                             id={`objective-${objective.clientId}-statement`}
                             value={objective.statement}
                             onChange={(event) =>
-                              handleObjectiveUpdate(
-                                topic.clientId,
-                                objective.clientId,
-                                { statement: event.target.value }
-                              )
+                              handleObjectiveUpdate(topic.clientId, objective.clientId, {
+                                statement: event.target.value,
+                              })
                             }
                             rows={2}
                             className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
@@ -938,11 +875,9 @@ export function BlueprintEditor({
                               id={`objective-${objective.clientId}-level`}
                               value={objective.level ?? ""}
                               onChange={(event) =>
-                                handleObjectiveUpdate(
-                                  topic.clientId,
-                                  objective.clientId,
-                                  { level: event.target.value }
-                                )
+                                handleObjectiveUpdate(topic.clientId, objective.clientId, {
+                                  level: event.target.value,
+                                })
                               }
                               className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                             >
@@ -1000,8 +935,8 @@ export function BlueprintEditor({
               <div className="flex flex-col items-end gap-2">
                 {draftByteSize > MAX_DRAFT_BYTES ? (
                   <p className="text-xs text-amber-200">
-                    Draft size is {Math.round(draftByteSize / 1024)}KB. Saving might
-                    fail for very large drafts.
+                    Draft size is {Math.round(draftByteSize / 1024)}KB. Saving might fail for very
+                    large drafts.
                   </p>
                 ) : null}
                 <SaveDraftButton />
@@ -1090,9 +1025,7 @@ export function BlueprintEditor({
                         })}
                         {topicMap.nodes.map((node) => {
                           const label =
-                            node.title.length > 18
-                              ? `${node.title.slice(0, 18)}...`
-                              : node.title;
+                            node.title.length > 18 ? `${node.title.slice(0, 18)}...` : node.title;
                           return (
                             <g key={node.id}>
                               <rect
@@ -1152,9 +1085,7 @@ export function BlueprintEditor({
                   </span>
                 </div>
                 {topic.description ? (
-                  <p className="mt-2 text-sm text-slate-400">
-                    {topic.description}
-                  </p>
+                  <p className="mt-2 text-sm text-slate-400">{topic.description}</p>
                 ) : null}
                 {topic.prerequisiteClientIds?.length ? (
                   <p className="mt-3 text-xs text-slate-500">

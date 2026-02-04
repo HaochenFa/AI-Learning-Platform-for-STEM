@@ -14,8 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "STEM Learning Platform",
-  description:
-    "Teacher led, student centered STEM learning with AI powered course blueprints.",
+  description: "Teacher led, student centered STEM learning with AI powered course blueprints.",
 };
 
 export default function RootLayout({
@@ -25,9 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
-      </body>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
     </html>
   );
 }

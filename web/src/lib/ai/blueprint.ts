@@ -74,10 +74,8 @@ export function parseBlueprintResponse(raw: string): BlueprintPayload {
 }
 
 export function validateBlueprintPayload(
-  payload: unknown
-):
-  | { ok: true; errors: string[]; value: BlueprintPayload }
-  | { ok: false; errors: string[] } {
+  payload: unknown,
+): { ok: true; errors: string[]; value: BlueprintPayload } | { ok: false; errors: string[] } {
   const errors: string[] = [];
 
   if (!payload || typeof payload !== "object") {
@@ -116,9 +114,7 @@ export function validateBlueprintPayload(
       } else {
         topic.objectives.forEach((objective, objectiveIndex) => {
           if (!isNonEmptyString(objective.statement)) {
-            errors.push(
-              `topics[${index}].objectives[${objectiveIndex}].statement is required.`
-            );
+            errors.push(`topics[${index}].objectives[${objectiveIndex}].statement is required.`);
           }
         });
       }

@@ -40,8 +40,8 @@ export default async function BlueprintOverviewPage({
   if (classRow.owner_id !== user.id) {
     redirect(
       `/classes/${classId}/blueprint?error=${encodeURIComponent(
-        "Only the class owner can view the overview."
-      )}`
+        "Only the class owner can view the overview.",
+      )}`,
     );
   }
 
@@ -57,8 +57,8 @@ export default async function BlueprintOverviewPage({
   if (!blueprint) {
     redirect(
       `/classes/${classId}/blueprint?error=${encodeURIComponent(
-        "No approved blueprint available."
-      )}`
+        "No approved blueprint available.",
+      )}`,
     );
   }
 
@@ -68,20 +68,18 @@ export default async function BlueprintOverviewPage({
     .eq("blueprint_id", blueprint.id)
     .order("sequence", { ascending: true });
 
-  const { data: objectives } = topics && topics.length > 0
-    ? await supabase
-        .from("objectives")
-        .select("topic_id,statement,level")
-        .in(
-          "topic_id",
-          topics.map((topic) => topic.id)
-        )
-    : { data: null };
+  const { data: objectives } =
+    topics && topics.length > 0
+      ? await supabase
+          .from("objectives")
+          .select("topic_id,statement,level")
+          .in(
+            "topic_id",
+            topics.map((topic) => topic.id),
+          )
+      : { data: null };
 
-  const objectivesByTopic = new Map<
-    string,
-    { statement: string; level?: string | null }[]
-  >();
+  const objectivesByTopic = new Map<string, { statement: string; level?: string | null }[]>();
   objectives?.forEach((objective) => {
     const list = objectivesByTopic.get(objective.topic_id) ?? [];
     list.push({ statement: objective.statement, level: objective.level });
@@ -103,9 +101,7 @@ export default async function BlueprintOverviewPage({
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Blueprint Overview
-            </p>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Blueprint Overview</p>
             <h1 className="text-3xl font-semibold">{classRow.title}</h1>
             <p className="text-sm text-slate-400">
               {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
@@ -152,12 +148,8 @@ export default async function BlueprintOverviewPage({
 
         <section className="mt-10 rounded-[32px] border border-white/10 bg-white text-slate-900 shadow-2xl">
           <div className="border-b border-slate-200 px-10 py-8">
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
-              Compiled Blueprint
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold text-slate-900">
-              {classRow.title}
-            </h2>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Compiled Blueprint</p>
+            <h2 className="mt-3 text-3xl font-semibold text-slate-900">{classRow.title}</h2>
             <p className="mt-2 text-sm text-slate-500">
               {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
             </p>
@@ -175,15 +167,10 @@ export default async function BlueprintOverviewPage({
             <div className="mt-8 space-y-6">
               {topics && topics.length > 0 ? (
                 topics.map((topic) => (
-                  <div
-                    key={topic.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-6"
-                  >
+                  <div key={topic.id} className="rounded-2xl border border-slate-200 bg-white p-6">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-900">
-                          {topic.title}
-                        </h3>
+                        <h3 className="text-xl font-semibold text-slate-900">{topic.title}</h3>
                         {topic.section ? (
                           <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">
                             Section: {topic.section}
@@ -195,9 +182,7 @@ export default async function BlueprintOverviewPage({
                       </span>
                     </div>
                     {topic.description ? (
-                      <p className="mt-3 text-sm text-slate-600">
-                        {topic.description}
-                      </p>
+                      <p className="mt-3 text-sm text-slate-600">{topic.description}</p>
                     ) : null}
                     {topic.prerequisite_topic_ids.length > 0 ? (
                       <p className="mt-3 text-xs text-slate-500">
