@@ -352,6 +352,7 @@ export async function generateBlueprint(classId: string) {
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
     redirectWithError(`/classes/${classId}/blueprint`, access.reason);
+    return;
   }
 
   if (!access.classRow) {
@@ -577,6 +578,7 @@ export async function saveDraft(
       `/classes/${classId}/blueprint`,
       "Only the class owner can edit an approved or published blueprint."
     );
+    return;
   }
 
   if (blueprint.status !== "draft") {
@@ -602,6 +604,7 @@ export async function saveDraft(
 
     if (archiveError) {
       redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
+      return;
     }
 
     redirect(`/classes/${classId}/blueprint?draft=1`);
@@ -615,6 +618,7 @@ export async function saveDraft(
 
   if (existingTopicsError) {
     redirectWithError(`/classes/${classId}/blueprint`, existingTopicsError.message);
+    return;
   }
 
   const existingTopicIds = new Set(existingTopics?.map((topic) => topic.id));
@@ -627,6 +631,7 @@ export async function saveDraft(
   for (const id of payloadExistingIds) {
     if (!existingTopicIds.has(id)) {
       redirectWithError(`/classes/${classId}/blueprint`, "Invalid topic reference.");
+      return;
     }
   }
 
@@ -637,6 +642,7 @@ export async function saveDraft(
 
   if (updateError) {
     redirectWithError(`/classes/${classId}/blueprint`, updateError.message);
+    return;
   }
 
   const savedTopics: DraftTopicInput[] = [];
@@ -655,6 +661,7 @@ export async function saveDraft(
 
       if (topicUpdateError) {
         redirectWithError(`/classes/${classId}/blueprint`, topicUpdateError.message);
+        return;
       }
 
       savedTopics.push(topic);
@@ -702,6 +709,7 @@ export async function saveDraft(
 
     if (deleteError) {
       redirectWithError(`/classes/${classId}/blueprint`, deleteError.message);
+      return;
     }
   }
 
@@ -727,6 +735,7 @@ export async function saveDraft(
 
     if (prereqUpdateError) {
       redirectWithError(`/classes/${classId}/blueprint`, prereqUpdateError.message);
+      return;
     }
   }
 
@@ -738,6 +747,7 @@ export async function saveDraft(
 
   if (existingObjectivesError) {
     redirectWithError(`/classes/${classId}/blueprint`, existingObjectivesError.message);
+    return;
   }
 
   const objectivesById = new Map(
@@ -756,6 +766,7 @@ export async function saveDraft(
       const existingTopicId = objectivesById.get(objective.id);
       if (!existingTopicId || existingTopicId !== topic.id) {
         redirectWithError(`/classes/${classId}/blueprint`, "Invalid objective reference.");
+        return;
       }
       payloadObjectiveIds.add(objective.id);
     }
@@ -782,6 +793,7 @@ export async function saveDraft(
           `/classes/${classId}/blueprint`,
           upsertObjectivesError.message
         );
+        return;
       }
     }
   }
@@ -801,6 +813,7 @@ export async function saveDraft(
 
     if (deleteObjectivesError) {
       redirectWithError(`/classes/${classId}/blueprint`, deleteObjectivesError.message);
+      return;
     }
   }
 
@@ -823,6 +836,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
       `/classes/${classId}/blueprint`,
       "Only the class owner can approve a blueprint."
     );
+    return;
   }
 
   const { data: blueprint, error } = await supabase
@@ -842,6 +856,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
       `/classes/${classId}/blueprint`,
       "Only drafts can be approved."
     );
+    return;
   }
 
   const { error: approveError } = await supabase
@@ -857,6 +872,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
 
   if (approveError) {
     redirectWithError(`/classes/${classId}/blueprint`, approveError.message);
+    return;
   }
 
   redirect(`/classes/${classId}/blueprint/overview?approved=1`);
@@ -878,6 +894,7 @@ export async function createDraftFromPublished(classId: string) {
       `/classes/${classId}/blueprint`,
       "Only the class owner can create a new draft from the published blueprint."
     );
+    return;
   }
 
   const { data: publishedBlueprint, error: publishedError } = await supabase
@@ -902,6 +919,7 @@ export async function createDraftFromPublished(classId: string) {
 
   if (topicsError) {
     redirectWithError(`/classes/${classId}/blueprint`, topicsError.message);
+    return;
   }
 
   const { data: objectives } = topics && topics.length > 0
@@ -973,6 +991,7 @@ export async function createDraftFromPublished(classId: string) {
 
   if (archiveError) {
     redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
+    return;
   }
 
   redirect(`/classes/${classId}/blueprint?draft=1`);
@@ -994,6 +1013,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
       `/classes/${classId}/blueprint`,
       "Only the class owner can publish a blueprint."
     );
+    return;
   }
 
   const { data: blueprint, error } = await supabase
@@ -1010,6 +1030,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
 
   if (blueprint.status === "published") {
     redirect(`/classes/${classId}/blueprint?published=1`);
+    return;
   }
 
   if (blueprint.status !== "approved") {
@@ -1017,6 +1038,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
       `/classes/${classId}/blueprint`,
       "Blueprint must be approved before publishing."
     );
+    return;
   }
 
   const { data: otherBlueprintsBeforeArchive, error: otherError } = await supabase
@@ -1027,6 +1049,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
 
   if (otherError) {
     redirectWithError(`/classes/${classId}/blueprint`, otherError.message);
+    return;
   }
 
   const { error: archiveError } = await supabase
@@ -1037,6 +1060,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
 
   if (archiveError) {
     redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
+    return;
   }
 
   const { error: publishError } = await supabase
@@ -1058,6 +1082,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
       }
     }
     redirectWithError(`/classes/${classId}/blueprint`, publishError.message);
+    return;
   }
 
   redirect(`/classes/${classId}/blueprint?published=1`);

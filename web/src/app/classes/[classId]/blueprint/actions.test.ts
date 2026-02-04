@@ -406,6 +406,60 @@ describe("blueprint workflow actions", () => {
     expect(redirect).toHaveBeenCalled();
   });
 
+  it("rejects missing prerequisite references", async () => {
+    mockTeacherAccess();
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            clientId: "t1",
+            title: "Limits",
+            description: "Intro",
+            sequence: 1,
+            prerequisiteClientIds: ["missing"],
+            objectives: [{ statement: "Define limits." }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?error=Prerequisite%20references%20a%20missing%20topic."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("rejects self-referencing prerequisites", async () => {
+    mockTeacherAccess();
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            clientId: "t1",
+            title: "Limits",
+            description: "Intro",
+            sequence: 1,
+            prerequisiteClientIds: ["t1"],
+            objectives: [{ statement: "Define limits." }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?error=Prerequisite%20cannot%20reference%20itself."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
   it("rejects invalid topic ids in the payload", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     supabaseFromMock.mockImplementation((table: string) => {
