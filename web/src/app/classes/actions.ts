@@ -153,7 +153,7 @@ export async function joinClass(formData: FormData) {
   let admin;
   try {
     admin = createSupabaseAdminClient();
-  } catch (error) {
+  } catch {
     redirectWithError("/join", "Server configuration error");
   }
   const { data: classRow, error } = await admin

@@ -2,10 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { generateBlueprint } from "@/app/classes/[classId]/blueprint/actions";
+import { BlueprintEditor } from "@/app/classes/[classId]/blueprint/BlueprintEditor";
 
 type SearchParams = {
   error?: string;
   generated?: string;
+  saved?: string;
+  approved?: string;
+  published?: string;
 };
 
 export default async function BlueprintPage({
@@ -41,10 +45,8 @@ export default async function BlueprintPage({
     .eq("user_id", user.id)
     .single();
 
-  const isTeacher =
-    classRow.owner_id === user.id ||
-    enrollment?.role === "teacher" ||
-    enrollment?.role === "ta";
+  const isOwner = classRow.owner_id === user.id;
+  const isTeacher = isOwner || enrollment?.role === "teacher" || enrollment?.role === "ta";
 
   const { data: blueprint } = await supabase
     .from("blueprints")
@@ -66,17 +68,24 @@ export default async function BlueprintPage({
     topics && topics.length > 0
       ? await supabase
           .from("objectives")
-          .select("topic_id,statement,level")
+          .select("id,topic_id,statement,level")
           .in(
             "topic_id",
             topics.map((topic) => topic.id)
           )
       : { data: null };
 
-  const objectivesByTopic = new Map<string, { statement: string; level?: string | null }[]>();
+  const objectivesByTopic = new Map<
+    string,
+    { id: string; statement: string; level?: string | null }[]
+  >();
   objectives?.forEach((objective) => {
     const list = objectivesByTopic.get(objective.topic_id) ?? [];
-    list.push({ statement: objective.statement, level: objective.level });
+    list.push({
+      id: objective.id,
+      statement: objective.statement,
+      level: objective.level,
+    });
     objectivesByTopic.set(objective.topic_id, list);
   });
 
@@ -89,6 +98,30 @@ export default async function BlueprintPage({
     typeof searchParams?.error === "string" ? searchParams.error : null;
   const generatedMessage =
     searchParams?.generated === "1" ? "Blueprint generated in draft mode." : null;
+  const savedMessage =
+    searchParams?.saved === "1" ? "Draft saved." : null;
+  const approvedMessage =
+    searchParams?.approved === "1" ? "Blueprint approved. Overview is ready." : null;
+  const publishedMessage =
+    searchParams?.published === "1" ? "Blueprint published." : null;
+
+  const initialDraft = blueprint
+    ? {
+        summary: blueprint.summary ?? "",
+        topics:
+          topics?.map((topic) => ({
+            id: topic.id,
+            title: topic.title,
+            description: topic.description ?? "",
+            sequence: topic.sequence,
+            objectives: (objectivesByTopic.get(topic.id) ?? []).map((objective) => ({
+              id: objective.id,
+              statement: objective.statement,
+              level: objective.level ?? "",
+            })),
+          })) ?? [],
+      }
+    : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -114,24 +147,28 @@ export default async function BlueprintPage({
             {generatedMessage}
           </div>
         ) : null}
+        {savedMessage ? (
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+            {savedMessage}
+          </div>
+        ) : null}
+        {approvedMessage ? (
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+            {approvedMessage}
+          </div>
+        ) : null}
+        {publishedMessage ? (
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+            {publishedMessage}
+          </div>
+        ) : null}
 
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 lg:col-span-2">
-            <h2 className="text-lg font-semibold">Blueprint summary</h2>
+            <h2 className="text-lg font-semibold">Blueprint workspace</h2>
             <p className="mt-2 text-sm text-slate-400">
-              {blueprint?.summary ||
-                "No blueprint yet. Generate one from your uploaded materials."}
+              Edit the draft, approve for overview, and publish when ready.
             </p>
-            {blueprint ? (
-              <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
-                <span className="rounded-full border border-white/10 px-3 py-1">
-                  Version {blueprint.version}
-                </span>
-                <span className="rounded-full border border-white/10 px-3 py-1">
-                  Status: {blueprint.status}
-                </span>
-              </div>
-            ) : null}
           </div>
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <h2 className="text-lg font-semibold">Materials check</h2>
@@ -159,7 +196,7 @@ export default async function BlueprintPage({
 
         <section className="mt-10 rounded-3xl border border-white/10 bg-slate-900/70 p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Topics</h2>
+            <h2 className="text-lg font-semibold">Draft editor</h2>
             <Link
               href={`/classes/${classRow.id}`}
               className="text-xs uppercase tracking-[0.3em] text-slate-400 hover:text-slate-200"
@@ -167,39 +204,23 @@ export default async function BlueprintPage({
               Back to class
             </Link>
           </div>
-          <div className="mt-4 space-y-4">
-            {topics && topics.length > 0 ? (
-              topics.map((topic) => (
-                <div
-                  key={topic.id}
-                  className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-base font-semibold">{topic.title}</h3>
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400">
-                      Sequence {topic.sequence}
-                    </span>
-                  </div>
-                  {topic.description ? (
-                    <p className="mt-2 text-sm text-slate-400">
-                      {topic.description}
-                    </p>
-                  ) : null}
-                  <ul className="mt-3 space-y-1 text-sm text-slate-400">
-                    {(objectivesByTopic.get(topic.id) ?? []).map((objective, index) => (
-                      <li key={`${topic.id}-objective-${index}`}>
-                        - {objective.statement}
-                        {objective.level ? ` (${objective.level})` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">
-                No topics yet. Generate a blueprint to populate this list.
-              </div>
-            )}
+          <div className="mt-6">
+            <BlueprintEditor
+              classId={classRow.id}
+              blueprint={
+                blueprint
+                  ? {
+                      id: blueprint.id,
+                      summary: blueprint.summary ?? "",
+                      status: blueprint.status,
+                      version: blueprint.version,
+                    }
+                  : null
+              }
+              initialDraft={initialDraft}
+              isTeacher={isTeacher}
+              isOwner={isOwner}
+            />
           </div>
         </section>
       </div>

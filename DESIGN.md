@@ -20,7 +20,7 @@ Teacher Flow
 
 - Create class and configure settings.
 - Upload materials and generate blueprint.
-- Edit, approve, and publish blueprint.
+- Edit draft, approve for overview, and publish blueprint.
 - Generate and assign activities.
 - Review submissions and AI feedback.
 
@@ -55,6 +55,12 @@ Student Flow
 - Restrict AI context to approved materials and blueprint.
 - Normalize prompts into structured JSON outputs.
 - Apply refusal rules for unsafe or irrelevant requests.
+
+**Blueprint Lifecycle**
+
+- Draft: editable working version.
+- Overview (Approved): compiled preview for final review.
+- Published: read-only, student-facing blueprint snapshot.
 
 **Data Model**
 Core Entities

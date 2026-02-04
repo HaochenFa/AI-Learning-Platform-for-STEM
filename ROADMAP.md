@@ -15,7 +15,7 @@ This roadmap focuses on production ready delivery with subject agnostic function
 - Class creation and enrollment via join code.
 - Material upload, parsing, and storage.
 - Course Blueprint generation and versioning.
-- Blueprint editor with approval state.
+- Blueprint editor with draft -> overview (approved) -> published workflow.
 
 **Phase 2 - Activity Engine**
 
