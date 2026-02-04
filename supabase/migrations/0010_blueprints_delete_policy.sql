@@ -8,6 +8,7 @@ using (
       where c.id = blueprints.class_id
         and c.owner_id = auth.uid()
     )
+    and blueprints.status = 'draft'
   )
   or (
     exists (

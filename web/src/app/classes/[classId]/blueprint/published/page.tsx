@@ -21,7 +21,7 @@ export default async function BlueprintPublishedPage({
 
   const { data: classRow } = await supabase
     .from("classes")
-    .select("id,title,subject,level,owner_id")
+    .select("id,title,subject,level")
     .eq("id", classId)
     .single();
 

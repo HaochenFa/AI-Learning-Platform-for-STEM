@@ -382,13 +382,18 @@ async function rollbackDraftCreation(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   blueprintId: string
 ) {
-  const { error } = await supabase.from("blueprints").delete().eq("id", blueprintId);
-  if (error) {
+  const { data, error } = await supabase
+    .from("blueprints")
+    .delete()
+    .eq("id", blueprintId)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) {
     console.error("Failed to rollback draft creation", {
       blueprintId,
-      error: error.message,
+      error: error?.message ?? "No rows deleted",
     });
-    return error.message;
+    return error?.message ?? "Rollback delete did not remove the draft.";
   }
   return null;
 }

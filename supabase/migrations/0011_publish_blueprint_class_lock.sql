@@ -10,7 +10,10 @@ declare
   v_status blueprint_status;
 begin
   -- Advisory transaction lock scoped to the class to serialize publish operations.
-  perform pg_advisory_xact_lock(hashtext(p_class_id::text));
+  perform pg_advisory_xact_lock(
+    ('x' || substr(replace(p_class_id::text, '-', ''), 1, 16))::bit(64)::bigint,
+    ('x' || substr(replace(p_class_id::text, '-', ''), 17, 16))::bit(64)::bigint
+  );
 
   select status
     into v_status
