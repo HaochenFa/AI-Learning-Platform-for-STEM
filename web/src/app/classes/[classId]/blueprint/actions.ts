@@ -18,6 +18,10 @@ async function requireTeacherAccess(
   userId: string,
   supabase: ReturnType<typeof createServerSupabaseClient>
 ) {
+  type AccessResult =
+    | { allowed: true; classRow: { id: string; owner_id: string; title: string; subject: string | null; level: string | null } }
+    | { allowed: false; reason: string };
+
   const { data: classRow, error: classError } = await supabase
     .from("classes")
     .select("id,owner_id,title,subject,level")
@@ -25,11 +29,11 @@ async function requireTeacherAccess(
     .single();
 
   if (classError || !classRow) {
-    return { allowed: false, reason: "Class not found." };
+    return { allowed: false, reason: "Class not found." } satisfies AccessResult;
   }
 
   if (classRow.owner_id === userId) {
-    return { allowed: true, classRow };
+    return { allowed: true, classRow } satisfies AccessResult;
   }
 
   const { data: enrollment } = await supabase
@@ -40,10 +44,13 @@ async function requireTeacherAccess(
     .single();
 
   if (enrollment?.role === "teacher" || enrollment?.role === "ta") {
-    return { allowed: true, classRow };
+    return { allowed: true, classRow } satisfies AccessResult;
   }
 
-  return { allowed: false, reason: "Teacher access required." };
+  return {
+    allowed: false,
+    reason: "Teacher access required.",
+  } satisfies AccessResult;
 }
 
 export async function generateBlueprint(classId: string) {
@@ -58,7 +65,7 @@ export async function generateBlueprint(classId: string) {
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
-    redirectWithError(`/classes/${classId}/blueprint`, access.reason ?? "Access denied");
+    redirectWithError(`/classes/${classId}/blueprint`, access.reason);
   }
 
   if (!access.classRow) {
