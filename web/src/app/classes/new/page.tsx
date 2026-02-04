@@ -5,13 +5,16 @@ type SearchParams = {
   error?: string;
 };
 
-export default function NewClassPage({
+export default async function NewClassPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const errorMessage =
-    typeof searchParams?.error === "string" ? searchParams.error : null;
+    typeof resolvedSearchParams?.error === "string"
+      ? resolvedSearchParams.error
+      : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">

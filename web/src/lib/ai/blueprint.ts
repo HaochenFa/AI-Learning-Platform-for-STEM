@@ -63,7 +63,7 @@ export function buildBlueprintPrompt(input: {
   return { system, user };
 }
 
-export function parseBlueprintResponse(raw: string) {
+export function parseBlueprintResponse(raw: string): BlueprintPayload {
   const jsonText = extractJson(raw);
   const parsed = JSON.parse(jsonText) as unknown;
   const validation = validateBlueprintPayload(parsed);
@@ -73,11 +73,11 @@ export function parseBlueprintResponse(raw: string) {
   return validation.value;
 }
 
-export function validateBlueprintPayload(payload: unknown): {
-  ok: boolean;
-  errors: string[];
-  value?: BlueprintPayload;
-} {
+export function validateBlueprintPayload(
+  payload: unknown
+):
+  | { ok: true; errors: string[]; value: BlueprintPayload }
+  | { ok: false; errors: string[] } {
   const errors: string[] = [];
 
   if (!payload || typeof payload !== "object") {

@@ -6,14 +6,17 @@ type SearchParams = {
   verify?: string;
 };
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const errorMessage =
-    typeof searchParams?.error === "string" ? searchParams.error : null;
-  const verify = searchParams?.verify === "1";
+    typeof resolvedSearchParams?.error === "string"
+      ? resolvedSearchParams.error
+      : null;
+  const verify = resolvedSearchParams?.verify === "1";
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">

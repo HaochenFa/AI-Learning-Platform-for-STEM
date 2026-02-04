@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { uploadMaterial } from "@/app/classes/actions";
 
+export const dynamic = "force-dynamic";
+
 type SearchParams = {
   error?: string;
   uploaded?: string;
@@ -12,10 +14,12 @@ export default async function ClassOverviewPage({
   params,
   searchParams,
 }: {
-  params: { classId: string };
-  searchParams?: SearchParams;
+  params: Promise<{ classId: string }>;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const supabase = createServerSupabaseClient();
+  const { classId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -27,7 +31,7 @@ export default async function ClassOverviewPage({
   const { data: classRow } = await supabase
     .from("classes")
     .select("id,title,description,subject,level,join_code,owner_id")
-    .eq("id", params.classId)
+    .eq("id", classId)
     .single();
 
   if (!classRow) {
@@ -37,7 +41,7 @@ export default async function ClassOverviewPage({
   const { data: enrollment } = await supabase
     .from("enrollments")
     .select("role")
-    .eq("class_id", params.classId)
+    .eq("class_id", classId)
     .eq("user_id", user.id)
     .single();
 
@@ -50,18 +54,20 @@ export default async function ClassOverviewPage({
     ? await supabase
         .from("materials")
         .select("id,title,status,created_at,mime_type,size_bytes")
-        .eq("class_id", params.classId)
+        .eq("class_id", classId)
         .order("created_at", { ascending: false })
     : { data: null };
 
   const errorMessage =
-    typeof searchParams?.error === "string" ? searchParams.error : null;
+    typeof resolvedSearchParams?.error === "string"
+      ? resolvedSearchParams.error
+      : null;
   const uploadNotice =
-    searchParams?.uploaded === "1"
+    resolvedSearchParams?.uploaded === "1"
       ? "Material uploaded and processed."
-      : searchParams?.uploaded === "vision"
+      : resolvedSearchParams?.uploaded === "vision"
         ? "Material uploaded. Vision extraction required."
-        : searchParams?.uploaded === "failed"
+        : resolvedSearchParams?.uploaded === "failed"
           ? "Material uploaded, but extraction failed."
           : null;
 

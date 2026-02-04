@@ -4,6 +4,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { generateBlueprint } from "@/app/classes/[classId]/blueprint/actions";
 import { BlueprintEditor } from "@/app/classes/[classId]/blueprint/BlueprintEditor";
 
+export const dynamic = "force-dynamic";
+
 type SearchParams = {
   error?: string;
   generated?: string;
@@ -16,10 +18,12 @@ export default async function BlueprintPage({
   params,
   searchParams,
 }: {
-  params: { classId: string };
-  searchParams?: SearchParams;
+  params: Promise<{ classId: string }>;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const supabase = createServerSupabaseClient();
+  const { classId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -31,7 +35,7 @@ export default async function BlueprintPage({
   const { data: classRow } = await supabase
     .from("classes")
     .select("id,title,description,subject,level,owner_id")
-    .eq("id", params.classId)
+    .eq("id", classId)
     .single();
 
   if (!classRow) {
@@ -41,7 +45,7 @@ export default async function BlueprintPage({
   const { data: enrollment } = await supabase
     .from("enrollments")
     .select("role")
-    .eq("class_id", params.classId)
+    .eq("class_id", classId)
     .eq("user_id", user.id)
     .single();
 
@@ -51,7 +55,7 @@ export default async function BlueprintPage({
   const { data: blueprint } = await supabase
     .from("blueprints")
     .select("id,summary,status,version,created_at")
-    .eq("class_id", params.classId)
+    .eq("class_id", classId)
     .order("version", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -92,18 +96,24 @@ export default async function BlueprintPage({
   const { count: materialCount } = await supabase
     .from("materials")
     .select("id", { count: "exact", head: true })
-    .eq("class_id", params.classId);
+    .eq("class_id", classId);
 
   const errorMessage =
-    typeof searchParams?.error === "string" ? searchParams.error : null;
+    typeof resolvedSearchParams?.error === "string"
+      ? resolvedSearchParams.error
+      : null;
   const generatedMessage =
-    searchParams?.generated === "1" ? "Blueprint generated in draft mode." : null;
+    resolvedSearchParams?.generated === "1"
+      ? "Blueprint generated in draft mode."
+      : null;
   const savedMessage =
-    searchParams?.saved === "1" ? "Draft saved." : null;
+    resolvedSearchParams?.saved === "1" ? "Draft saved." : null;
   const approvedMessage =
-    searchParams?.approved === "1" ? "Blueprint approved. Overview is ready." : null;
+    resolvedSearchParams?.approved === "1"
+      ? "Blueprint approved. Overview is ready."
+      : null;
   const publishedMessage =
-    searchParams?.published === "1" ? "Blueprint published." : null;
+    resolvedSearchParams?.published === "1" ? "Blueprint published." : null;
 
   const initialDraft = blueprint
     ? {
