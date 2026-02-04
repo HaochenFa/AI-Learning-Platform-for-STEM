@@ -32,7 +32,7 @@ const MATERIALS_BUCKET = "materials";
 async function requireTeacherAccess(
   classId: string,
   userId: string,
-  supabase: ReturnType<typeof createServerSupabaseClient>
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>
 ) {
   type AccessResult =
     | { allowed: true }
@@ -79,7 +79,7 @@ export async function createClass(formData: FormData) {
     redirectWithError("/classes/new", "Class title is required");
   }
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -141,7 +141,7 @@ export async function joinClass(formData: FormData) {
     redirectWithError("/join", "Join code is required");
   }
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -150,11 +150,12 @@ export async function joinClass(formData: FormData) {
     redirect("/login");
   }
 
-  let admin;
+  let admin: ReturnType<typeof createSupabaseAdminClient>;
   try {
     admin = createSupabaseAdminClient();
   } catch {
     redirectWithError("/join", "Server configuration error");
+    return;
   }
   const { data: classRow, error } = await admin
     .from("classes")
@@ -164,6 +165,7 @@ export async function joinClass(formData: FormData) {
 
   if (error || !classRow) {
     redirectWithError("/join", "Invalid join code");
+    return;
   }
 
   const { error: enrollmentError } = await admin
@@ -190,6 +192,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
 
   if (!(file instanceof File)) {
     redirectWithError(`/classes/${classId}`, "Material file is required");
+    return;
   }
 
   if (file.size === 0) {
@@ -209,6 +212,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
       `/classes/${classId}`,
       `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`
     );
+    return;
   }
 
   if (
@@ -219,7 +223,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     redirectWithError(`/classes/${classId}`, "Unsupported MIME type");
   }
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

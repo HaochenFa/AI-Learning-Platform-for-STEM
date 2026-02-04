@@ -35,7 +35,7 @@ function redirectWithError(path: string, message: string) {
 async function requireTeacherAccess(
   classId: string,
   userId: string,
-  supabase: ReturnType<typeof createServerSupabaseClient>
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>
 ) {
   type AccessResult =
     | {
@@ -146,7 +146,7 @@ function isNonEmptyString(value: unknown) {
 }
 
 export async function generateBlueprint(classId: string) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -162,6 +162,7 @@ export async function generateBlueprint(classId: string) {
 
   if (!access.classRow) {
     redirectWithError(`/classes/${classId}/blueprint`, "Class not found");
+    return;
   }
 
   let admin: ReturnType<typeof createSupabaseAdminClient>;
@@ -169,6 +170,7 @@ export async function generateBlueprint(classId: string) {
     admin = createSupabaseAdminClient();
   } catch {
     redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
+    return;
   }
   const { data: materials } = await admin
     .from("materials")
@@ -181,6 +183,7 @@ export async function generateBlueprint(classId: string) {
       `/classes/${classId}/blueprint`,
       "Upload at least one processed material"
     );
+    return;
   }
 
   const materialText = buildMaterialContext(materials);
@@ -335,7 +338,7 @@ export async function saveDraft(
   blueprintId: string,
   formData: FormData
 ) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -356,6 +359,7 @@ export async function saveDraft(
     const message =
       error instanceof Error ? error.message : "Invalid draft payload.";
     redirectWithError(`/classes/${classId}/blueprint`, message);
+    return;
   }
 
   let admin: ReturnType<typeof createSupabaseAdminClient>;
@@ -363,6 +367,7 @@ export async function saveDraft(
     admin = createSupabaseAdminClient();
   } catch {
     redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
+    return;
   }
 
   const { data: blueprint, error: blueprintError } = await admin
@@ -374,6 +379,7 @@ export async function saveDraft(
 
   if (blueprintError || !blueprint) {
     redirectWithError(`/classes/${classId}/blueprint`, "Blueprint not found.");
+    return;
   }
 
   if (blueprint.status !== "draft" && !access.isOwner) {
@@ -466,6 +472,7 @@ export async function saveDraft(
           `/classes/${classId}/blueprint`,
           topicInsertError?.message ?? "Failed to create topic."
         );
+        return;
       }
 
       savedTopics.push({ ...topic, id: topicRow.id });
@@ -499,7 +506,9 @@ export async function saveDraft(
     }
     const existingPrereqs =
       topicsById.get(topic.id)?.prerequisite_topic_ids ?? [];
-    const filteredPrereqs = existingPrereqs.filter((id) => savedTopicIds.has(id));
+    const filteredPrereqs = existingPrereqs.filter((id: string) =>
+      savedTopicIds.has(id)
+    );
 
     const { error: prereqUpdateError } = await admin
       .from("topics")
@@ -589,7 +598,7 @@ export async function saveDraft(
 }
 
 export async function approveBlueprint(classId: string, blueprintId: string) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -611,6 +620,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
     admin = createSupabaseAdminClient();
   } catch {
     redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
+    return;
   }
   const { data: blueprint, error } = await admin
     .from("blueprints")
@@ -621,6 +631,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
 
   if (error || !blueprint) {
     redirectWithError(`/classes/${classId}/blueprint`, "Blueprint not found.");
+    return;
   }
 
   if (blueprint.status !== "draft") {
@@ -649,7 +660,7 @@ export async function approveBlueprint(classId: string, blueprintId: string) {
 }
 
 export async function publishBlueprint(classId: string, blueprintId: string) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -671,6 +682,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     admin = createSupabaseAdminClient();
   } catch {
     redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
+    return;
   }
   const { data: blueprint, error } = await admin
     .from("blueprints")
@@ -681,6 +693,7 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
 
   if (error || !blueprint) {
     redirectWithError(`/classes/${classId}/blueprint`, "Blueprint not found.");
+    return;
   }
 
   if (blueprint.status === "published") {

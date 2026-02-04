@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { publishBlueprint } from "@/app/classes/[classId]/blueprint/actions";
 
+export const dynamic = "force-dynamic";
+
 type SearchParams = {
   approved?: string;
 };
@@ -11,10 +13,12 @@ export default async function BlueprintOverviewPage({
   params,
   searchParams,
 }: {
-  params: { classId: string };
-  searchParams?: SearchParams;
+  params: Promise<{ classId: string }>;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const supabase = createServerSupabaseClient();
+  const { classId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -26,7 +30,7 @@ export default async function BlueprintOverviewPage({
   const { data: classRow } = await supabase
     .from("classes")
     .select("id,title,subject,level,owner_id")
-    .eq("id", params.classId)
+    .eq("id", classId)
     .single();
 
   if (!classRow) {
@@ -35,7 +39,7 @@ export default async function BlueprintOverviewPage({
 
   if (classRow.owner_id !== user.id) {
     redirect(
-      `/classes/${params.classId}/blueprint?error=${encodeURIComponent(
+      `/classes/${classId}/blueprint?error=${encodeURIComponent(
         "Only the class owner can view the overview."
       )}`
     );
@@ -44,7 +48,7 @@ export default async function BlueprintOverviewPage({
   const { data: blueprint } = await supabase
     .from("blueprints")
     .select("id,summary,status,version,approved_at,published_at")
-    .eq("class_id", params.classId)
+    .eq("class_id", classId)
     .in("status", ["approved", "published"])
     .order("version", { ascending: false })
     .limit(1)
@@ -52,7 +56,7 @@ export default async function BlueprintOverviewPage({
 
   if (!blueprint) {
     redirect(
-      `/classes/${params.classId}/blueprint?error=${encodeURIComponent(
+      `/classes/${classId}/blueprint?error=${encodeURIComponent(
         "No approved blueprint available."
       )}`
     );
@@ -85,7 +89,7 @@ export default async function BlueprintOverviewPage({
   });
 
   const approvedMessage =
-    searchParams?.approved === "1"
+    resolvedSearchParams?.approved === "1"
       ? "Blueprint approved. Review the compiled overview before publishing."
       : null;
 

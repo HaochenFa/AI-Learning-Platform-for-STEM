@@ -2,8 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import RegisterPage from "@/app/(auth)/register/page";
 
 describe("RegisterPage", () => {
-  it("renders the registration form", () => {
-    const html = renderToStaticMarkup(<RegisterPage />);
+  it("renders the registration form", async () => {
+    const html = renderToStaticMarkup(await RegisterPage({}));
 
     expect(html).toContain("Create an account");
     expect(html).toContain("Email");
@@ -11,9 +11,11 @@ describe("RegisterPage", () => {
     expect(html).toContain("Create account");
   });
 
-  it("shows error message when provided", () => {
+  it("shows error message when provided", async () => {
     const html = renderToStaticMarkup(
-      <RegisterPage searchParams={{ error: "Email already used" }} />
+      await RegisterPage({
+        searchParams: Promise.resolve({ error: "Email already used" }),
+      })
     );
 
     expect(html).toContain("Email already used");
