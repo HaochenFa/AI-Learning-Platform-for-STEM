@@ -14,3 +14,4 @@ This folder contains SQL migrations for the core schema.
 - Policies assume join code enrollment and teacher ownership.
 - Use the service role key for server side jobs (never in client code).
 - The `materials` storage bucket is created by the baseline migration if it does not exist.
+- `material_chunks.embedding` uses `vector(1536)`; if you change embedding models, update the migration and `EMBEDDING_DIM` to match.

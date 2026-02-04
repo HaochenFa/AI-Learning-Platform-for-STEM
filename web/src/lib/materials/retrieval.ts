@@ -61,7 +61,7 @@ export async function retrieveMaterialContext(
   return buildContext(selected);
 }
 
-function buildContext(chunks: RetrievedChunk[]) {
+export function buildContext(chunks: RetrievedChunk[]) {
   if (chunks.length === 0) {
     return "";
   }

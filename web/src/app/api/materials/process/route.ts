@@ -10,6 +10,11 @@ export const runtime = "nodejs";
 const MATERIALS_BUCKET = "materials";
 const JOB_BATCH_SIZE = Number(process.env.MATERIAL_JOB_BATCH ?? 3);
 const LOCK_TIMEOUT_MINUTES = Number(process.env.MATERIAL_JOB_LOCK_MINUTES ?? 15);
+const VISION_PAGE_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.VISION_PAGE_CONCURRENCY ?? 3) || 1,
+);
+const MAX_JOB_ATTEMPTS = Number(process.env.MATERIAL_JOB_MAX_ATTEMPTS ?? 5);
 
 const SUPPORTED_MIME_TO_KIND: Record<string, MaterialKind> = {
   "application/pdf": "pdf",
@@ -76,11 +81,12 @@ export async function POST(req: Request) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Processing failed.";
       failures.push(message);
+      const shouldFail = job.attempts + 1 >= MAX_JOB_ATTEMPTS;
       await admin
         .from("material_processing_jobs")
         .update({
-          status: "retry",
-          stage: "error",
+          status: shouldFail ? "failed" : "retry",
+          stage: shouldFail ? "failed" : "error",
           last_error: message,
           locked_at: null,
         })
@@ -153,6 +159,14 @@ async function processMaterialJob(
   const embeddingsResult = await generateEmbeddingsWithFallback({
     inputs: chunks.map((chunk) => chunk.text),
   });
+  if (!embeddingsResult.embeddings.length) {
+    throw new Error("Embedding request returned no vectors.");
+  }
+  if (embeddingsResult.embeddings.length !== chunks.length) {
+    throw new Error(
+      `Embedding count mismatch: expected ${chunks.length}, got ${embeddingsResult.embeddings.length}.`,
+    );
+  }
   const expectedDim = Number(process.env.EMBEDDING_DIM ?? 1536);
   const actualDim = embeddingsResult.embeddings[0]?.length ?? 0;
   if (actualDim !== expectedDim) {
@@ -254,9 +268,7 @@ async function runOcrPipeline(
 
   if (kind === "pdf") {
     const { results, pageCount, totalPages } = await runOcrOnPdf(buffer);
-    const segments: MaterialSegment[] = [];
-    for (let index = 0; index < results.length; index += 1) {
-      const result = results[index];
+    const segments = await mapWithConcurrency(results, VISION_PAGE_CONCURRENCY, async (result, index) => {
       if (isLowQualityText(result.text, result.confidence)) {
         const vision = await extractVisionTextWithFallback({
           prompt: "Extract all readable text. Describe diagrams and equations.",
@@ -273,22 +285,22 @@ async function runOcrPipeline(
           latency_ms: vision.latencyMs,
           status: "ok",
         });
-        segments.push({
+        return {
           text: vision.content,
           sourceType: "page",
           sourceIndex: index + 1,
           extractionMethod: "vision",
-        });
-      } else {
-        segments.push({
-          text: result.text,
-          sourceType: "page",
-          sourceIndex: index + 1,
-          extractionMethod: "ocr",
-          qualityScore: result.confidence,
-        });
+        } satisfies MaterialSegment;
       }
-    }
+
+      return {
+        text: result.text,
+        sourceType: "page",
+        sourceIndex: index + 1,
+        extractionMethod: "ocr",
+        qualityScore: result.confidence,
+      } satisfies MaterialSegment;
+    });
 
     if (totalPages > pageCount) {
       warnings.push(`OCR limited to first ${pageCount} pages.`);
@@ -298,6 +310,35 @@ async function runOcrPipeline(
   }
 
   return { segments: [], warnings: ["OCR not supported for this material type."] };
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>,
+) {
+  if (limit <= 1 || items.length <= 1) {
+    const results: R[] = [];
+    for (let index = 0; index < items.length; index += 1) {
+      results.push(await mapper(items[index], index));
+    }
+    return results;
+  }
+
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const current = nextIndex;
+      nextIndex += 1;
+      if (current >= items.length) {
+        break;
+      }
+      results[current] = await mapper(items[current], current);
+    }
+  });
+  await Promise.all(runners);
+  return results;
 }
 
 function resolveKind(mimeType?: string | null, metadataKind?: string, path?: string) {
@@ -339,7 +380,7 @@ async function updateMaterialStatus(
     extraction_stats: { charCount: number; segmentCount: number };
   },
 ) {
-  await admin
+  const { error } = await admin
     .from("materials")
     .update({
       status: update.status,
@@ -350,6 +391,14 @@ async function updateMaterialStatus(
       },
     })
     .eq("id", materialId);
+
+  if (error) {
+    console.error("Failed to update material status", {
+      materialId,
+      status: update.status,
+      error: error.message,
+    });
+  }
 }
 
 async function logAiRequest(
@@ -366,5 +415,14 @@ async function logAiRequest(
     status: string;
   },
 ) {
-  await admin.from("ai_requests").insert(payload);
+  const { error } = await admin.from("ai_requests").insert(payload);
+  if (error) {
+    console.error("Failed to log AI request", {
+      classId: payload.class_id,
+      purpose: payload.purpose,
+      provider: payload.provider,
+      model: payload.model,
+      error: error.message,
+    });
+  }
 }

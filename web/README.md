@@ -16,7 +16,7 @@ This is the Next.js application for the STEM Learning Platform.
 pnpm install
 ```
 
-1. Run the dev server:
+3. Run the dev server:
 
 ```bash
 pnpm dev
@@ -36,3 +36,5 @@ pnpm dev
 - Run Supabase migrations before testing class creation.
 - Ensure the `materials` storage bucket exists for uploads.
 - Configure at least one AI provider and model (OpenRouter recommended).
+- Set `CRON_SECRET` to protect `POST /api/materials/process` (requires `x-cron-secret` header). If unset, restrict access at the infrastructure layer (e.g., IP allowlist).
+- Tune `VISION_PAGE_CONCURRENCY` to control parallel Vision calls for low-quality PDF pages.

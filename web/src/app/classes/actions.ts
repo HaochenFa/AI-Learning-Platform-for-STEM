@@ -216,6 +216,13 @@ export async function uploadMaterial(classId: string, formData: FormData) {
   const extraction = await extractTextFromBuffer(buffer, kind);
   const extractedText = extraction.text || null;
   const processingStatus = extraction.status === "failed" ? "failed" : "processing";
+  const baseMetadata = {
+    original_name: file.name,
+    kind,
+    warnings: extraction.warnings,
+    extraction_stats: extraction.stats,
+    page_count: extraction.pageCount ?? null,
+  };
 
   const { error: uploadError } = await supabase.storage
     .from(MATERIALS_BUCKET)
@@ -240,13 +247,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
       size_bytes: file.size,
       status: processingStatus,
       extracted_text: extractedText,
-      metadata: {
-        original_name: file.name,
-        kind,
-        warnings: extraction.warnings,
-        extraction_stats: extraction.stats,
-        page_count: extraction.pageCount ?? null,
-      },
+      metadata: baseMetadata,
     })
     .select("id")
     .single();
@@ -268,19 +269,21 @@ export async function uploadMaterial(classId: string, formData: FormData) {
 
     if (jobError) {
       jobFailed = true;
-      await supabase
+      const { error: statusError } = await supabase
         .from("materials")
         .update({
           status: "failed",
           metadata: {
-            original_name: file.name,
-            kind,
-            warnings: [...extraction.warnings, `Job creation failed: ${jobError.message}`],
-            extraction_stats: extraction.stats,
-            page_count: extraction.pageCount ?? null,
+            ...baseMetadata,
+            warnings: [...baseMetadata.warnings, `Job creation failed: ${jobError.message}`],
           },
         })
         .eq("id", materialRow.id);
+
+      if (statusError) {
+        await supabase.from("materials").delete().eq("id", materialRow.id);
+        await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
+      }
     }
   }
 
