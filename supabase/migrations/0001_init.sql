@@ -334,10 +334,23 @@ create or replace function publish_blueprint(
 )
 returns void
 language plpgsql
+security definer
+set search_path = pg_catalog, public
 as $$
 declare
   v_status blueprint_status;
 begin
+  if not (
+    is_admin()
+    or exists (
+      select 1 from classes c
+      where c.id = p_class_id
+        and c.owner_id = auth.uid()
+    )
+  ) then
+    raise exception 'Not authorized to publish blueprint.';
+  end if;
+
   -- Advisory transaction lock scoped to the class to serialize publish operations.
   perform pg_advisory_xact_lock(
     ('x' || substr(replace(p_class_id::text, '-', ''), 1, 16))::bit(64)::bigint,
@@ -376,6 +389,9 @@ begin
    where id = p_blueprint_id;
 end;
 $$;
+
+revoke execute on function publish_blueprint(uuid, uuid) from public;
+grant execute on function publish_blueprint(uuid, uuid) to authenticated;
 
 -- Row Level Security
 alter table profiles enable row level security;
