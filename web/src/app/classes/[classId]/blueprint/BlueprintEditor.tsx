@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useReducer, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { approveBlueprint, saveDraft } from "@/app/classes/[classId]/blueprint/actions";
 
 const BLOOM_LEVELS = [
@@ -12,6 +13,9 @@ const BLOOM_LEVELS = [
   "Evaluate",
   "Create",
 ];
+
+const MAX_HISTORY_ENTRIES = 50;
+const MAX_DRAFT_BYTES = 1_000_000;
 
 type DraftObjective = {
   id?: string;
@@ -61,9 +65,19 @@ function historyReducer(state: HistoryState, action: HistoryAction): HistoryStat
   switch (action.type) {
     case "set": {
       const trimmed = state.history.slice(0, state.cursor + 1);
+      const nextHistory = [...trimmed, action.next];
+      if (nextHistory.length <= MAX_HISTORY_ENTRIES) {
+        return {
+          history: nextHistory,
+          cursor: nextHistory.length - 1,
+        };
+      }
+
+      const overflow = nextHistory.length - MAX_HISTORY_ENTRIES;
+      const compacted = nextHistory.slice(overflow);
       return {
-        history: [...trimmed, action.next],
-        cursor: trimmed.length,
+        history: compacted,
+        cursor: compacted.length - 1,
       };
     }
     case "undo": {
@@ -84,6 +98,21 @@ function historyReducer(state: HistoryState, action: HistoryAction): HistoryStat
     default:
       return state;
   }
+}
+
+function SaveDraftButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="rounded-full bg-cyan-400/90 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 disabled:opacity-60"
+    >
+      {pending ? "Saving..." : "Save draft"}
+    </button>
+  );
 }
 
 function makeClientId() {
@@ -168,6 +197,10 @@ export function BlueprintEditor({
   const serializedDraft = useMemo(() => {
     return JSON.stringify(toPayload(draft));
   }, [draft]);
+
+  const draftByteSize = useMemo(() => {
+    return new TextEncoder().encode(serializedDraft).length;
+  }, [serializedDraft]);
 
   const canEdit = Boolean(blueprint && isTeacher);
   const canApprove = Boolean(blueprint && isOwner && blueprint.status === "draft");
@@ -412,10 +445,14 @@ export function BlueprintEditor({
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
                   <div className="md:col-span-2">
-                    <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    <label
+                      className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                      htmlFor={`topic-${topic.clientId}-title`}
+                    >
                       Title
                     </label>
                     <input
+                      id={`topic-${topic.clientId}-title`}
                       value={topic.title}
                       onChange={(event) =>
                         handleTopicUpdate(topic.clientId, {
@@ -426,11 +463,18 @@ export function BlueprintEditor({
                     />
                   </div>
                   <div>
-                    <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    <label
+                      className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                      htmlFor={`topic-${topic.clientId}-sequence`}
+                    >
                       Sequence
                     </label>
                     <input
+                      id={`topic-${topic.clientId}-sequence`}
                       type="number"
+                      min={1}
+                      max={1000}
+                      step={1}
                       value={topic.sequence}
                       onChange={(event) =>
                         handleTopicUpdate(topic.clientId, {
@@ -442,10 +486,14 @@ export function BlueprintEditor({
                   </div>
                 </div>
                 <div className="mt-4">
-                  <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  <label
+                    className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                    htmlFor={`topic-${topic.clientId}-description`}
+                  >
                     Description
                   </label>
                   <textarea
+                    id={`topic-${topic.clientId}-description`}
                     value={topic.description ?? ""}
                     onChange={(event) =>
                       handleTopicUpdate(topic.clientId, {
@@ -493,7 +541,14 @@ export function BlueprintEditor({
                           Remove
                         </button>
                       </div>
+                      <label
+                        className="mt-3 block text-xs uppercase tracking-[0.2em] text-slate-400"
+                        htmlFor={`objective-${objective.clientId}-statement`}
+                      >
+                        Statement
+                      </label>
                       <textarea
+                        id={`objective-${objective.clientId}-statement`}
                         value={objective.statement}
                         onChange={(event) =>
                           handleObjectiveUpdate(
@@ -506,10 +561,14 @@ export function BlueprintEditor({
                         className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                       />
                       <div className="mt-3">
-                        <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                        <label
+                          className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                          htmlFor={`objective-${objective.clientId}-level`}
+                        >
                           Bloom level
                         </label>
                         <select
+                          id={`objective-${objective.clientId}-level`}
                           value={objective.level ?? ""}
                           onChange={(event) =>
                             handleObjectiveUpdate(
@@ -570,12 +629,15 @@ export function BlueprintEditor({
                 Discard changes
               </button>
             </div>
-            <button
-              type="submit"
-              className="rounded-full bg-cyan-400/90 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950"
-            >
-              Save draft
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              {draftByteSize > MAX_DRAFT_BYTES ? (
+                <p className="text-xs text-amber-200">
+                  Draft size is {Math.round(draftByteSize / 1024)}KB. Saving might
+                  fail for very large drafts.
+                </p>
+              ) : null}
+              <SaveDraftButton />
+            </div>
           </div>
         </form>
       ) : (
