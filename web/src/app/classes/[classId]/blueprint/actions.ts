@@ -7,6 +7,8 @@ import { buildBlueprintPrompt, parseBlueprintResponse } from "@/lib/ai/blueprint
 import { generateTextWithFallback } from "@/lib/ai/providers";
 
 const MAX_MATERIAL_CHARS = 120000;
+const DRAFT_ALREADY_EXISTS_MESSAGE =
+  "A draft version already exists. Open it to continue editing.";
 
 type DraftObjectiveInput = {
   id?: string;
@@ -278,6 +280,9 @@ async function insertDraftFromPayload({
     .single();
 
   if (blueprintError || !blueprintRow) {
+    if (blueprintError?.code === "23505") {
+      throw new Error(DRAFT_ALREADY_EXISTS_MESSAGE);
+    }
     throw new Error(blueprintError?.message ?? "Failed to create draft.");
   }
 
@@ -346,12 +351,51 @@ async function insertDraftFromPayload({
       }
     }
   } catch (error) {
-    await supabase.from("topics").delete().eq("blueprint_id", blueprintId);
-    await supabase.from("blueprints").delete().eq("id", blueprintId);
+    const { error: topicsDeleteError } = await supabase
+      .from("topics")
+      .delete()
+      .eq("blueprint_id", blueprintId);
+    if (topicsDeleteError) {
+      console.error("Failed to cleanup topics after draft creation error", {
+        blueprintId,
+        error: topicsDeleteError.message,
+      });
+    }
+
+    const { error: blueprintDeleteError } = await supabase
+      .from("blueprints")
+      .delete()
+      .eq("id", blueprintId);
+    if (blueprintDeleteError) {
+      console.error("Failed to cleanup blueprint after draft creation error", {
+        blueprintId,
+        error: blueprintDeleteError.message,
+      });
+    }
     throw error;
   }
 
   return blueprintId;
+}
+
+async function rollbackDraftCreation(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  blueprintId: string
+) {
+  const { data, error } = await supabase
+    .from("blueprints")
+    .delete()
+    .eq("id", blueprintId)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) {
+    console.error("Failed to rollback draft creation", {
+      blueprintId,
+      error: error?.message ?? "No rows deleted",
+    });
+    return error?.message ?? "Rollback delete did not remove the draft.";
+  }
+  return null;
 }
 
 export async function generateBlueprint(classId: string) {
@@ -616,15 +660,13 @@ export async function saveDraft(
     }
 
     if (existingDraft) {
-      redirectWithError(
-        `/classes/${classId}/blueprint`,
-        "A draft version already exists. Open it to continue editing."
-      );
+      redirectWithError(`/classes/${classId}/blueprint`, DRAFT_ALREADY_EXISTS_MESSAGE);
       return;
     }
 
+    let newDraftId: string | null = null;
     try {
-      await insertDraftFromPayload({
+      newDraftId = await insertDraftFromPayload({
         supabase,
         classId,
         userId: user.id,
@@ -644,7 +686,16 @@ export async function saveDraft(
       .eq("id", blueprint.id);
 
     if (archiveError) {
-      redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
+      const rollbackError = newDraftId
+        ? await rollbackDraftCreation(supabase, newDraftId)
+        : null;
+      const rollbackMessage = rollbackError
+        ? ` Rollback issues: ${rollbackError}.`
+        : "";
+      redirectWithError(
+        `/classes/${classId}/blueprint`,
+        `${archiveError.message}${rollbackMessage}`
+      );
       return;
     }
 
@@ -954,10 +1005,7 @@ export async function createDraftFromPublished(classId: string) {
   }
 
   if (existingDraft) {
-    redirectWithError(
-      `/classes/${classId}/blueprint`,
-      "A draft version already exists. Open it to continue editing."
-    );
+    redirectWithError(`/classes/${classId}/blueprint`, DRAFT_ALREADY_EXISTS_MESSAGE);
     return;
   }
 
@@ -1040,8 +1088,9 @@ export async function createDraftFromPublished(classId: string) {
     return;
   }
 
+  let newDraftId: string | null = null;
   try {
-    await insertDraftFromPayload({
+    newDraftId = await insertDraftFromPayload({
       supabase,
       classId,
       userId: user.id,
@@ -1061,7 +1110,16 @@ export async function createDraftFromPublished(classId: string) {
     .eq("id", publishedBlueprint.id);
 
   if (archiveError) {
-    redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
+    const rollbackError = newDraftId
+      ? await rollbackDraftCreation(supabase, newDraftId)
+      : null;
+    const rollbackMessage = rollbackError
+      ? ` Rollback issues: ${rollbackError}.`
+      : "";
+    redirectWithError(
+      `/classes/${classId}/blueprint`,
+      `${archiveError.message}${rollbackMessage}`
+    );
     return;
   }
 
@@ -1113,64 +1171,13 @@ export async function publishBlueprint(classId: string, blueprintId: string) {
     return;
   }
 
-  const { data: otherBlueprintsBeforeArchive, error: otherError } = await supabase
-    .from("blueprints")
-    .select("id,status")
-    .eq("class_id", classId)
-    .neq("id", blueprint.id)
-    .in("status", ["approved", "published"]);
-
-  if (otherError) {
-    redirectWithError(`/classes/${classId}/blueprint`, otherError.message);
-    return;
-  }
-
-  const { error: archiveError } = await supabase
-    .from("blueprints")
-    .update({ status: "archived" })
-    .eq("class_id", classId)
-    .neq("id", blueprint.id)
-    .in("status", ["approved", "published"]);
-
-  if (archiveError) {
-    redirectWithError(`/classes/${classId}/blueprint`, archiveError.message);
-    return;
-  }
-
-  const { error: publishError } = await supabase
-    .from("blueprints")
-    .update({
-      status: "published",
-      published_by: user.id,
-      published_at: new Date().toISOString(),
-    })
-    .eq("id", blueprint.id);
+  const { error: publishError } = await supabase.rpc("publish_blueprint", {
+    p_class_id: classId,
+    p_blueprint_id: blueprint.id,
+  });
 
   if (publishError) {
-    const rollbackErrors: string[] = [];
-    if (otherBlueprintsBeforeArchive && otherBlueprintsBeforeArchive.length > 0) {
-      for (const row of otherBlueprintsBeforeArchive) {
-        const { error: rollbackError } = await supabase
-          .from("blueprints")
-          .update({ status: row.status })
-          .eq("id", row.id);
-        if (rollbackError) {
-          rollbackErrors.push(`${row.id}: ${rollbackError.message}`);
-          console.error("Failed to rollback blueprint status", {
-            blueprintId: row.id,
-            error: rollbackError.message,
-          });
-        }
-      }
-    }
-    const rollbackMessage =
-      rollbackErrors.length > 0
-        ? ` Rollback issues: ${rollbackErrors.join("; ")}.`
-        : "";
-    redirectWithError(
-      `/classes/${classId}/blueprint`,
-      `${publishError.message}${rollbackMessage}`
-    );
+    redirectWithError(`/classes/${classId}/blueprint`, publishError.message);
     return;
   }
 

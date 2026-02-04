@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import RegisterPage from "@/app/(auth)/register/page";
 
@@ -15,7 +16,7 @@ describe("RegisterPage", () => {
     const html = renderToStaticMarkup(
       await RegisterPage({
         searchParams: Promise.resolve({ error: "Email already used" }),
-      })
+      }),
     );
 
     expect(html).toContain("Email already used");

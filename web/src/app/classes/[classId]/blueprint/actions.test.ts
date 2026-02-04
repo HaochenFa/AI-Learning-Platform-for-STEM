@@ -34,11 +34,13 @@ const supabaseAuth = {
   getUser: vi.fn(),
 };
 const supabaseFromMock = vi.fn();
+const supabaseRpcMock = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: () => ({
     auth: supabaseAuth,
     from: supabaseFromMock,
+    rpc: supabaseRpcMock,
   }),
 }));
 
@@ -109,6 +111,7 @@ function mockTeacherAccess() {
 describe("generateBlueprint", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    supabaseRpcMock.mockResolvedValue({ data: null, error: null });
   });
 
   it("redirects to login when unauthenticated", async () => {
@@ -227,6 +230,7 @@ describe("generateBlueprint", () => {
 describe("blueprint workflow actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    supabaseRpcMock.mockResolvedValue({ data: null, error: null });
   });
 
   it("saves a draft and redirects", async () => {
@@ -515,6 +519,79 @@ describe("blueprint workflow actions", () => {
     expect(redirect).toHaveBeenCalled();
   });
 
+  it("rolls back new draft when archiving the previous blueprint fails", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    let blueprintsCall = 0;
+    let rollbackBlueprintBuilder: ReturnType<typeof makeBuilder> | null = null;
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "blueprints") {
+        blueprintsCall += 1;
+        if (blueprintsCall === 1) {
+          return makeBuilder({
+            data: { id: "bp-1", status: "published", version: 2 },
+            error: null,
+          });
+        }
+        if (blueprintsCall === 2) {
+          return makeBuilder({ data: null, error: null });
+        }
+        if (blueprintsCall === 3) {
+          return makeBuilder({ data: { version: 2 }, error: null });
+        }
+        if (blueprintsCall === 4) {
+          return makeBuilder({ data: { id: "bp-new" }, error: null });
+        }
+        if (blueprintsCall === 5) {
+          return makeBuilder({ data: null, error: { message: "archive failed" } });
+        }
+        rollbackBlueprintBuilder = makeBuilder({ data: null, error: null });
+        return rollbackBlueprintBuilder;
+      }
+      if (table === "topics") {
+        return makeBuilder({ data: { id: "t1-new" }, error: null });
+      }
+      if (table === "objectives") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set(
+      "draft",
+      JSON.stringify({
+        summary: "Summary",
+        topics: [
+          {
+            clientId: "t1",
+            title: "Limits",
+            description: "Intro",
+            sequence: 1,
+            prerequisiteClientIds: [],
+            objectives: [{ statement: "Define limits." }],
+          },
+        ],
+      })
+    );
+
+    await expectRedirect(
+      () => saveDraft("class-1", "bp-1", formData),
+      "/classes/class-1/blueprint?error=archive%20failed"
+    );
+    expect(redirect).toHaveBeenCalled();
+    expect(rollbackBlueprintBuilder?.["delete"]).toHaveBeenCalled();
+  });
+
   it("rejects creating a draft from published when one already exists", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     supabaseFromMock.mockImplementation((table: string) => {
@@ -529,6 +606,70 @@ describe("blueprint workflow actions", () => {
       }
       if (table === "blueprints") {
         return makeBuilder({ data: { id: "bp-draft" }, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => createDraftFromPublished("class-1"),
+      "/classes/class-1/blueprint?error=A%20draft%20version%20already%20exists.%20Open%20it%20to%20continue%20editing."
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("rejects draft creation when a concurrent draft is inserted", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    let blueprintsCall = 0;
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "blueprints") {
+        blueprintsCall += 1;
+        if (blueprintsCall === 1) {
+          return makeBuilder({ data: null, error: null });
+        }
+        if (blueprintsCall === 2) {
+          return makeBuilder({ data: { id: "bp-pub", summary: "Summary" }, error: null });
+        }
+        if (blueprintsCall === 3) {
+          return makeBuilder({ data: { version: 2 }, error: null });
+        }
+        if (blueprintsCall === 4) {
+          return makeBuilder({
+            data: null,
+            error: {
+              code: "23505",
+              message: "duplicate key value violates unique constraint",
+            },
+          });
+        }
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "topics") {
+        return makeBuilder({
+          data: [
+            {
+              id: "t1",
+              title: "Limits",
+              description: null,
+              section: null,
+              sequence: 1,
+              prerequisite_topic_ids: [],
+            },
+          ],
+          error: null,
+        });
+      }
+      if (table === "objectives") {
+        return makeBuilder({ data: [], error: null });
       }
       return makeBuilder({ data: null, error: null });
     });
@@ -877,5 +1018,9 @@ describe("blueprint workflow actions", () => {
       "/classes/class-1/blueprint?published=1"
     );
     expect(redirect).toHaveBeenCalled();
+    expect(supabaseRpcMock).toHaveBeenCalledWith("publish_blueprint", {
+      p_class_id: "class-1",
+      p_blueprint_id: "bp-1",
+    });
   });
 });
