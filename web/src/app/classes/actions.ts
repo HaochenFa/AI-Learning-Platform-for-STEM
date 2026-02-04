@@ -22,6 +22,10 @@ function getFormValue(formData: FormData, key: string) {
   return value.trim();
 }
 
+function redirectWithError(path: string, message: string) {
+  redirect(`${path}?error=${encodeURIComponent(message)}`);
+}
+
 const MAX_JOIN_CODE_ATTEMPTS = 5;
 const MATERIALS_BUCKET = "materials";
 
@@ -30,6 +34,10 @@ async function requireTeacherAccess(
   userId: string,
   supabase: ReturnType<typeof createServerSupabaseClient>
 ) {
+  type AccessResult =
+    | { allowed: true }
+    | { allowed: false; reason: string };
+
   const { data: classRow, error: classError } = await supabase
     .from("classes")
     .select("id,owner_id")
@@ -37,11 +45,11 @@ async function requireTeacherAccess(
     .single();
 
   if (classError || !classRow) {
-    return { allowed: false, reason: "Class not found." };
+    return { allowed: false, reason: "Class not found." } satisfies AccessResult;
   }
 
   if (classRow.owner_id === userId) {
-    return { allowed: true };
+    return { allowed: true } satisfies AccessResult;
   }
 
   const { data: enrollment } = await supabase
@@ -52,10 +60,13 @@ async function requireTeacherAccess(
     .single();
 
   if (enrollment?.role === "teacher" || enrollment?.role === "ta") {
-    return { allowed: true };
+    return { allowed: true } satisfies AccessResult;
   }
 
-  return { allowed: false, reason: "Teacher access required." };
+  return {
+    allowed: false,
+    reason: "Teacher access required.",
+  } satisfies AccessResult;
 }
 
 export async function createClass(formData: FormData) {
@@ -65,7 +76,7 @@ export async function createClass(formData: FormData) {
   const level = getFormValue(formData, "level");
 
   if (!title) {
-    redirect("/classes/new?error=Class title is required");
+    redirectWithError("/classes/new", "Class title is required");
   }
 
   const supabase = createServerSupabaseClient();
@@ -100,12 +111,12 @@ export async function createClass(formData: FormData) {
     }
 
     if (error?.code !== "23505") {
-      redirect(`/classes/new?error=${encodeURIComponent(error.message)}`);
+      redirectWithError("/classes/new", error.message);
     }
   }
 
   if (!newClassId) {
-    redirect("/classes/new?error=Unable to generate a join code");
+    redirectWithError("/classes/new", "Unable to generate a join code");
   }
 
   const { error: enrollmentError } = await supabase
@@ -117,7 +128,7 @@ export async function createClass(formData: FormData) {
     });
 
   if (enrollmentError) {
-    redirect(`/classes/new?error=${encodeURIComponent(enrollmentError.message)}`);
+    redirectWithError("/classes/new", enrollmentError.message);
   }
 
   redirect(`/classes/${newClassId}`);
@@ -127,7 +138,7 @@ export async function joinClass(formData: FormData) {
   const joinCode = getFormValue(formData, "join_code").toUpperCase();
 
   if (!joinCode) {
-    redirect("/join?error=Join code is required");
+    redirectWithError("/join", "Join code is required");
   }
 
   const supabase = createServerSupabaseClient();
@@ -143,7 +154,7 @@ export async function joinClass(formData: FormData) {
   try {
     admin = createSupabaseAdminClient();
   } catch (error) {
-    redirect("/join?error=Server configuration error");
+    redirectWithError("/join", "Server configuration error");
   }
   const { data: classRow, error } = await admin
     .from("classes")
@@ -152,7 +163,7 @@ export async function joinClass(formData: FormData) {
     .single();
 
   if (error || !classRow) {
-    redirect("/join?error=Invalid join code");
+    redirectWithError("/join", "Invalid join code");
   }
 
   const { error: enrollmentError } = await admin
@@ -167,7 +178,7 @@ export async function joinClass(formData: FormData) {
     );
 
   if (enrollmentError) {
-    redirect(`/join?error=${encodeURIComponent(enrollmentError.message)}`);
+    redirectWithError("/join", enrollmentError.message);
   }
 
   redirect(`/classes/${classRow.id}`);
@@ -178,27 +189,25 @@ export async function uploadMaterial(classId: string, formData: FormData) {
   const file = formData.get("file");
 
   if (!(file instanceof File)) {
-    redirect(`/classes/${classId}?error=Material file is required`);
+    redirectWithError(`/classes/${classId}`, "Material file is required");
   }
 
   if (file.size === 0) {
-    redirect(`/classes/${classId}?error=Material file is empty`);
+    redirectWithError(`/classes/${classId}`, "Material file is empty");
   }
 
   if (file.size > MAX_MATERIAL_BYTES) {
-    redirect(
-      `/classes/${classId}?error=File exceeds ${Math.round(
-        MAX_MATERIAL_BYTES / (1024 * 1024)
-      )}MB limit`
+    redirectWithError(
+      `/classes/${classId}`,
+      `File exceeds ${Math.round(MAX_MATERIAL_BYTES / (1024 * 1024))}MB limit`
     );
   }
 
   const kind = detectMaterialKind(file);
   if (!kind) {
-    redirect(
-      `/classes/${classId}?error=Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(
-        ", "
-      )}`
+    redirectWithError(
+      `/classes/${classId}`,
+      `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`
     );
   }
 
@@ -207,7 +216,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     file.type !== "application/octet-stream" &&
     !ALLOWED_MIME_TYPES.includes(file.type)
   ) {
-    redirect(`/classes/${classId}?error=Unsupported MIME type`);
+    redirectWithError(`/classes/${classId}`, "Unsupported MIME type");
   }
 
   const supabase = createServerSupabaseClient();
@@ -221,7 +230,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
-    redirect(`/classes/${classId}?error=${encodeURIComponent(access.reason ?? "Access denied")}`);
+    redirectWithError(`/classes/${classId}`, access.reason);
   }
 
   const admin = createSupabaseAdminClient();
@@ -241,7 +250,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     });
 
   if (uploadError) {
-    redirect(`/classes/${classId}?error=${encodeURIComponent(uploadError.message)}`);
+    redirectWithError(`/classes/${classId}`, uploadError.message);
   }
 
   const { error: insertError } = await admin.from("materials").insert({
@@ -263,7 +272,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
 
   if (insertError) {
     await admin.storage.from(MATERIALS_BUCKET).remove([storagePath]);
-    redirect(`/classes/${classId}?error=${encodeURIComponent(insertError.message)}`);
+    redirectWithError(`/classes/${classId}`, insertError.message);
   }
 
   const uploadNotice =

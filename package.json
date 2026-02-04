@@ -6,6 +6,8 @@
     "dev": "pnpm --dir web dev",
     "build": "pnpm --dir web build",
     "start": "pnpm --dir web start",
-    "lint": "pnpm --dir web lint"
+    "lint": "pnpm --dir web lint",
+    "test": "pnpm --dir web test",
+    "test:watch": "pnpm --dir web test:watch"
   }
 }

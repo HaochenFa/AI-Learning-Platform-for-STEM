@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { buildBlueprintPrompt, parseBlueprintResponse } from "@/lib/ai/blueprint";
@@ -8,11 +9,19 @@ import { generateTextWithFallback } from "@/lib/ai/providers";
 
 const MAX_MATERIAL_CHARS = 120000;
 
+function redirectWithError(path: string, message: string) {
+  redirect(`${path}?error=${encodeURIComponent(message)}`);
+}
+
 async function requireTeacherAccess(
   classId: string,
   userId: string,
   supabase: ReturnType<typeof createServerSupabaseClient>
 ) {
+  type AccessResult =
+    | { allowed: true; classRow: { id: string; owner_id: string; title: string; subject: string | null; level: string | null } }
+    | { allowed: false; reason: string };
+
   const { data: classRow, error: classError } = await supabase
     .from("classes")
     .select("id,owner_id,title,subject,level")
@@ -20,11 +29,11 @@ async function requireTeacherAccess(
     .single();
 
   if (classError || !classRow) {
-    return { allowed: false, reason: "Class not found." };
+    return { allowed: false, reason: "Class not found." } satisfies AccessResult;
   }
 
   if (classRow.owner_id === userId) {
-    return { allowed: true, classRow };
+    return { allowed: true, classRow } satisfies AccessResult;
   }
 
   const { data: enrollment } = await supabase
@@ -35,10 +44,13 @@ async function requireTeacherAccess(
     .single();
 
   if (enrollment?.role === "teacher" || enrollment?.role === "ta") {
-    return { allowed: true, classRow };
+    return { allowed: true, classRow } satisfies AccessResult;
   }
 
-  return { allowed: false, reason: "Teacher access required." };
+  return {
+    allowed: false,
+    reason: "Teacher access required.",
+  } satisfies AccessResult;
 }
 
 export async function generateBlueprint(classId: string) {
@@ -53,20 +65,18 @@ export async function generateBlueprint(classId: string) {
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
-    redirect(
-      `/classes/${classId}/blueprint?error=${encodeURIComponent(access.reason)}`
-    );
+    redirectWithError(`/classes/${classId}/blueprint`, access.reason);
   }
 
   if (!access.classRow) {
-    redirect(`/classes/${classId}/blueprint?error=Class not found`);
+    redirectWithError(`/classes/${classId}/blueprint`, "Class not found");
   }
 
   let admin: ReturnType<typeof createSupabaseAdminClient>;
   try {
     admin = createSupabaseAdminClient();
   } catch (error) {
-    redirect(`/classes/${classId}/blueprint?error=Server configuration error`);
+    redirectWithError(`/classes/${classId}/blueprint`, "Server configuration error");
   }
   const { data: materials } = await admin
     .from("materials")
@@ -75,7 +85,10 @@ export async function generateBlueprint(classId: string) {
     .eq("status", "ready");
 
   if (!materials || materials.length === 0) {
-    redirect(`/classes/${classId}/blueprint?error=Upload at least one processed material`);
+    redirectWithError(
+      `/classes/${classId}/blueprint`,
+      "Upload at least one processed material"
+    );
   }
 
   const materialText = buildMaterialContext(materials);
@@ -204,6 +217,9 @@ export async function generateBlueprint(classId: string) {
 
     redirect(`/classes/${classId}/blueprint?generated=1`);
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     if (blueprintId) {
       await admin.from("topics").delete().eq("blueprint_id", blueprintId);
       await admin.from("blueprints").delete().eq("id", blueprintId);
@@ -218,7 +234,7 @@ export async function generateBlueprint(classId: string) {
       status: "error",
     });
     const message = error instanceof Error ? error.message : "Blueprint generation failed.";
-    redirect(`/classes/${classId}/blueprint?error=${encodeURIComponent(message)}`);
+    redirectWithError(`/classes/${classId}/blueprint`, message);
   }
 }
 
