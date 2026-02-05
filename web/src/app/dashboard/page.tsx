@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/actions";
+import AuthHeader from "@/app/components/AuthHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +31,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AuthHeader />
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-16">
         <header className="flex flex-wrap items-center justify-between gap-6">
           <div>
@@ -39,28 +40,6 @@ export default async function DashboardPage() {
             <p className="text-sm text-slate-400">
               Manage classes, materials, and student assignments.
             </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/classes/new"
-              className="rounded-full bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950"
-            >
-              New class
-            </Link>
-            <Link
-              href="/join"
-              className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-200 transition hover:border-white/30"
-            >
-              Join class
-            </Link>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-200 transition hover:border-white/30"
-              >
-                Sign out
-              </button>
-            </form>
           </div>
         </header>
 

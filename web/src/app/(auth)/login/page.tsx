@@ -19,7 +19,29 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-900/40">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex items-center justify-start">
+            <Link
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-100"
+              href="/"
+              aria-label="Back to home"
+            >
+              <svg
+                className="h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Home
+            </Link>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-8 shadow-2xl shadow-slate-900/40">
           <div className="mb-8 space-y-2">
             <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
               Teacher + Student Access
@@ -81,6 +103,7 @@ export default async function LoginPage({
             <Link className="text-cyan-200 hover:text-cyan-100" href="/register">
               Create an account
             </Link>
+          </div>
           </div>
         </div>
       </div>

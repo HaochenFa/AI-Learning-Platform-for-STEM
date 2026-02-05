@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { publishBlueprint } from "@/app/classes/[classId]/blueprint/actions";
+import AuthHeader from "@/app/components/AuthHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +99,14 @@ export default async function BlueprintOverviewPage({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AuthHeader
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: classRow.title, href: `/classes/${classRow.id}` },
+          { label: "Blueprint", href: `/classes/${classRow.id}/blueprint` },
+          { label: "Overview" },
+        ]}
+      />
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
