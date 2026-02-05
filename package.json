@@ -9,5 +9,8 @@
     "lint": "pnpm --dir web lint",
     "test": "pnpm --dir web test",
     "test:watch": "pnpm --dir web test:watch"
+  },
+  "devDependencies": {
+    "supabase": "^2.75.3"
   }
 }

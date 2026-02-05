@@ -5,8 +5,8 @@ This folder contains SQL migrations for the core schema.
 **Apply migrations**
 
 - Use Supabase CLI or the dashboard SQL editor to apply migrations in order.
-- Start with `supabase/migrations/0001_init.sql` (baseline schema).
-- Historical migrations have been archived to `supabase/migrations_archive/` and are not applied by the CLI.
+- The baseline schema is consolidated in `supabase/migrations/0001_init.sql`.
+- Historical incremental migrations have been archived to `supabase/migrations_archive/` and are not applied by the CLI.
 
 **Notes**
 

@@ -52,12 +52,7 @@ export async function GET() {
     data?: unknown;
     error?: string;
   } = null;
-  let directRequestingUserId: null | {
-    ok: boolean;
-    status: number;
-    data?: unknown;
-    error?: string;
-  } = null;
+  let directRequestingUserIdValue: string | null = null;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -80,7 +75,12 @@ export async function GET() {
         directAuthContext = { ok: true, status: authRes.status, data: json };
       }
 
-      directRequestingUserId = directAuthContext;
+      const directData = directAuthContext?.data;
+      if (typeof directData === "string") {
+        directRequestingUserIdValue = directData;
+      } else if (Array.isArray(directData) && typeof directData[0] === "string") {
+        directRequestingUserIdValue = directData[0];
+      }
 
       const res = await fetch(`${url}/rest/v1/classes?select=id`, {
         method: "POST",
@@ -125,8 +125,10 @@ export async function GET() {
         requestingUserIdError: requestingUserIdError?.message ?? null,
         userId: user.id,
         directInsertResult,
-        directAuthContext,
-        directRequestingUserId,
+        directAuthContext: directAuthContext
+          ? { ok: directAuthContext.ok, status: directAuthContext.status }
+          : null,
+        directRequestingUserId: directRequestingUserIdValue,
       },
       { status: 400 },
     );
@@ -137,12 +139,30 @@ export async function GET() {
     .delete()
     .eq("id", data);
 
+  if (deleteError) {
+    return NextResponse.json(
+      {
+        ok: false,
+        insertedId: data,
+        deleteError: deleteError.message,
+        directInsertResult,
+        directAuthContext: directAuthContext
+          ? { ok: directAuthContext.ok, status: directAuthContext.status }
+          : null,
+        directRequestingUserId: directRequestingUserIdValue,
+      },
+      { status: 500 },
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     insertedId: data,
-    deleteError: deleteError?.message ?? null,
+    deleteError: null,
     directInsertResult,
-    directAuthContext,
-    directRequestingUserId,
+    directAuthContext: directAuthContext
+      ? { ok: directAuthContext.ok, status: directAuthContext.status }
+      : null,
+    directRequestingUserId: directRequestingUserIdValue,
   });
 }

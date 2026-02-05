@@ -89,18 +89,6 @@ function makeBuilder(result: unknown) {
   };
 }
 
-function makeInsertSequenceBuilder(results: unknown[]) {
-  let callIndex = 0;
-  const builder = makeBuilder(results[0]);
-  const insert = vi.fn(() => {
-    const result = results[Math.min(callIndex, results.length - 1)];
-    callIndex += 1;
-    return makeBuilder(result);
-  });
-  (builder as unknown as { insert: typeof insert }).insert = insert;
-  return builder;
-}
-
 async function expectRedirect(action: () => Promise<void> | void, path: string) {
   try {
     await Promise.resolve().then(action);
@@ -157,6 +145,54 @@ describe("class actions", () => {
 
     await expectRedirect(() => createClass(formData), "/classes/class-1");
     expect(redirect).toHaveBeenCalled();
+  });
+
+  it("retries after join code collision and succeeds", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    vi.mocked(generateJoinCode).mockReturnValueOnce("JOIN01").mockReturnValueOnce("JOIN02");
+
+    supabaseRpcMock
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "23505", message: "duplicate key" },
+      })
+      .mockResolvedValueOnce({ data: "class-1", error: null });
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "enrollments") {
+        return makeBuilder({ error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Chemistry");
+
+    await expectRedirect(() => createClass(formData), "/classes/class-1");
+    expect(redirect).toHaveBeenCalled();
+    expect(generateJoinCode).toHaveBeenCalledTimes(2);
+    expect(supabaseRpcMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("exhausts join code attempts after collisions", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    vi.mocked(generateJoinCode).mockReturnValue("JOIN01");
+
+    supabaseRpcMock.mockResolvedValue({
+      data: null,
+      error: { code: "23505", message: "duplicate key" },
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Biology");
+
+    await expectRedirect(
+      () => createClass(formData),
+      "/classes/new?error=Unable%20to%20generate%20a%20join%20code",
+    );
+    expect(redirect).toHaveBeenCalled();
+    expect(generateJoinCode).toHaveBeenCalledTimes(5);
+    expect(supabaseRpcMock).toHaveBeenCalledTimes(5);
   });
 
   it("rejects empty join codes", async () => {

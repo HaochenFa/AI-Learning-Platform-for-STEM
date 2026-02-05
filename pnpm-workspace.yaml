@@ -6,3 +6,6 @@ ignoredBuiltDependencies:
   - sharp
   - tesseract.js
   - unrs-resolver
+
+onlyBuiltDependencies:
+  - supabase

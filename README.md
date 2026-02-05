@@ -68,8 +68,8 @@ pnpm dev
 **Database Migrations**
 
 - Apply migrations using the Supabase CLI or dashboard SQL editor.
-- Start with `supabase/migrations/0001_init.sql` (baseline schema).
-- Historical migrations live in `supabase/migrations_archive/` and are not applied by the CLI.
+- The baseline schema is consolidated in `supabase/migrations/0001_init.sql`.
+- Historical incremental migrations live in `supabase/migrations_archive/` and are not applied by the CLI.
 
 **Security And Privacy**
 

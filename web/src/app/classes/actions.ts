@@ -91,9 +91,9 @@ export async function createClass(formData: FormData) {
     const joinCode = generateJoinCode();
     const { data, error } = await supabase.rpc("create_class", {
       p_title: title,
-      p_description: description ?? null,
-      p_subject: subject ?? null,
-      p_level: level ?? null,
+      p_description: description || null,
+      p_subject: subject || null,
+      p_level: level || null,
       p_join_code: joinCode,
     });
 
@@ -109,7 +109,7 @@ export async function createClass(formData: FormData) {
       continue;
     }
 
-    redirectWithError("/classes/new", "Unable to create class");
+    redirectWithError("/classes/new", "Unexpected response from database");
   }
 
   if (!newClassId) {

@@ -3,7 +3,7 @@
 create or replace function public.requesting_user_id()
 returns uuid
 language sql
-volatile
+stable
 security definer
 set search_path = pg_catalog, public
 as $$
@@ -98,12 +98,7 @@ begin
 end;
 $$;
 
--- Update insert/update/delete policies to use the helper directly.
-drop policy if exists classes_insert_owner on classes;
-create policy classes_insert_owner
-on classes for insert
-with check (public.requesting_user_id() = owner_id);
-
+-- Update update/delete policies to use the helper directly.
 drop policy if exists classes_update_owner on classes;
 create policy classes_update_owner
 on classes for update
