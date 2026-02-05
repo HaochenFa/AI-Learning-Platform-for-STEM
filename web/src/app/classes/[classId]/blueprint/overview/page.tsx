@@ -155,7 +155,7 @@ export default async function BlueprintOverviewPage({
           </div>
         </div>
 
-        <section className="mt-10 rounded-[32px] border border-white/10 bg-white text-slate-900 shadow-2xl">
+        <section className="mt-10 rounded-4xl border border-white/10 bg-white text-slate-900 shadow-2xl">
           <div className="border-b border-slate-200 px-10 py-8">
             <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Compiled Blueprint</p>
             <h2 className="mt-3 text-3xl font-semibold text-slate-900">{classRow.title}</h2>

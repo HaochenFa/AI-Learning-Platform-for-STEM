@@ -208,7 +208,7 @@ export default async function BlueprintPage({
             </p>
           </div>
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-              <h2 className="text-lg font-semibold">Materials check</h2>
+            <h2 className="text-lg font-semibold">Materials check</h2>
             <p className="mt-2 text-sm text-slate-400">
               {hasMaterials
                 ? `${materialCount} materials ready for generation.`

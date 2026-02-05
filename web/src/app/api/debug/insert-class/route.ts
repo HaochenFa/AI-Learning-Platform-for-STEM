@@ -27,10 +27,8 @@ export async function GET() {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const {
-    data: requestingUserId,
-    error: requestingUserIdError,
-  } = await supabase.rpc("requesting_user_id");
+  const { data: requestingUserId, error: requestingUserIdError } =
+    await supabase.rpc("requesting_user_id");
 
   const joinCode = randomJoinCode();
   const { data, error } = await supabase.rpc("create_class", {
@@ -107,8 +105,7 @@ export async function GET() {
       directInsertResult = {
         ok: false,
         status: 0,
-        error:
-          directError instanceof Error ? directError.message : "Direct insert failed",
+        error: directError instanceof Error ? directError.message : "Direct insert failed",
       };
     }
   }
@@ -134,10 +131,7 @@ export async function GET() {
     );
   }
 
-  const { error: deleteError } = await supabase
-    .from("classes")
-    .delete()
-    .eq("id", data);
+  const { error: deleteError } = await supabase.from("classes").delete().eq("id", data);
 
   if (deleteError) {
     return NextResponse.json(

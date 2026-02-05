@@ -10,10 +10,7 @@ export const runtime = "nodejs";
 const MATERIALS_BUCKET = "materials";
 const JOB_BATCH_SIZE = Number(process.env.MATERIAL_JOB_BATCH ?? 3);
 const LOCK_TIMEOUT_MINUTES = Number(process.env.MATERIAL_JOB_LOCK_MINUTES ?? 15);
-const VISION_PAGE_CONCURRENCY = Math.max(
-  1,
-  Number(process.env.VISION_PAGE_CONCURRENCY ?? 3) || 1,
-);
+const VISION_PAGE_CONCURRENCY = Math.max(1, Number(process.env.VISION_PAGE_CONCURRENCY ?? 3) || 1);
 const MAX_JOB_ATTEMPTS = Number(process.env.MATERIAL_JOB_MAX_ATTEMPTS ?? 5);
 
 const SUPPORTED_MIME_TO_KIND: Record<string, MaterialKind> = {
@@ -268,39 +265,43 @@ async function runOcrPipeline(
 
   if (kind === "pdf") {
     const { results, pageCount, totalPages } = await runOcrOnPdf(buffer);
-    const segments = await mapWithConcurrency(results, VISION_PAGE_CONCURRENCY, async (result, index) => {
-      if (isLowQualityText(result.text, result.confidence)) {
-        const vision = await extractVisionTextWithFallback({
-          prompt: "Extract all readable text. Describe diagrams and equations.",
-          images: [{ mimeType: "image/png", data: result.imageBuffer.toString("base64") }],
-        });
-        await logAiRequest(admin, {
-          class_id: classId,
-          provider: vision.provider,
-          model: vision.model,
-          purpose: "ocr",
-          prompt_tokens: vision.usage?.promptTokens ?? null,
-          completion_tokens: vision.usage?.completionTokens ?? null,
-          total_tokens: vision.usage?.totalTokens ?? null,
-          latency_ms: vision.latencyMs,
-          status: "ok",
-        });
+    const segments = await mapWithConcurrency(
+      results,
+      VISION_PAGE_CONCURRENCY,
+      async (result, index) => {
+        if (isLowQualityText(result.text, result.confidence)) {
+          const vision = await extractVisionTextWithFallback({
+            prompt: "Extract all readable text. Describe diagrams and equations.",
+            images: [{ mimeType: "image/png", data: result.imageBuffer.toString("base64") }],
+          });
+          await logAiRequest(admin, {
+            class_id: classId,
+            provider: vision.provider,
+            model: vision.model,
+            purpose: "ocr",
+            prompt_tokens: vision.usage?.promptTokens ?? null,
+            completion_tokens: vision.usage?.completionTokens ?? null,
+            total_tokens: vision.usage?.totalTokens ?? null,
+            latency_ms: vision.latencyMs,
+            status: "ok",
+          });
+          return {
+            text: vision.content,
+            sourceType: "page",
+            sourceIndex: index + 1,
+            extractionMethod: "vision",
+          } satisfies MaterialSegment;
+        }
+
         return {
-          text: vision.content,
+          text: result.text,
           sourceType: "page",
           sourceIndex: index + 1,
-          extractionMethod: "vision",
+          extractionMethod: "ocr",
+          qualityScore: result.confidence,
         } satisfies MaterialSegment;
-      }
-
-      return {
-        text: result.text,
-        sourceType: "page",
-        sourceIndex: index + 1,
-        extractionMethod: "ocr",
-        qualityScore: result.confidence,
-      } satisfies MaterialSegment;
-    });
+      },
+    );
 
     if (totalPages > pageCount) {
       warnings.push(`OCR limited to first ${pageCount} pages.`);

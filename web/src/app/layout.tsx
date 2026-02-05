@@ -30,7 +30,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${bodyFont.variable} ${headingFont.variable} ${monoFont.variable} antialiased`}>
+      <body
+        className={`${bodyFont.variable} ${headingFont.variable} ${monoFont.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

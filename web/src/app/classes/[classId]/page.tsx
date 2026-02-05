@@ -79,10 +79,7 @@ export default async function ClassOverviewPage({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
-        breadcrumbs={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: classRow.title },
-        ]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: classRow.title }]}
       />
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
         <header className="mb-10 space-y-2">

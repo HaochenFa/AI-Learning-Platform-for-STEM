@@ -40,9 +40,7 @@ export async function GET() {
     try {
       const [, payload] = session.access_token.split(".");
       if (payload) {
-        jwtClaims = JSON.parse(
-          Buffer.from(payload, "base64url").toString("utf8"),
-        ) as JwtClaims;
+        jwtClaims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as JwtClaims;
       }
     } catch {
       jwtClaims = null;

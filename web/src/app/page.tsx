@@ -28,10 +28,7 @@ export default async function HomePage() {
             STEM Learning Platform
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <Link
-              className="text-slate-200 transition hover:text-white"
-              href={headerPrimaryHref}
-            >
+            <Link className="text-slate-200 transition hover:text-white" href={headerPrimaryHref}>
               {headerPrimaryLabel}
             </Link>
             <Link
@@ -98,9 +95,7 @@ export default async function HomePage() {
 
           <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 transition duration-200 hover:-translate-y-1 hover:border-cyan-400/30">
             <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Blueprint studio</p>
-            <h2 className="mt-3 text-2xl font-semibold">
-              One blueprint powers every activity.
-            </h2>
+            <h2 className="mt-3 text-2xl font-semibold">One blueprint powers every activity.</h2>
             <p className="mt-2 text-sm text-slate-400">
               Teachers curate the blueprint. Students learn from a transparent, shared context.
             </p>

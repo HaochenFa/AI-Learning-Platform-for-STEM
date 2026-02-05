@@ -16,7 +16,9 @@ export default async function NewClassPage({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <AuthHeader breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "New class" }]} />
+      <AuthHeader
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "New class" }]}
+      />
       <div className="mx-auto w-full max-w-4xl px-6 py-16">
         <header className="mb-10 space-y-2">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Teacher Studio</p>
