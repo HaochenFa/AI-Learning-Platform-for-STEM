@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { createClass } from "@/app/classes/actions";
+import AuthHeader from "@/app/components/AuthHeader";
 
 type SearchParams = {
   error?: string;
@@ -16,6 +16,9 @@ export default async function NewClassPage({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AuthHeader
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "New class" }]}
+      />
       <div className="mx-auto w-full max-w-4xl px-6 py-16">
         <header className="mb-10 space-y-2">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Teacher Studio</p>
@@ -89,9 +92,6 @@ export default async function NewClassPage({
             >
               Create class
             </button>
-            <Link className="text-sm text-slate-400 hover:text-slate-200" href="/dashboard">
-              Back to dashboard
-            </Link>
           </div>
         </form>
       </div>

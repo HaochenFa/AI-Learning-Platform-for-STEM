@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { generateBlueprint } from "@/app/classes/[classId]/blueprint/actions";
 import { BlueprintEditor } from "@/app/classes/[classId]/blueprint/BlueprintEditor";
+import AuthHeader from "@/app/components/AuthHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +117,7 @@ export default async function BlueprintPage({
     .from("materials")
     .select("id", { count: "exact", head: true })
     .eq("class_id", classId);
+  const hasMaterials = (materialCount ?? 0) > 0;
 
   const errorMessage =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
@@ -150,6 +152,13 @@ export default async function BlueprintPage({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AuthHeader
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: classRow.title, href: `/classes/${classRow.id}` },
+          { label: "Blueprint" },
+        ]}
+      />
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 space-y-2">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Course Blueprint</p>
@@ -201,7 +210,7 @@ export default async function BlueprintPage({
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <h2 className="text-lg font-semibold">Materials check</h2>
             <p className="mt-2 text-sm text-slate-400">
-              {materialCount
+              {hasMaterials
                 ? `${materialCount} materials ready for generation.`
                 : "Upload materials before generating the blueprint."}
             </p>
@@ -209,10 +218,16 @@ export default async function BlueprintPage({
               <form action={generateBlueprint.bind(null, classRow.id)}>
                 <button
                   type="submit"
-                  className="mt-6 w-full rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+                  disabled={!hasMaterials}
+                  className="mt-6 w-full rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/40"
                 >
                   Generate blueprint
                 </button>
+                {!hasMaterials ? (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Upload at least one material to enable blueprint generation.
+                  </p>
+                ) : null}
               </form>
             ) : (
               <p className="mt-4 text-xs text-slate-500">

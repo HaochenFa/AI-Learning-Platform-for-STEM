@@ -114,10 +114,7 @@ describe("chunkSegments", () => {
     };
 
     const chunks = chunkSegments([segment]);
-    expect(chunks.map((chunk) => chunk.text)).toEqual([
-      "aaaa bbbbb cccc",
-      "bbbbb cccc dddd",
-    ]);
+    expect(chunks.map((chunk) => chunk.text)).toEqual(["aaaa bbbbb cccc", "bbbbb cccc dddd"]);
   });
 
   it("makes progress on extremely long single words", async () => {

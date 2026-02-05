@@ -40,7 +40,8 @@ export async function runOcrOnPdf(buffer: Buffer) {
     const viewport = page.getViewport({ scale: 1.5 });
     const canvas = createCanvas(viewport.width, viewport.height);
     const ctx = canvas.getContext("2d");
-    await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport }).promise;
+    await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport })
+      .promise;
     const pngBuffer = canvas.toBuffer("image/png");
     const result = await runOcrOnImage(pngBuffer);
     results.push({ ...result, imageBuffer: pngBuffer });

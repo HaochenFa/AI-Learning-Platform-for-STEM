@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { uploadMaterial } from "@/app/classes/actions";
+import MaterialUploadForm from "./MaterialUploadForm";
+import AuthHeader from "@/app/components/AuthHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +78,9 @@ export default async function ClassOverviewPage({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <AuthHeader
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: classRow.title }]}
+      />
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
         <header className="mb-10 space-y-2">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Class Overview</p>
@@ -132,38 +137,7 @@ export default async function ClassOverviewPage({
               <p className="mt-2 text-sm text-slate-400">
                 Supported formats: PDF, DOCX, PPTX. Images require vision extraction.
               </p>
-              <form className="mt-6 space-y-4" action={uploadMaterial.bind(null, classRow.id)}>
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-300" htmlFor="title">
-                    Title
-                  </label>
-                  <input
-                    id="title"
-                    name="title"
-                    placeholder="Lecture 3: Limits and Continuity"
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-300" htmlFor="file">
-                    File
-                  </label>
-                  <input
-                    id="file"
-                    name="file"
-                    type="file"
-                    accept=".pdf,.docx,.pptx,image/*"
-                    required
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2 text-sm text-slate-100 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-400/90 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-950"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-                >
-                  Upload material
-                </button>
-              </form>
+              <MaterialUploadForm action={uploadMaterial.bind(null, classRow.id)} />
             </div>
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 lg:col-span-2">
               <div className="flex items-center justify-between">
@@ -181,9 +155,26 @@ export default async function ClassOverviewPage({
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-semibold">{material.title}</p>
-                        <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400">
-                          {material.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full border px-3 py-1 text-xs ${
+                              material.status === "processing"
+                                ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-200"
+                                : material.status === "failed"
+                                  ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                                  : "border-white/10 text-slate-400"
+                            }`}
+                          >
+                            {material.status === "processing"
+                              ? "Processing"
+                              : material.status === "failed"
+                                ? "Failed"
+                                : material.status || "Pending"}
+                          </span>
+                          {material.status === "processing" ? (
+                            <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-300" />
+                          ) : null}
+                        </div>
                       </div>
                       <p className="text-xs text-slate-500">
                         {material.mime_type || "unknown type"} ·{" "}
@@ -198,6 +189,11 @@ export default async function ClassOverviewPage({
                             <li key={warning}>{warning}</li>
                           ))}
                         </ul>
+                      ) : null}
+                      {material.status === "processing" ? (
+                        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/10">
+                          <div className="h-full w-2/3 animate-pulse rounded-full bg-cyan-400/60" />
+                        </div>
                       ) : null}
                     </div>
                   ))
