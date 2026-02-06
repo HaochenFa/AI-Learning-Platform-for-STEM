@@ -12,10 +12,11 @@ type SearchParams = {
   uploaded?: string;
 };
 
-type ChatAssignmentSummary = {
+type ActivityAssignmentSummary = {
   assignmentId: string;
   title: string;
   dueAt: string | null;
+  activityType: "chat" | "quiz";
   status?: string;
 };
 
@@ -24,6 +25,20 @@ function formatDueDate(value: string | null) {
     return "No due date";
   }
   return `Due ${new Date(value).toLocaleString()}`;
+}
+
+function formatAssignmentStatus(value: string | null | undefined) {
+  const status = value ?? "assigned";
+  if (status === "in_progress") {
+    return "In progress";
+  }
+  if (status === "submitted") {
+    return "Submitted";
+  }
+  if (status === "reviewed") {
+    return "Reviewed";
+  }
+  return "Assigned";
 }
 
 export default async function ClassOverviewPage({
@@ -81,8 +96,10 @@ export default async function ClassOverviewPage({
     .limit(1)
     .maybeSingle();
 
-  let teacherChatAssignments: ChatAssignmentSummary[] = [];
-  let studentChatAssignments: ChatAssignmentSummary[] = [];
+  let teacherChatAssignments: ActivityAssignmentSummary[] = [];
+  let teacherQuizAssignments: ActivityAssignmentSummary[] = [];
+  let studentChatAssignments: ActivityAssignmentSummary[] = [];
+  let studentQuizAssignments: ActivityAssignmentSummary[] = [];
 
   if (isTeacher) {
     const { data: assignments } = await supabase
@@ -90,31 +107,37 @@ export default async function ClassOverviewPage({
       .select("id,activity_id,due_at")
       .eq("class_id", classId)
       .order("created_at", { ascending: false })
-      .limit(8);
+      .limit(20);
 
     const activityIds = (assignments ?? []).map((assignment) => assignment.activity_id);
     const { data: activities } =
       activityIds.length > 0
         ? await supabase
             .from("activities")
-            .select("id,title,type")
+            .select("id,title,type,config")
             .in("id", activityIds)
             .eq("class_id", classId)
         : { data: null };
 
-    const activityTitleById = new Map(
-      (activities ?? [])
-        .filter((activity) => activity.type === "chat")
-        .map((activity) => [activity.id, activity.title]),
-    );
+    const activityById = new Map((activities ?? []).map((activity) => [activity.id, activity]));
 
-    teacherChatAssignments = (assignments ?? [])
-      .filter((assignment) => activityTitleById.has(assignment.activity_id))
-      .map((assignment) => ({
-        assignmentId: assignment.id,
-        title: activityTitleById.get(assignment.activity_id) ?? "Chat assignment",
-        dueAt: assignment.due_at,
-      }));
+    const mappedAssignments = (assignments ?? [])
+      .map((assignment) => {
+        const activity = activityById.get(assignment.activity_id);
+        if (!activity || (activity.type !== "chat" && activity.type !== "quiz")) {
+          return null;
+        }
+        return {
+          assignmentId: assignment.id,
+          title: activity.title,
+          dueAt: assignment.due_at,
+          activityType: activity.type,
+        } satisfies ActivityAssignmentSummary;
+      })
+      .filter((value): value is ActivityAssignmentSummary => value !== null);
+
+    teacherChatAssignments = mappedAssignments.filter((assignment) => assignment.activityType === "chat");
+    teacherQuizAssignments = mappedAssignments.filter((assignment) => assignment.activityType === "quiz");
   } else {
     const { data: recipients } = await supabase
       .from("assignment_recipients")
@@ -138,17 +161,13 @@ export default async function ClassOverviewPage({
       activityIds.length > 0
         ? await supabase
             .from("activities")
-            .select("id,title,type")
+            .select("id,title,type,config")
             .in("id", activityIds)
             .eq("class_id", classId)
         : { data: null };
 
     const assignmentById = new Map((assignments ?? []).map((assignment) => [assignment.id, assignment]));
-    const chatActivityTitleById = new Map(
-      (activities ?? [])
-        .filter((activity) => activity.type === "chat")
-        .map((activity) => [activity.id, activity.title]),
-    );
+    const activityById = new Map((activities ?? []).map((activity) => [activity.id, activity]));
     const { data: submissions } =
       assignmentIds.length > 0
         ? await supabase
@@ -157,30 +176,62 @@ export default async function ClassOverviewPage({
             .eq("student_id", user.id)
             .in("assignment_id", assignmentIds)
         : { data: null };
-    const submittedAssignmentIds = new Set((submissions ?? []).map((submission) => submission.assignment_id));
 
-    const mappedStudentAssignments: Array<ChatAssignmentSummary | null> = (recipients ?? []).map(
+    const submissionCountByAssignmentId = new Map<string, number>();
+    (submissions ?? []).forEach((submission) => {
+      submissionCountByAssignmentId.set(
+        submission.assignment_id,
+        (submissionCountByAssignmentId.get(submission.assignment_id) ?? 0) + 1,
+      );
+    });
+
+    const mappedStudentAssignments: Array<ActivityAssignmentSummary | null> = (recipients ?? []).map(
       (recipient) => {
         const assignment = assignmentById.get(recipient.assignment_id);
         if (!assignment) {
           return null;
         }
-        const title = chatActivityTitleById.get(assignment.activity_id);
-        if (!title) {
+        const activity = activityById.get(assignment.activity_id);
+        if (!activity || (activity.type !== "chat" && activity.type !== "quiz")) {
           return null;
         }
+
+        const submissionCount = submissionCountByAssignmentId.get(assignment.id) ?? 0;
+        const activityConfig =
+          activity.config && typeof activity.config === "object"
+            ? (activity.config as Record<string, unknown>)
+            : {};
+        const attemptLimit =
+          typeof activityConfig.attemptLimit === "number" ? activityConfig.attemptLimit : 2;
+
+        const status =
+          recipient.status === "reviewed"
+            ? "reviewed"
+            : activity.type === "chat"
+              ? submissionCount > 0
+                ? "submitted"
+                : recipient.status
+              : submissionCount === 0
+                ? recipient.status
+                : submissionCount >= attemptLimit
+                  ? "submitted"
+                  : "in_progress";
+
         return {
           assignmentId: assignment.id,
-          title,
+          title: activity.title,
           dueAt: assignment.due_at,
-          status: submittedAssignmentIds.has(assignment.id) ? "submitted" : recipient.status,
+          activityType: activity.type,
+          status,
         };
       },
     );
 
-    studentChatAssignments = mappedStudentAssignments.filter(
-      (value): value is ChatAssignmentSummary => value !== null,
+    const filteredAssignments = mappedStudentAssignments.filter(
+      (value): value is ActivityAssignmentSummary => value !== null,
     );
+    studentChatAssignments = filteredAssignments.filter((assignment) => assignment.activityType === "chat");
+    studentQuizAssignments = filteredAssignments.filter((assignment) => assignment.activityType === "quiz");
   }
 
   const errorMessage =
@@ -332,7 +383,7 @@ export default async function ClassOverviewPage({
                     <div>
                       <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
                       <p className="text-xs text-slate-500">
-                        {formatDueDate(assignment.dueAt)} · Status: {assignment.status ?? "assigned"}
+                        {formatDueDate(assignment.dueAt)} · Status: {formatAssignmentStatus(assignment.status)}
                       </p>
                     </div>
                     <Link
@@ -346,6 +397,85 @@ export default async function ClassOverviewPage({
               ) : (
                 <p className="text-sm text-slate-400">
                   No chat assignments yet. Use open practice chat while you wait.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-10 rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">Quizzes</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                {publishedBlueprint
+                  ? "Generate, curate, publish, and assign blueprint-grounded quizzes."
+                  : "Publish the blueprint to unlock quiz generation."}
+              </p>
+            </div>
+            {isTeacher ? (
+              <Link
+                href={`/classes/${classRow.id}/activities/quiz/new`}
+                className="rounded-xl bg-cyan-400/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+              >
+                Generate quiz draft
+              </Link>
+            ) : null}
+          </div>
+
+          {isTeacher ? (
+            <div className="mt-5 space-y-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Recent quiz assignments</p>
+              {teacherQuizAssignments.length > 0 ? (
+                teacherQuizAssignments.slice(0, 5).map((assignment) => (
+                  <div
+                    key={assignment.assignmentId}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
+                      <p className="text-xs text-slate-500">{formatDueDate(assignment.dueAt)}</p>
+                    </div>
+                    <Link
+                      href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/review`}
+                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+                    >
+                      Review
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">
+                  No quiz assignments yet. Generate and publish a quiz draft to begin.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="mt-5 space-y-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Your quiz assignments</p>
+              {studentQuizAssignments.length > 0 ? (
+                studentQuizAssignments.slice(0, 5).map((assignment) => (
+                  <div
+                    key={assignment.assignmentId}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
+                      <p className="text-xs text-slate-500">
+                        {formatDueDate(assignment.dueAt)} · Status: {formatAssignmentStatus(assignment.status)}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/quiz`}
+                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+                    >
+                      Open
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">
+                  No quiz assignments yet. Your teacher will publish them here.
                 </p>
               )}
             </div>

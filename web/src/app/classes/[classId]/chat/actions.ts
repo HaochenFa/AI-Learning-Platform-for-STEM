@@ -2,6 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { generateTextWithFallback } from "@/lib/ai/providers";
+import {
+  createWholeClassAssignment,
+  loadStudentAssignmentContext,
+  requirePublishedBlueprintId,
+} from "@/lib/activities/assignments";
+import { getClassAccess, requireAuthenticatedUser } from "@/lib/activities/access";
+import { markRecipientStatus } from "@/lib/activities/submissions";
 import { buildChatPrompt, loadPublishedBlueprintContext } from "@/lib/chat/context";
 import type { ChatModelResponse, ChatTurn } from "@/lib/chat/types";
 import {
@@ -37,67 +44,6 @@ function getFormString(formData: FormData, key: string) {
 
 function redirectWithError(path: string, message: string) {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
-}
-
-async function requireAuthenticatedUser() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { supabase, user: null };
-  }
-
-  return { supabase, user };
-}
-
-async function getClassRole(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  classId: string,
-  userId: string,
-) {
-  const { data: classRow, error: classError } = await supabase
-    .from("classes")
-    .select("id,title,owner_id")
-    .eq("id", classId)
-    .single();
-
-  if (classError || !classRow) {
-    return {
-      found: false as const,
-      isTeacher: false,
-      isMember: false,
-      classTitle: "",
-    };
-  }
-
-  if (classRow.owner_id === userId) {
-    return {
-      found: true as const,
-      isTeacher: true,
-      isMember: true,
-      classTitle: classRow.title,
-    };
-  }
-
-  const { data: enrollment } = await supabase
-    .from("enrollments")
-    .select("role")
-    .eq("class_id", classId)
-    .eq("user_id", userId)
-    .single();
-
-  const role = enrollment?.role;
-  const isTeacher = role === "teacher" || role === "ta";
-  const isMember = Boolean(role);
-
-  return {
-    found: true as const,
-    isTeacher,
-    isMember,
-    classTitle: classRow.title,
-  };
 }
 
 async function logChatAiRequest(input: {
@@ -200,60 +146,6 @@ async function generateChatResponse(input: {
   }
 }
 
-async function loadStudentAssignmentContext(input: {
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
-  classId: string;
-  assignmentId: string;
-  userId: string;
-}) {
-  const { data: recipient, error: recipientError } = await input.supabase
-    .from("assignment_recipients")
-    .select("assignment_id,status")
-    .eq("assignment_id", input.assignmentId)
-    .eq("student_id", input.userId)
-    .maybeSingle();
-
-  if (recipientError || !recipient) {
-    throw new Error("You are not assigned to this activity.");
-  }
-
-  const { data: assignment, error: assignmentError } = await input.supabase
-    .from("assignments")
-    .select("id,class_id,activity_id,due_at")
-    .eq("id", input.assignmentId)
-    .eq("class_id", input.classId)
-    .single();
-
-  if (assignmentError || !assignment) {
-    throw new Error("Assignment not found.");
-  }
-
-  const { data: activity, error: activityError } = await input.supabase
-    .from("activities")
-    .select("id,title,type,config")
-    .eq("id", assignment.activity_id)
-    .eq("class_id", input.classId)
-    .single();
-
-  if (activityError || !activity) {
-    throw new Error("Assignment activity not found.");
-  }
-
-  if (activity.type !== "chat") {
-    throw new Error("This assignment is not a chat activity.");
-  }
-
-  const instructions =
-    typeof activity.config?.instructions === "string" ? activity.config.instructions : null;
-
-  return {
-    assignment,
-    activity,
-    recipient,
-    instructions,
-  };
-}
-
 export async function sendOpenPracticeMessage(
   classId: string,
   formData: FormData,
@@ -264,7 +156,7 @@ export async function sendOpenPracticeMessage(
     return { ok: false, error: "Please sign in to use chat." };
   }
 
-  const role = await getClassRole(supabase, classId, user.id);
+  const role = await getClassAccess(supabase, classId, user.id);
   if (!role.found || !role.isMember) {
     return { ok: false, error: "Class access required." };
   }
@@ -309,7 +201,7 @@ export async function createChatAssignment(classId: string, formData: FormData) 
     redirect("/login");
   }
 
-  const role = await getClassRole(supabase, classId, user.id);
+  const role = await getClassAccess(supabase, classId, user.id);
   if (!role.found || !role.isTeacher) {
     redirectWithError(`/classes/${classId}`, "Teacher access is required to create assignments.");
     return;
@@ -342,25 +234,19 @@ export async function createChatAssignment(classId: string, formData: FormData) 
     return;
   }
 
-  const { data: publishedBlueprint, error: publishedBlueprintError } = await supabase
-    .from("blueprints")
-    .select("id")
-    .eq("class_id", classId)
-    .eq("status", "published")
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (publishedBlueprintError) {
-    redirectWithError(`/classes/${classId}/activities/chat/new`, publishedBlueprintError.message);
-    return;
-  }
-
-  if (!publishedBlueprint) {
-    redirectWithError(
-      `/classes/${classId}/activities/chat/new`,
-      "Publish a blueprint before creating chat assignments.",
-    );
+  let blueprintId = "";
+  try {
+    blueprintId = await requirePublishedBlueprintId(supabase, classId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Published blueprint is required.";
+    if (message.includes("Publish a blueprint")) {
+      redirectWithError(
+        `/classes/${classId}/activities/chat/new`,
+        "Publish a blueprint before creating chat assignments.",
+      );
+      return;
+    }
+    redirectWithError(`/classes/${classId}/activities/chat/new`, message);
     return;
   }
 
@@ -368,7 +254,7 @@ export async function createChatAssignment(classId: string, formData: FormData) 
     .from("activities")
     .insert({
       class_id: classId,
-      blueprint_id: publishedBlueprint.id,
+      blueprint_id: blueprintId,
       type: "chat",
       title,
       config: {
@@ -389,54 +275,24 @@ export async function createChatAssignment(classId: string, formData: FormData) 
     return;
   }
 
-  const { data: assignment, error: assignmentError } = await supabase
-    .from("assignments")
-    .insert({
-      class_id: classId,
-      activity_id: activity.id,
-      assigned_by: user.id,
-      due_at: dueAt,
-    })
-    .select("id")
-    .single();
-
-  if (assignmentError || !assignment) {
+  let assignmentId = "";
+  try {
+    assignmentId = await createWholeClassAssignment({
+      supabase,
+      classId,
+      activityId: activity.id,
+      teacherId: user.id,
+      dueAt,
+    });
+  } catch (error) {
     redirectWithError(
       `/classes/${classId}/activities/chat/new`,
-      assignmentError?.message ?? "Failed to create assignment.",
+      error instanceof Error ? error.message : "Failed to create assignment.",
     );
     return;
   }
 
-  const { data: students, error: studentsError } = await supabase
-    .from("enrollments")
-    .select("user_id")
-    .eq("class_id", classId)
-    .eq("role", "student");
-
-  if (studentsError) {
-    redirectWithError(`/classes/${classId}/activities/chat/new`, studentsError.message);
-    return;
-  }
-
-  if ((students ?? []).length > 0) {
-    const recipients = students!.map((student) => ({
-      assignment_id: assignment.id,
-      student_id: student.user_id,
-      status: "assigned",
-    }));
-
-    const { error: recipientsError } = await supabase
-      .from("assignment_recipients")
-      .insert(recipients);
-
-    if (recipientsError) {
-      redirectWithError(`/classes/${classId}/activities/chat/new`, recipientsError.message);
-      return;
-    }
-  }
-
-  redirect(`/classes/${classId}/assignments/${assignment.id}/review?created=1`);
+  redirect(`/classes/${classId}/assignments/${assignmentId}/review?created=1`);
 }
 
 export async function sendAssignmentMessage(
@@ -450,7 +306,7 @@ export async function sendAssignmentMessage(
     return { ok: false, error: "Please sign in to continue." };
   }
 
-  const role = await getClassRole(supabase, classId, user.id);
+  const role = await getClassAccess(supabase, classId, user.id);
   if (!role.found || !role.isMember) {
     return { ok: false, error: "Class access required." };
   }
@@ -467,13 +323,14 @@ export async function sendAssignmentMessage(
     };
   }
 
-  let assignmentContext: Awaited<ReturnType<typeof loadStudentAssignmentContext>> | null = null;
+  let assignmentContext: Awaited<ReturnType<typeof loadStudentAssignmentContext>>;
   try {
     assignmentContext = await loadStudentAssignmentContext({
       supabase,
       classId,
       assignmentId,
       userId: user.id,
+      expectedType: "chat",
     });
   } catch (error) {
     return {
@@ -482,6 +339,11 @@ export async function sendAssignmentMessage(
     };
   }
 
+  const assignmentInstructions =
+    typeof assignmentContext.activity.config.instructions === "string"
+      ? assignmentContext.activity.config.instructions
+      : null;
+
   try {
     const response = await generateChatResponse({
       classId,
@@ -489,7 +351,7 @@ export async function sendAssignmentMessage(
       userId: user.id,
       userMessage: message,
       transcript,
-      assignmentInstructions: assignmentContext.instructions,
+      assignmentInstructions,
       purpose: "student_chat_assignment",
     });
 
@@ -543,6 +405,7 @@ export async function submitChatAssignment(
       classId,
       assignmentId,
       userId: user.id,
+      expectedType: "chat",
     });
   } catch (error) {
     redirectWithError(
@@ -585,10 +448,7 @@ export async function submitChatAssignment(
       .eq("id", existingSubmission.id);
 
     if (updateError) {
-      redirectWithError(
-        `/classes/${classId}/assignments/${assignmentId}/chat`,
-        updateError.message,
-      );
+      redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, updateError.message);
       return;
     }
   } else {
@@ -600,12 +460,24 @@ export async function submitChatAssignment(
     });
 
     if (insertError) {
-      redirectWithError(
-        `/classes/${classId}/assignments/${assignmentId}/chat`,
-        insertError.message,
-      );
+      redirectWithError(`/classes/${classId}/assignments/${assignmentId}/chat`, insertError.message);
       return;
     }
+  }
+
+  try {
+    await markRecipientStatus({
+      supabase,
+      assignmentId,
+      studentId: user.id,
+      status: "submitted",
+    });
+  } catch (error) {
+    console.error("Failed to update assignment_recipients status to 'submitted'", {
+      assignmentId,
+      studentId: user.id,
+      error,
+    });
   }
 
   redirect(`/classes/${classId}/assignments/${assignmentId}/chat?submitted=1`);
@@ -627,7 +499,7 @@ export async function reviewChatSubmission(
     return;
   }
 
-  const role = await getClassRole(supabase, classId, user.id);
+  const role = await getClassAccess(supabase, classId, user.id);
   if (!role.found || !role.isTeacher) {
     redirectWithError(`/classes/${classId}`, "Teacher access required.");
     return;
@@ -663,10 +535,7 @@ export async function reviewChatSubmission(
     .single();
 
   if (submissionError || !submission) {
-    redirectWithError(
-      `/classes/${classId}/assignments/${assignmentId}/review`,
-      "Submission not found.",
-    );
+    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, "Submission not found.");
     return;
   }
 
@@ -678,10 +547,7 @@ export async function reviewChatSubmission(
     .single();
 
   if (assignmentError || !assignment) {
-    redirectWithError(
-      `/classes/${classId}/assignments/${assignmentId}/review`,
-      "Assignment not found.",
-    );
+    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, "Assignment not found.");
     return;
   }
 
@@ -707,24 +573,22 @@ export async function reviewChatSubmission(
   });
 
   if (feedbackError) {
-    redirectWithError(
-      `/classes/${classId}/assignments/${assignmentId}/review`,
-      feedbackError.message,
-    );
+    redirectWithError(`/classes/${classId}/assignments/${assignmentId}/review`, feedbackError.message);
     return;
   }
 
-  const { error: statusError } = await supabase
-    .from("assignment_recipients")
-    .update({ status: "reviewed" })
-    .eq("assignment_id", assignmentId)
-    .eq("student_id", submission.student_id);
-
-  if (statusError) {
+  try {
+    await markRecipientStatus({
+      supabase,
+      assignmentId,
+      studentId: submission.student_id,
+      status: "reviewed",
+    });
+  } catch (error) {
     console.error("Failed to update assignment_recipients status to 'reviewed'", {
       assignmentId,
       studentId: submission.student_id,
-      error: statusError,
+      error,
     });
   }
 

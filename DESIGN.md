@@ -42,6 +42,19 @@ Student Flow
 - Context policy: chat responses are grounded in published blueprint + retrieved material chunks.
 - Chat model responses are normalized to deterministic JSON and logged in `ai_requests`.
 
+**Quiz Vertical Slice (Implemented)**
+
+- Teacher Quiz Studio:
+  - Generate quiz drafts from published blueprint + retrieved materials.
+  - Edit MCQ questions (4 choices), answers, and explanations.
+  - Publish quiz before assignment (required curation gate).
+- Quiz Assignment Flow:
+  - Teacher creates whole-class quiz assignments from published quiz activities.
+  - Student takes up to 2 attempts (best score policy) with hard due-date lock.
+  - Auto-grading computes per-attempt score; answers/explanations reveal after final attempt or lock.
+  - Teacher review supports score override and feedback comments/highlights.
+- Shared activity infrastructure powers both chat and quiz assignment access/submission workflows.
+
 **Enrollment Modes**
 
 - Primary: join code. Students self enroll using a class code.

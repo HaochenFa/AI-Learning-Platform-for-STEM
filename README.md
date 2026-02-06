@@ -3,7 +3,7 @@
 Production-ready STEM learning platform where teachers transform class materials into a structured Course Blueprint that powers student activities. The system is subject-agnostic, keeps AI outputs editable and auditable, and centers teacher control.
 
 **Status**
-This repo is aligned to the roadmap in `ROADMAP.md`, with core services and blueprint workflows in active development.
+This repo is aligned to the roadmap in `ROADMAP.md`, with core services, blueprint workflows, AI chat, and quiz vertical slices implemented.
 
 **Key Workflows**
 
