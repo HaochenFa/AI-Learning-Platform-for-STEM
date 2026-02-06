@@ -35,6 +35,8 @@ pnpm dev
 - Database migrations live in `supabase/` at the repo root.
 - Run Supabase migrations before testing class creation.
 - Ensure the `materials` storage bucket exists for uploads.
-- Configure at least one AI provider and model (OpenRouter recommended).
+- Configure at least one AI provider with both a chat model and an embedding model.
+- Configure a vision model when processing images or low quality scans (OCR fallback).
 - Set `CRON_SECRET` to protect `POST /api/materials/process` (requires `x-cron-secret` header). If unset, restrict access at the infrastructure layer (e.g., IP allowlist).
+- Schedule `POST /api/materials/process` (for example with Vercel Cron) so queued material jobs are actually processed.
 - Tune `VISION_PAGE_CONCURRENCY` to control parallel Vision calls for low-quality PDF pages.

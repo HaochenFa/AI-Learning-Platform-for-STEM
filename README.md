@@ -78,6 +78,8 @@ pnpm dev
 - File uploads are size-limited and content-type checked.
 - AI context restricted to approved materials and the blueprint.
 - Set `CRON_SECRET` to protect `POST /api/materials/process` (requires `x-cron-secret` header). If unset, restrict access at the infrastructure layer (e.g., IP allowlist).
+- Configure provider-specific embedding models (and vision models if using OCR fallback) so background material processing can complete.
+- Schedule `POST /api/materials/process` (for example with Vercel Cron) to drain the processing queue.
 
 **Docs**
 

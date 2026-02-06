@@ -12,6 +12,14 @@ const JOB_BATCH_SIZE = Number(process.env.MATERIAL_JOB_BATCH ?? 3);
 const LOCK_TIMEOUT_MINUTES = Number(process.env.MATERIAL_JOB_LOCK_MINUTES ?? 15);
 const VISION_PAGE_CONCURRENCY = Math.max(1, Number(process.env.VISION_PAGE_CONCURRENCY ?? 3) || 1);
 const MAX_JOB_ATTEMPTS = Number(process.env.MATERIAL_JOB_MAX_ATTEMPTS ?? 5);
+const TERMINAL_JOB_ERROR_FRAGMENTS = [
+  "no embedding providers are configured",
+  "no vision providers are configured",
+  "embedding dimension mismatch",
+  "openai embeddings are not configured",
+  "openrouter embeddings are not configured",
+  "gemini embeddings are not configured",
+];
 
 const SUPPORTED_MIME_TO_KIND: Record<string, MaterialKind> = {
   "application/pdf": "pdf",
@@ -26,7 +34,7 @@ const SUPPORTED_MIME_TO_KIND: Record<string, MaterialKind> = {
 export async function POST(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (secret) {
-    const provided = req.headers.get("x-cron-secret");
+    const provided = getCronSecretFromRequest(req);
     if (provided !== secret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -78,7 +86,7 @@ export async function POST(req: Request) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Processing failed.";
       failures.push(message);
-      const shouldFail = job.attempts + 1 >= MAX_JOB_ATTEMPTS;
+      const shouldFail = isTerminalJobError(message) || job.attempts + 1 >= MAX_JOB_ATTEMPTS;
       await admin
         .from("material_processing_jobs")
         .update({
@@ -88,6 +96,10 @@ export async function POST(req: Request) {
           locked_at: null,
         })
         .eq("id", job.id);
+
+      if (shouldFail) {
+        await markMaterialFailed(admin, job.material_id, message);
+      }
     }
   }
 
@@ -371,6 +383,65 @@ function isMaterialKind(value: string): value is MaterialKind {
   return value === "pdf" || value === "docx" || value === "pptx" || value === "image";
 }
 
+function getCronSecretFromRequest(req: Request) {
+  const headerSecret = req.headers.get("x-cron-secret");
+  if (headerSecret) {
+    return headerSecret;
+  }
+
+  const authorization = req.headers.get("authorization");
+  if (!authorization) {
+    return null;
+  }
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  return match?.[1] ?? null;
+}
+
+function isTerminalJobError(message: string) {
+  const normalized = message.toLowerCase();
+  return TERMINAL_JOB_ERROR_FRAGMENTS.some((fragment) => normalized.includes(fragment));
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function getMetadataWarnings(metadata: Record<string, unknown> | null) {
+  const warnings = metadata?.warnings;
+  if (!Array.isArray(warnings)) {
+    return [] as string[];
+  }
+  return warnings.filter((warning): warning is string => typeof warning === "string");
+}
+
+async function markMaterialFailed(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  materialId: string,
+  errorMessage: string,
+) {
+  const { data: material, error } = await admin
+    .from("materials")
+    .select("metadata")
+    .eq("id", materialId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to fetch material metadata for failure update", {
+      materialId,
+      error: error.message,
+    });
+  }
+
+  const currentMetadata = isObject(material?.metadata) ? material.metadata : null;
+  const warning = `Processing failed: ${errorMessage}`;
+  const warnings = Array.from(new Set([...getMetadataWarnings(currentMetadata), warning]));
+
+  await updateMaterialStatus(admin, materialId, currentMetadata, {
+    status: "failed",
+    warnings,
+  });
+}
+
 async function updateMaterialStatus(
   admin: ReturnType<typeof createAdminSupabaseClient>,
   materialId: string,
@@ -378,18 +449,22 @@ async function updateMaterialStatus(
   update: {
     status: string;
     warnings: string[];
-    extraction_stats: { charCount: number; segmentCount: number };
+    extraction_stats?: { charCount: number; segmentCount: number };
   },
 ) {
+  const nextMetadata: Record<string, unknown> = {
+    ...(currentMetadata ?? {}),
+    warnings: update.warnings,
+  };
+  if (update.extraction_stats) {
+    nextMetadata.extraction_stats = update.extraction_stats;
+  }
+
   const { error } = await admin
     .from("materials")
     .update({
       status: update.status,
-      metadata: {
-        ...(currentMetadata ?? {}),
-        warnings: update.warnings,
-        extraction_stats: update.extraction_stats,
-      },
+      metadata: nextMetadata,
     })
     .eq("id", materialId);
 
