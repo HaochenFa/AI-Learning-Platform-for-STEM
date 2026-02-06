@@ -228,7 +228,7 @@ export default async function BlueprintPage({
                   label="Generate blueprint"
                   pendingLabel="Generating blueprint..."
                   disabled={!hasReadyMaterials}
-                  className="mt-6 w-full rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/40"
+                  className="mt-6 w-full rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/40"
                 />
                 {!hasReadyMaterials ? (
                   <p className="mt-3 text-xs text-slate-500">

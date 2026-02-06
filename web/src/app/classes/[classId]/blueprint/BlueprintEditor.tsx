@@ -356,7 +356,7 @@ export function BlueprintEditor({
   isOwner,
 }: BlueprintEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [recoveryRefreshCount, setRecoveryRefreshCount] = useState(0);
+  const [dismissedRecoveryKey, setDismissedRecoveryKey] = useState<string | null>(null);
 
   const initialState = useMemo(() => {
     if (!initialDraft) {
@@ -414,7 +414,9 @@ export function BlueprintEditor({
     if (!storageKey || typeof window === "undefined") {
       return null;
     }
-    void recoveryRefreshCount;
+    if (dismissedRecoveryKey === storageKey) {
+      return null;
+    }
 
     const stored = window.localStorage.getItem(storageKey);
     if (!stored) {
@@ -434,7 +436,7 @@ export function BlueprintEditor({
       window.localStorage.removeItem(storageKey);
       return null;
     }
-  }, [initialSerializedDraft, recoveryRefreshCount, storageKey]);
+  }, [dismissedRecoveryKey, initialSerializedDraft, storageKey]);
 
   useEffect(() => {
     if (!storageKey) {
@@ -656,14 +658,14 @@ export function BlueprintEditor({
       window.localStorage.removeItem(storageKey);
     }
     setIsEditing(true);
-    setRecoveryRefreshCount((count) => count + 1);
+    setDismissedRecoveryKey(storageKey);
   };
 
   const handleDismissLocalDraft = () => {
     if (storageKey) {
       window.localStorage.removeItem(storageKey);
     }
-    setRecoveryRefreshCount((count) => count + 1);
+    setDismissedRecoveryKey(storageKey);
   };
 
   if (!blueprint || !initialDraft) {

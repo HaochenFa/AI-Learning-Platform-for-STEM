@@ -54,7 +54,7 @@ export default async function JoinClassPage({
             <PendingSubmitButton
               label="Join class"
               pendingLabel="Joining class..."
-              className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
+              className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
             />
           </div>
         </form>
