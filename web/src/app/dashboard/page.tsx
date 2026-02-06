@@ -91,6 +91,14 @@ export default async function DashboardPage() {
                           New chat assignment
                         </Link>
                       ) : null}
+                      {isTeacher ? (
+                        <Link
+                          href={`/classes/${classItem.id}/activities/quiz/new`}
+                          className="rounded-full border border-cyan-400/40 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-400/10"
+                        >
+                          New quiz draft
+                        </Link>
+                      ) : null}
                     </div>
                   </div>
                 );

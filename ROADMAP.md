@@ -34,7 +34,9 @@ This roadmap focuses on production ready delivery with subject agnostic function
 - Homework assistance with scaffolded hints.
 - Exam review plan based on topic mastery.
 - Status update: Open practice AI Chat and assignment-scoped AI Chat are implemented.
-  Quizzes, flashcards, homework assistance, and exam review remain next.
+- Status update: Quiz vertical slice is implemented with draft generation, teacher curation + publish,
+  whole-class assignment, 2-attempt best-score policy, auto-grading, and teacher override review.
+- Flashcards, homework assistance, and exam review remain next.
 
 **Phase 4 - Product Quality**
 
