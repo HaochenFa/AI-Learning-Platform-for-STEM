@@ -24,15 +24,15 @@ export default async function HomePage() {
       <AmbientBackground />
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-16 px-6 pb-16 pt-10">
         <header className="flex items-center justify-between">
-          <div className="text-sm uppercase tracking-[0.3em] text-slate-400">
+          <div className="text-sm font-medium tracking-wide text-slate-300">
             STEM Learning Platform
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <Link className="text-slate-200 transition hover:text-white" href={headerPrimaryHref}>
+            <Link className="ui-motion-color text-slate-200 hover:text-white" href={headerPrimaryHref}>
               {headerPrimaryLabel}
             </Link>
             <Link
-              className="rounded-full border border-white/10 px-4 py-2 text-slate-200 transition hover:border-white/30 hover:bg-white/5"
+              className="ui-motion-color rounded-full border border-white/10 px-4 py-2 text-slate-200 hover:border-white/30 hover:bg-white/5"
               href={headerSecondaryHref}
             >
               {headerSecondaryLabel}
@@ -42,12 +42,12 @@ export default async function HomePage() {
 
         <main className="grid gap-10 pb-12 pt-16 lg:grid-cols-[minmax(0,1.05fr),minmax(0,0.95fr)]">
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs uppercase tracking-[0.35em] text-cyan-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-medium tracking-wide text-cyan-100">
               <span className="h-2 w-2 rounded-full bg-cyan-300" />
-              Blueprint first workflow
+              Blueprint-first workflow
             </div>
             <div className="space-y-6">
-              <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
+              <p className="text-sm font-medium text-slate-400">
                 For teachers and students
               </p>
               <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
@@ -64,13 +64,13 @@ export default async function HomePage() {
             </div>
             <div className="flex flex-wrap gap-4">
               <Link
-                className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 transition duration-200 hover:-translate-y-0.5 hover:bg-cyan-300"
+                className="ui-motion-lift rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 hover:-translate-y-0.5 hover:bg-cyan-300"
                 href={primaryHref}
               >
                 {primaryLabel}
               </Link>
               <Link
-                className="rounded-xl border border-white/10 px-5 py-3 text-sm text-slate-200 transition duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/5"
+                className="ui-motion-lift rounded-xl border border-white/10 px-5 py-3 text-sm text-slate-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/5"
                 href={secondaryHref}
               >
                 {secondaryLabel}
@@ -84,7 +84,7 @@ export default async function HomePage() {
               ].map(([step, title]) => (
                 <div
                   key={step}
-                  className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-300 transition duration-200 hover:-translate-y-0.5 hover:border-cyan-400/30"
+                  className="ui-motion-lift flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-xs font-medium text-slate-300 hover:-translate-y-0.5 hover:border-cyan-400/30"
                 >
                   <span className="text-cyan-200">{step}</span>
                   <span>{title}</span>
@@ -93,8 +93,8 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 transition duration-200 hover:-translate-y-1 hover:border-cyan-400/30">
-            <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Blueprint studio</p>
+          <div className="ui-motion-lift rounded-3xl border border-white/10 bg-slate-900/60 p-6 hover:-translate-y-1 hover:border-cyan-400/30">
+            <p className="text-xs font-medium tracking-wide text-slate-400">Blueprint studio</p>
             <h2 className="mt-3 text-2xl font-semibold">One blueprint powers every activity.</h2>
             <p className="mt-2 text-sm text-slate-400">
               Teachers curate the blueprint. Students learn from a transparent, shared context.
@@ -111,7 +111,7 @@ export default async function HomePage() {
                 </li>
               ))}
             </ul>
-            <div className="mt-6 flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-slate-300">
+            <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium text-slate-300">
               {["Blueprint", "Activities", "Insights"].map((label) => (
                 <span
                   key={label}

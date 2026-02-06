@@ -31,11 +31,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <AuthHeader />
+      <AuthHeader activeNav="dashboard" />
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-16">
         <header className="flex flex-wrap items-center justify-between gap-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Dashboard</p>
+            <p className="text-sm font-medium text-slate-400">Dashboard</p>
             <h1 className="text-3xl font-semibold">Welcome, {user.email}</h1>
             <p className="text-sm text-slate-400">
               Manage classes, materials, and student assignments.
@@ -51,9 +51,9 @@ export default async function DashboardPage() {
                 <Link
                   key={classItem.id}
                   href={`/classes/${classItem.id}`}
-                  className="group rounded-3xl border border-white/10 bg-slate-900/60 p-6 transition hover:border-cyan-400/40"
+                  className="ui-motion-lift group rounded-3xl border border-white/10 bg-slate-900/60 p-6 hover:-translate-y-0.5 hover:border-cyan-400/40"
                 >
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
+                  <p className="text-xs font-medium text-slate-400">
                     {classItem.owner_id === user.id
                       ? "Teacher"
                       : enrollmentMap.get(classItem.id) === "ta"

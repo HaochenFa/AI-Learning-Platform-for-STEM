@@ -79,11 +79,12 @@ export default async function ClassOverviewPage({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
+        activeNav="dashboard"
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: classRow.title }]}
       />
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Class Overview</p>
+          <p className="text-sm font-medium text-slate-400">Class Overview</p>
           <h1 className="text-3xl font-semibold">{classRow.title}</h1>
           <p className="text-sm text-slate-400">
             {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
@@ -106,14 +107,31 @@ export default async function ClassOverviewPage({
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <h2 className="text-lg font-semibold">Course blueprint</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Generate a structured blueprint from uploaded materials to unlock AI activities.
+              {isTeacher
+                ? "Generate a structured blueprint from uploaded materials to unlock AI activities."
+                : publishedBlueprint
+                  ? "Review the published blueprint that powers your class activities."
+                  : "The blueprint is being prepared by your teacher."}
             </p>
-            <Link
-              href={`/classes/${classRow.id}/blueprint`}
-              className="mt-6 inline-flex rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950"
-            >
-              Open blueprint studio
-            </Link>
+            {isTeacher ? (
+              <Link
+                href={`/classes/${classRow.id}/blueprint`}
+                className="ui-motion-lift mt-6 inline-flex rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 hover:-translate-y-0.5"
+              >
+                Open blueprint studio
+              </Link>
+            ) : publishedBlueprint ? (
+              <Link
+                href={`/classes/${classRow.id}/blueprint/published`}
+                className="ui-motion-lift mt-6 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-sm font-semibold text-cyan-200 hover:-translate-y-0.5"
+              >
+                View published blueprint
+              </Link>
+            ) : (
+              <span className="mt-6 inline-flex rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-500">
+                Awaiting publication
+              </span>
+            )}
           </div>
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <h2 className="text-lg font-semibold">Enrollment</h2>
@@ -142,7 +160,7 @@ export default async function ClassOverviewPage({
             <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 lg:col-span-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Materials library</h2>
-                <span className="text-xs uppercase tracking-[0.25em] text-slate-400">
+                <span className="text-xs font-medium tracking-wide text-slate-400">
                   {materials?.length ?? 0} items
                 </span>
               </div>
@@ -223,7 +241,7 @@ export default async function ClassOverviewPage({
                   </p>
                   <Link
                     href={`/classes/${classRow.id}/blueprint/published`}
-                    className="mt-4 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200"
+                    className="ui-motion-color mt-4 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
                   >
                     View published blueprint
                   </Link>

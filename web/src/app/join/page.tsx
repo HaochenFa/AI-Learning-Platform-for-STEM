@@ -1,5 +1,6 @@
 import { joinClass } from "@/app/classes/actions";
 import AuthHeader from "@/app/components/AuthHeader";
+import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 
 type SearchParams = {
   error?: string;
@@ -17,11 +18,12 @@ export default async function JoinClassPage({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
+        activeNav="join-class"
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Join class" }]}
       />
       <div className="mx-auto w-full max-w-lg px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Student Hub</p>
+          <p className="text-sm font-medium text-slate-400">Student Hub</p>
           <h1 className="text-3xl font-semibold">Join a class</h1>
           <p className="text-sm text-slate-400">
             Enter the join code from your teacher to access assignments.
@@ -43,18 +45,17 @@ export default async function JoinClassPage({
               id="join_code"
               name="join_code"
               required
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm uppercase tracking-[0.35em] text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm tracking-[0.25em] text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
               placeholder="AB12CD"
             />
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              type="submit"
-              className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-            >
-              Join class
-            </button>
+            <PendingSubmitButton
+              label="Join class"
+              pendingLabel="Joining class..."
+              className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
+            />
           </div>
         </form>
       </div>

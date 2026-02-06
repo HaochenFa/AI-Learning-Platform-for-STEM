@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   approveBlueprint,
@@ -13,6 +13,7 @@ const BLOOM_LEVELS = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", 
 
 const MAX_HISTORY_ENTRIES = 50;
 const MAX_DRAFT_BYTES = 1_000_000;
+const LOCAL_DRAFT_KEY_PREFIX = "blueprint-draft";
 const MAP_NODE_WIDTH = 180;
 const MAP_NODE_HEIGHT = 64;
 const MAP_COLUMN_GAP = 140;
@@ -255,6 +256,36 @@ function SaveDraftButton() {
   );
 }
 
+function StartDraftButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="rounded-full border border-cyan-400/40 px-4 py-2 text-xs uppercase tracking-[0.2em] text-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending ? "Starting..." : "Start new draft"}
+    </button>
+  );
+}
+
+function ApproveBlueprintButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className="rounded-full bg-cyan-400/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
+    >
+      {pending ? "Approving..." : "Approve & view"}
+    </button>
+  );
+}
+
 function makeClientId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -300,6 +331,10 @@ function toPayload(state: DraftState): DraftPayload {
   };
 }
 
+function buildLocalDraftStorageKey(classId: string, blueprintId: string) {
+  return `${LOCAL_DRAFT_KEY_PREFIX}:${classId}:${blueprintId}`;
+}
+
 type BlueprintEditorProps = {
   classId: string;
   blueprint: {
@@ -321,6 +356,7 @@ export function BlueprintEditor({
   isOwner,
 }: BlueprintEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [recoveryRefreshCount, setRecoveryRefreshCount] = useState(0);
 
   const initialState = useMemo(() => {
     if (!initialDraft) {
@@ -328,6 +364,13 @@ export function BlueprintEditor({
     }
     return toState(initialDraft);
   }, [initialDraft]);
+  const initialSerializedDraft = useMemo(() => JSON.stringify(toPayload(initialState)), [initialState]);
+  const storageKey = useMemo(() => {
+    if (!blueprint) {
+      return null;
+    }
+    return buildLocalDraftStorageKey(classId, blueprint.id);
+  }, [blueprint, classId]);
 
   const [history, dispatch] = useReducer(historyReducer, {
     history: [initialState],
@@ -366,6 +409,45 @@ export function BlueprintEditor({
   const serializedDraft = useMemo(() => {
     return JSON.stringify(toPayload(draft));
   }, [draft]);
+
+  const recoverableDraft = useMemo(() => {
+    if (!storageKey || typeof window === "undefined") {
+      return null;
+    }
+    void recoveryRefreshCount;
+
+    const stored = window.localStorage.getItem(storageKey);
+    if (!stored) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as DraftPayload;
+      const normalized = JSON.stringify(toPayload(toState(parsed)));
+
+      if (normalized === initialSerializedDraft) {
+        window.localStorage.removeItem(storageKey);
+        return null;
+      }
+      return parsed;
+    } catch {
+      window.localStorage.removeItem(storageKey);
+      return null;
+    }
+  }, [initialSerializedDraft, recoveryRefreshCount, storageKey]);
+
+  useEffect(() => {
+    if (!storageKey) {
+      return;
+    }
+
+    if (serializedDraft === initialSerializedDraft) {
+      window.localStorage.removeItem(storageKey);
+      return;
+    }
+
+    window.localStorage.setItem(storageKey, serializedDraft);
+  }, [initialSerializedDraft, serializedDraft, storageKey]);
 
   const draftByteSize = useMemo(() => {
     return new TextEncoder().encode(serializedDraft).length;
@@ -565,6 +647,25 @@ export function BlueprintEditor({
     setIsEditing(false);
   };
 
+  const handleRestoreLocalDraft = () => {
+    if (!recoverableDraft) {
+      return;
+    }
+    dispatch({ type: "reset", next: toState(recoverableDraft) });
+    if (storageKey) {
+      window.localStorage.removeItem(storageKey);
+    }
+    setIsEditing(true);
+    setRecoveryRefreshCount((count) => count + 1);
+  };
+
+  const handleDismissLocalDraft = () => {
+    if (storageKey) {
+      window.localStorage.removeItem(storageKey);
+    }
+    setRecoveryRefreshCount((count) => count + 1);
+  };
+
   if (!blueprint || !initialDraft) {
     return (
       <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/40 p-6 text-sm text-slate-400">
@@ -593,22 +694,12 @@ export function BlueprintEditor({
           ) : null}
           {blueprint?.status === "published" && isOwner && !isEditing ? (
             <form action={createDraftFromPublished.bind(null, classId)}>
-              <button
-                type="submit"
-                className="rounded-full border border-cyan-400/40 px-4 py-2 text-xs uppercase tracking-[0.2em] text-cyan-200"
-              >
-                Start new draft
-              </button>
+              <StartDraftButton />
             </form>
           ) : null}
           {canApprove && !isEditing ? (
             <form action={approveBlueprint.bind(null, classId, blueprint.id)}>
-              <button
-                type="submit"
-                className="rounded-full bg-cyan-400/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950"
-              >
-                Approve & view
-              </button>
+              <ApproveBlueprintButton />
             </form>
           ) : null}
           {canEdit ? (
@@ -626,6 +717,28 @@ export function BlueprintEditor({
       {warningMessage ? (
         <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
           {warningMessage}
+        </div>
+      ) : null}
+
+      {recoverableDraft ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-xs text-cyan-100">
+          <p>Unsaved local changes were found for this blueprint.</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRestoreLocalDraft}
+              className="rounded-full bg-cyan-300 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-950"
+            >
+              Restore
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissLocalDraft}
+              className="rounded-full border border-cyan-200/40 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-cyan-100"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       ) : null}
 

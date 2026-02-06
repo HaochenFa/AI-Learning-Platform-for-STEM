@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --motion-fast: 160ms;
+  --motion-standard: 220ms;
+  --motion-slow: 320ms;
 }
 
 @theme inline {
@@ -24,6 +27,23 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+.ui-motion-color {
+  transition:
+    color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    opacity var(--motion-fast) ease;
+}
+
+.ui-motion-lift {
+  transition:
+    transform var(--motion-standard) cubic-bezier(0.2, 0.7, 0.2, 1),
+    color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-standard) ease;
 }
 
 h1,
@@ -121,5 +141,14 @@ h3 {
 @media (prefers-reduced-motion: reduce) {
   .hero-orb {
     animation: none;
+  }
+
+  .ui-motion-color,
+  .ui-motion-lift {
+    transition: none !important;
+  }
+
+  .ui-motion-lift:hover {
+    transform: none !important;
   }
 }

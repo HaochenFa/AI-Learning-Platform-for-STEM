@@ -77,6 +77,7 @@ export default async function BlueprintPublishedPage({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
+        activeNav="dashboard"
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: classRow.title, href: `/classes/${classRow.id}` },
@@ -87,7 +88,7 @@ export default async function BlueprintPublishedPage({
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Published Blueprint</p>
+            <p className="text-sm font-medium text-slate-400">Published Blueprint</p>
             <h1 className="text-3xl font-semibold">{classRow.title}</h1>
             <p className="text-sm text-slate-400">
               {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
@@ -95,7 +96,7 @@ export default async function BlueprintPublishedPage({
           </div>
           <Link
             href={`/classes/${classRow.id}`}
-            className="text-xs uppercase tracking-[0.3em] text-slate-400 hover:text-slate-200"
+            className="ui-motion-color text-xs font-medium text-slate-400 hover:text-slate-200"
           >
             Back to class
           </Link>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { publishBlueprint } from "@/app/classes/[classId]/blueprint/actions";
 import AuthHeader from "@/app/components/AuthHeader";
+import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,7 @@ export default async function BlueprintOverviewPage({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
+        activeNav="dashboard"
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: classRow.title, href: `/classes/${classRow.id}` },
@@ -110,7 +112,7 @@ export default async function BlueprintOverviewPage({
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Blueprint Overview</p>
+            <p className="text-sm font-medium text-slate-400">Blueprint Overview</p>
             <h1 className="text-3xl font-semibold">{classRow.title}</h1>
             <p className="text-sm text-slate-400">
               {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
@@ -118,7 +120,7 @@ export default async function BlueprintOverviewPage({
           </div>
           <Link
             href={`/classes/${classRow.id}/blueprint`}
-            className="text-xs uppercase tracking-[0.3em] text-slate-400 hover:text-slate-200"
+            className="ui-motion-color text-xs font-medium text-slate-400 hover:text-slate-200"
           >
             Back to editor
           </Link>
@@ -140,12 +142,11 @@ export default async function BlueprintOverviewPage({
             </div>
             {blueprint.status === "approved" ? (
               <form action={publishBlueprint.bind(null, classRow.id, blueprint.id)}>
-                <button
-                  type="submit"
-                  className="rounded-full bg-cyan-400/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950"
-                >
-                  Publish blueprint
-                </button>
+                <PendingSubmitButton
+                  label="Publish blueprint"
+                  pendingLabel="Publishing..."
+                  className="rounded-full bg-cyan-400/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
+                />
               </form>
             ) : (
               <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-emerald-200">

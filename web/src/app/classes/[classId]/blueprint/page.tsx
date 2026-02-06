@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { generateBlueprint } from "@/app/classes/[classId]/blueprint/actions";
 import { BlueprintEditor } from "@/app/classes/[classId]/blueprint/BlueprintEditor";
 import AuthHeader from "@/app/components/AuthHeader";
+import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -113,11 +114,15 @@ export default async function BlueprintPage({
     objectivesByTopic.set(objective.topic_id, list);
   });
 
-  const { count: materialCount } = await supabase
+  const { data: materials } = await supabase
     .from("materials")
-    .select("id", { count: "exact", head: true })
+    .select("status")
     .eq("class_id", classId);
-  const hasMaterials = (materialCount ?? 0) > 0;
+  const materialCount = materials?.length ?? 0;
+  const readyMaterialCount = materials?.filter((material) => material.status === "ready").length ?? 0;
+  const processingMaterialCount =
+    materials?.filter((material) => material.status === "processing").length ?? 0;
+  const hasReadyMaterials = readyMaterialCount > 0;
 
   const errorMessage =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
@@ -153,6 +158,7 @@ export default async function BlueprintPage({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
+        activeNav="dashboard"
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: classRow.title, href: `/classes/${classRow.id}` },
@@ -161,7 +167,7 @@ export default async function BlueprintPage({
       />
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Course Blueprint</p>
+          <p className="text-sm font-medium text-slate-400">Course Blueprint</p>
           <h1 className="text-3xl font-semibold">{classRow.title}</h1>
           <p className="text-sm text-slate-400">
             {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
@@ -210,22 +216,27 @@ export default async function BlueprintPage({
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <h2 className="text-lg font-semibold">Materials check</h2>
             <p className="mt-2 text-sm text-slate-400">
-              {hasMaterials
-                ? `${materialCount} materials ready for generation.`
-                : "Upload materials before generating the blueprint."}
+              {materialCount === 0
+                ? "Upload materials before generating the blueprint."
+                : readyMaterialCount > 0
+                  ? `${readyMaterialCount} of ${materialCount} materials are processed and ready.`
+                  : "Materials uploaded, but none are processed yet."}
             </p>
             {isTeacher ? (
               <form action={generateBlueprint.bind(null, classRow.id)}>
-                <button
-                  type="submit"
-                  disabled={!hasMaterials}
+                <PendingSubmitButton
+                  label="Generate blueprint"
+                  pendingLabel="Generating blueprint..."
+                  disabled={!hasReadyMaterials}
                   className="mt-6 w-full rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/40"
-                >
-                  Generate blueprint
-                </button>
-                {!hasMaterials ? (
+                />
+                {!hasReadyMaterials ? (
                   <p className="mt-3 text-xs text-slate-500">
-                    Upload at least one material to enable blueprint generation.
+                    {materialCount > 0
+                      ? processingMaterialCount > 0
+                        ? `${processingMaterialCount} material${processingMaterialCount === 1 ? " is" : "s are"} still processing.`
+                        : "At least one processed material is required."
+                      : "Upload at least one material to enable blueprint generation."}
                   </p>
                 ) : null}
               </form>
@@ -242,7 +253,7 @@ export default async function BlueprintPage({
             <h2 className="text-lg font-semibold">Draft editor</h2>
             <Link
               href={`/classes/${classRow.id}`}
-              className="text-xs uppercase tracking-[0.3em] text-slate-400 hover:text-slate-200"
+              className="ui-motion-color text-xs font-medium text-slate-400 hover:text-slate-200"
             >
               Back to class
             </Link>

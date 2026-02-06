@@ -1,5 +1,6 @@
 import { createClass } from "@/app/classes/actions";
 import AuthHeader from "@/app/components/AuthHeader";
+import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 
 type SearchParams = {
   error?: string;
@@ -17,11 +18,12 @@ export default async function NewClassPage({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AuthHeader
+        activeNav="new-class"
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "New class" }]}
       />
       <div className="mx-auto w-full max-w-4xl px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Teacher Studio</p>
+          <p className="text-sm font-medium text-slate-400">Teacher Studio</p>
           <h1 className="text-3xl font-semibold">Create a class</h1>
           <p className="text-sm text-slate-400">
             Set the subject and level. A join code will be generated for students.
@@ -86,12 +88,11 @@ export default async function NewClassPage({
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              type="submit"
-              className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-            >
-              Create class
-            </button>
+            <PendingSubmitButton
+              label="Create class"
+              pendingLabel="Creating class..."
+              className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
+            />
           </div>
         </form>
       </div>
