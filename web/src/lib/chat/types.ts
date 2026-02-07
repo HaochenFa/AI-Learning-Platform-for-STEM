@@ -11,6 +11,7 @@ export type ChatModelResponse = {
   answer: string;
   citations: { sourceLabel: string; rationale: string }[];
   safety: "ok" | "refusal";
+  confidence?: "low" | "medium" | "high";
 };
 
 export type ChatAssignmentSubmissionContent = {

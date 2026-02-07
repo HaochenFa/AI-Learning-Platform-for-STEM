@@ -3,12 +3,18 @@
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { buildBlueprintPrompt, parseBlueprintResponse } from "@/lib/ai/blueprint";
+import {
+  DEFAULT_BLUEPRINT_SCHEMA_VERSION,
+  buildBlueprintPrompt,
+  parseBlueprintResponse,
+} from "@/lib/ai/blueprint";
+import type { BloomLevel, BlueprintPayload, BlueprintTopic } from "@/lib/ai/blueprint";
 import { generateTextWithFallback } from "@/lib/ai/providers";
 import { retrieveMaterialContext } from "@/lib/materials/retrieval";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
 const DRAFT_ALREADY_EXISTS_MESSAGE = "A draft version already exists. Open it to continue editing.";
+const BLUEPRINT_REQUEST_PURPOSE = "blueprint_generation_v2";
 
 type DraftObjectiveInput = {
   id?: string;
@@ -228,6 +234,153 @@ function validatePrerequisites(topics: DraftTopicInput[]) {
   return graph;
 }
 
+function toRecord(value: unknown) {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+const BLOOM_LEVEL_SET = new Set<BloomLevel>([
+  "remember",
+  "understand",
+  "apply",
+  "analyze",
+  "evaluate",
+  "create",
+]);
+
+function normalizeBloomLevel(level?: string | null): BloomLevel | undefined {
+  if (!level) {
+    return undefined;
+  }
+  const normalized = level.trim().toLowerCase();
+  return BLOOM_LEVEL_SET.has(normalized as BloomLevel) ? (normalized as BloomLevel) : undefined;
+}
+
+function slugifyKey(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+function parseStoredBlueprintContent(raw: unknown): BlueprintPayload | null {
+  const record = toRecord(raw);
+  if (!record) {
+    return null;
+  }
+
+  const summary = typeof record.summary === "string" ? record.summary.trim() : "";
+  if (!summary) {
+    return null;
+  }
+
+  const topics = Array.isArray(record.topics) ? record.topics : [];
+  if (topics.length === 0) {
+    return null;
+  }
+
+  return {
+    schemaVersion:
+      typeof record.schemaVersion === "string" ? record.schemaVersion : DEFAULT_BLUEPRINT_SCHEMA_VERSION,
+    summary,
+    assumptions: Array.isArray(record.assumptions)
+      ? record.assumptions.filter((value): value is string => typeof value === "string")
+      : [],
+    uncertaintyNotes: Array.isArray(record.uncertaintyNotes)
+      ? record.uncertaintyNotes.filter((value): value is string => typeof value === "string")
+      : [],
+    qualityRubric: toRecord(record.qualityRubric)
+      ? {
+          coverageCompleteness:
+            (toRecord(record.qualityRubric)?.coverageCompleteness as "low" | "medium" | "high") ??
+            "medium",
+          logicalProgression:
+            (toRecord(record.qualityRubric)?.logicalProgression as "low" | "medium" | "high") ??
+            "medium",
+          evidenceGrounding:
+            (toRecord(record.qualityRubric)?.evidenceGrounding as "low" | "medium" | "high") ??
+            "medium",
+          notes: Array.isArray(toRecord(record.qualityRubric)?.notes)
+            ? (toRecord(record.qualityRubric)?.notes as unknown[]).filter(
+                (value): value is string => typeof value === "string",
+              )
+            : [],
+        }
+      : undefined,
+    topics: topics.filter((topic): topic is BlueprintTopic => Boolean(toRecord(topic))) as BlueprintTopic[],
+  };
+}
+
+function buildCanonicalBlueprintFromDraft(
+  payload: DraftPayload,
+  existing?: BlueprintPayload | null,
+): BlueprintPayload {
+  const usedKeys = new Set<string>();
+  const topicKeyByClientId = new Map<string, string>();
+  const existingTopicByNormalizedTitle = new Map(
+    (existing?.topics ?? []).map((topic) => [topic.title.trim().toLowerCase(), topic]),
+  );
+
+  const orderedTopics = [...payload.topics].sort((a, b) => a.sequence - b.sequence);
+
+  for (const [index, topic] of orderedTopics.entries()) {
+    let candidate = slugifyKey(topic.title || "") || `topic-${index + 1}`;
+    if (candidate.length < 3) {
+      candidate = `topic-${index + 1}`;
+    }
+    let suffix = 2;
+    let unique = candidate;
+    while (usedKeys.has(unique)) {
+      unique = `${candidate}-${suffix}`;
+      suffix += 1;
+    }
+    usedKeys.add(unique);
+    topicKeyByClientId.set(topic.clientId, unique);
+  }
+
+  return {
+    schemaVersion: DEFAULT_BLUEPRINT_SCHEMA_VERSION,
+    summary: payload.summary.trim(),
+    assumptions: existing?.assumptions ?? [],
+    uncertaintyNotes: existing?.uncertaintyNotes ?? [],
+    qualityRubric: existing?.qualityRubric ?? {
+      coverageCompleteness: "medium",
+      logicalProgression: "medium",
+      evidenceGrounding: "medium",
+      notes: ["Converted from editable draft fields."],
+    },
+    topics: orderedTopics.map((topic, index) => {
+      const key = topicKeyByClientId.get(topic.clientId) ?? `topic-${index + 1}`;
+      const existingTopic = existingTopicByNormalizedTitle.get(topic.title.trim().toLowerCase());
+      return {
+        key,
+        title: topic.title.trim(),
+        description: topic.description?.trim() || undefined,
+        section: topic.section?.trim() || undefined,
+        sequence: topic.sequence,
+        prerequisites:
+          topic.prerequisiteClientIds
+            ?.map((clientId) => topicKeyByClientId.get(clientId))
+            .filter((value): value is string => Boolean(value)) ?? [],
+        objectives: topic.objectives.map((objective) => ({
+          statement: objective.statement.trim(),
+          level: normalizeBloomLevel(objective.level),
+          masteryCriteria: undefined,
+          misconceptionAddressed: undefined,
+          evidence: [],
+        })),
+        assessmentIdeas:
+          existingTopic?.assessmentIdeas && existingTopic.assessmentIdeas.length > 0
+            ? existingTopic.assessmentIdeas
+            : [`Formative check focused on ${topic.title.trim()}.`],
+        misconceptionFlags: existingTopic?.misconceptionFlags ?? [],
+        evidence: existingTopic?.evidence ?? [],
+      };
+    }),
+  };
+}
+
 async function fetchNextBlueprintVersion(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   classId: string,
@@ -249,14 +402,17 @@ async function insertDraftFromPayload({
   userId,
   payload,
   prereqGraph,
+  canonicalPayload,
 }: {
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
   classId: string;
   userId: string;
   payload: DraftPayload;
   prereqGraph: Map<string, string[]>;
+  canonicalPayload?: BlueprintPayload;
 }) {
   const nextVersion = await fetchNextBlueprintVersion(supabase, classId);
+  const canonical = canonicalPayload ?? buildCanonicalBlueprintFromDraft(payload);
 
   const { data: blueprintRow, error: blueprintError } = await supabase
     .from("blueprints")
@@ -265,6 +421,8 @@ async function insertDraftFromPayload({
       version: nextVersion,
       status: "draft",
       summary: payload.summary.trim(),
+      content_json: canonical,
+      content_schema_version: canonical.schemaVersion ?? DEFAULT_BLUEPRINT_SCHEMA_VERSION,
       created_by: userId,
     })
     .select("id")
@@ -469,7 +627,9 @@ export async function generateBlueprint(classId: string) {
         class_id: classId,
         version: nextVersion,
         status: "draft",
-        summary: payload.summary,
+        summary: payload.summary.trim(),
+        content_json: payload,
+        content_schema_version: payload.schemaVersion ?? DEFAULT_BLUEPRINT_SCHEMA_VERSION,
         created_by: user.id,
       })
       .select("id")
@@ -487,9 +647,9 @@ export async function generateBlueprint(classId: string) {
         .from("topics")
         .insert({
           blueprint_id: blueprintRow.id,
-          title: topic.title,
-          description: topic.description ?? null,
-          section: null,
+          title: topic.title.trim(),
+          description: topic.description?.trim() || null,
+          section: topic.section?.trim() || null,
           sequence: topic.sequence,
           prerequisite_topic_ids: [],
         })
@@ -504,7 +664,7 @@ export async function generateBlueprint(classId: string) {
 
       const objectives = topic.objectives.map((objective) => ({
         topic_id: topicRow.id,
-        statement: objective.statement,
+        statement: objective.statement.trim(),
         level: objective.level ?? null,
       }));
 
@@ -543,7 +703,7 @@ export async function generateBlueprint(classId: string) {
       user_id: user.id,
       provider: result.provider,
       model: result.model,
-      purpose: "blueprint_generation",
+      purpose: BLUEPRINT_REQUEST_PURPOSE,
       prompt_tokens: result.usage?.promptTokens ?? null,
       completion_tokens: result.usage?.completionTokens ?? null,
       total_tokens: result.usage?.totalTokens ?? null,
@@ -565,7 +725,7 @@ export async function generateBlueprint(classId: string) {
       class_id: classId,
       user_id: user.id,
       provider: usedProvider ?? "unknown",
-      purpose: "blueprint_generation",
+      purpose: BLUEPRINT_REQUEST_PURPOSE,
       latency_ms: Date.now() - start,
       status: "error",
     });
@@ -603,7 +763,7 @@ export async function saveDraft(classId: string, blueprintId: string, formData: 
 
   const { data: blueprint, error: blueprintError } = await supabase
     .from("blueprints")
-    .select("id,status,version")
+    .select("id,status,version,content_json")
     .eq("id", blueprintId)
     .eq("class_id", classId)
     .single();
@@ -641,6 +801,10 @@ export async function saveDraft(classId: string, blueprintId: string, formData: 
     }
 
     let newDraftId: string | null = null;
+    const canonicalPayload = buildCanonicalBlueprintFromDraft(
+      payload,
+      parseStoredBlueprintContent(blueprint.content_json),
+    );
     try {
       newDraftId = await insertDraftFromPayload({
         supabase,
@@ -648,6 +812,7 @@ export async function saveDraft(classId: string, blueprintId: string, formData: 
         userId: user.id,
         payload,
         prereqGraph,
+        canonicalPayload,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create draft.";
@@ -698,7 +863,14 @@ export async function saveDraft(classId: string, blueprintId: string, formData: 
 
   const { error: updateError } = await supabase
     .from("blueprints")
-    .update({ summary: payload.summary.trim() })
+    .update({
+      summary: payload.summary.trim(),
+      content_json: buildCanonicalBlueprintFromDraft(
+        payload,
+        parseStoredBlueprintContent(blueprint.content_json),
+      ),
+      content_schema_version: DEFAULT_BLUEPRINT_SCHEMA_VERSION,
+    })
     .eq("id", blueprint.id);
 
   if (updateError) {
@@ -958,7 +1130,7 @@ export async function createDraftFromPublished(classId: string) {
 
   const { data: publishedBlueprint, error: publishedError } = await supabase
     .from("blueprints")
-    .select("id,summary")
+    .select("id,summary,content_json")
     .eq("class_id", classId)
     .eq("status", "published")
     .order("version", { ascending: false })
@@ -1034,12 +1206,17 @@ export async function createDraftFromPublished(classId: string) {
 
   let newDraftId: string | null = null;
   try {
+    const canonicalPayload = buildCanonicalBlueprintFromDraft(
+      payload,
+      parseStoredBlueprintContent(publishedBlueprint.content_json),
+    );
     newDraftId = await insertDraftFromPayload({
       supabase,
       classId,
       userId: user.id,
       payload,
       prereqGraph,
+      canonicalPayload,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create draft.";

@@ -97,12 +97,18 @@ Student Flow
 - Materials are extracted into structured segments (pages, slides, paragraphs).
 - Background processing runs OCR and generates embeddings for chunked retrieval.
 - Blueprint generation retrieves top-ranked chunks with source metadata instead of raw concatenation.
+- Prompt quality and grounding behavior are environment-tunable (`AI_PROMPT_QUALITY_PROFILE`,
+  `AI_GROUNDING_MODE`) for safe rollout.
 
 **Blueprint Lifecycle**
 
 - Draft: editable working version.
 - Overview (Approved): compiled preview for final review.
 - Published: read-only, student-facing blueprint snapshot.
+- Canonical Blueprint Snapshot (v2): each blueprint row stores a normalized JSON snapshot
+  (`blueprints.content_json`, `blueprints.content_schema_version`) used by downstream AI features.
+- Existing relational tables (`topics`, `objectives`) remain the current editor/publish surface and
+  are kept in sync for backward compatibility.
 
 **Data Model**
 Core Entities

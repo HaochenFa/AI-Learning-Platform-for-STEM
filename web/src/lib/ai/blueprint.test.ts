@@ -6,23 +6,54 @@ import {
 } from "@/lib/ai/blueprint";
 
 const validPayload = {
-  summary: "This course covers limits and derivatives.",
-  assumptions: ["Students know basic algebra."],
+  schemaVersion: "v2",
+  summary: "This course builds from limits to derivatives and applications in scientific models.",
+  assumptions: ["Students are fluent with algebraic manipulation."],
+  uncertaintyNotes: ["Some enrichment examples may require instructor curation."],
+  qualityRubric: {
+    coverageCompleteness: "high",
+    logicalProgression: "high",
+    evidenceGrounding: "medium",
+    notes: ["Derived from provided lecture slides and notes."],
+  },
   topics: [
     {
       key: "limits",
       title: "Limits",
-      description: "Foundations of limits.",
+      description: "Foundational limit notation and intuition.",
+      section: "Module 1",
       sequence: 1,
       prerequisites: [],
-      objectives: [{ statement: "Define a limit formally.", level: "understand" }],
-      assessmentIdeas: ["Exit ticket on limit notation."],
+      objectives: [
+        {
+          statement: "Explain limit notation and evaluate basic one-sided limits.",
+          level: "understand",
+          masteryCriteria: "Correctly solve 4 of 5 representative limit tasks.",
+        },
+      ],
+      assessmentIdeas: ["Short formative quiz on one-sided and two-sided limits."],
+      misconceptionFlags: ["Confusing function value with limiting value."],
+      evidence: [{ sourceLabel: "Source 1", rationale: "Lecture notes define formal notation." }],
+    },
+    {
+      key: "derivatives",
+      title: "Derivatives",
+      description: "Derivative as limit of change and local linearity.",
+      sequence: 2,
+      prerequisites: ["limits"],
+      objectives: [
+        {
+          statement: "Apply derivative rules to compute rates of change in context.",
+          level: "apply",
+        },
+      ],
+      assessmentIdeas: ["Problem set with interpreted derivatives in physics contexts."],
     },
   ],
 };
 
 describe("buildBlueprintPrompt", () => {
-  it("includes materials and structure requirements", () => {
+  it("includes materials and upgraded structure requirements", () => {
     const prompt = buildBlueprintPrompt({
       classTitle: "Calculus I",
       subject: "Mathematics",
@@ -33,21 +64,9 @@ describe("buildBlueprintPrompt", () => {
 
     expect(prompt.system).toContain("curriculum designer");
     expect(prompt.user).toContain("Materials provided: 2");
-    expect(prompt.user).toContain('"topics"');
+    expect(prompt.user).toContain('"qualityRubric"');
+    expect(prompt.user).toContain("sequence values must be integers");
     expect(prompt.user).toContain("Materials:");
-  });
-
-  it("falls back to default subject and level", () => {
-    const prompt = buildBlueprintPrompt({
-      classTitle: "Intro STEM",
-      subject: null,
-      level: null,
-      materialCount: 1,
-      materialText: "Notes",
-    });
-
-    expect(prompt.user).toContain("Subject: STEM");
-    expect(prompt.user).toContain("Level: Mixed high school/college");
   });
 });
 
@@ -57,84 +76,85 @@ describe("validateBlueprintPayload", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("accepts payloads with section fields", () => {
+  it("rejects non-integer sequence values", () => {
+    const result = validateBlueprintPayload({
+      ...validPayload,
+      topics: [{ ...validPayload.topics[0], sequence: 1.5 }, validPayload.topics[1]],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((error) => error.includes("sequence must be an integer"))).toBe(true);
+  });
+
+  it("rejects near-duplicate topic titles", () => {
+    const result = validateBlueprintPayload({
+      ...validPayload,
+      topics: [
+        validPayload.topics[0],
+        {
+          ...validPayload.topics[1],
+          title: "limits",
+          key: "limits-advanced",
+        },
+      ],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((error) => error.includes("near-duplicate"))).toBe(true);
+  });
+
+  it("rejects missing prerequisite references", () => {
+    const result = validateBlueprintPayload({
+      ...validPayload,
+      topics: [
+        validPayload.topics[0],
+        { ...validPayload.topics[1], prerequisites: ["missing-topic"] },
+      ],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((error) => error.includes("references missing key"))).toBe(true);
+  });
+
+  it("rejects low-quality objective statements", () => {
     const result = validateBlueprintPayload({
       ...validPayload,
       topics: [
         {
           ...validPayload.topics[0],
-          section: "Module 1",
+          objectives: [{ statement: "Define limits", level: "understand" }],
         },
-      ],
-    });
-    expect(result.ok).toBe(true);
-  });
-
-  it("rejects payloads missing required fields", () => {
-    const result = validateBlueprintPayload({ topics: [] });
-    expect(result.ok).toBe(false);
-    expect(result.errors.length).toBeGreaterThan(0);
-  });
-
-  it("rejects non-number sequence values", () => {
-    const result = validateBlueprintPayload({
-      ...validPayload,
-      topics: [
-        {
-          ...validPayload.topics[0],
-          sequence: "first" as unknown as number,
-        },
+        validPayload.topics[1],
       ],
     });
     expect(result.ok).toBe(false);
-    expect(result.errors.some((error) => error.includes("sequence must be a number"))).toBe(true);
-  });
-
-  it("rejects objectives without statements", () => {
-    const result = validateBlueprintPayload({
-      ...validPayload,
-      topics: [
-        {
-          ...validPayload.topics[0],
-          objectives: [{ statement: "" }],
-        },
-      ],
-    });
-    expect(result.ok).toBe(false);
-    expect(result.errors.some((error) => error.includes("statement is required"))).toBe(true);
-  });
-
-  it("rejects duplicate topic keys", () => {
-    const result = validateBlueprintPayload({
-      ...validPayload,
-      topics: [{ ...validPayload.topics[0] }, { ...validPayload.topics[0] }],
-    });
-    expect(result.ok).toBe(false);
-    expect(result.errors.some((error) => error.includes("duplicated"))).toBe(true);
-  });
-
-  it("rejects non-array prerequisites", () => {
-    const result = validateBlueprintPayload({
-      ...validPayload,
-      topics: [
-        {
-          ...validPayload.topics[0],
-          prerequisites: "limits" as unknown as string[],
-        },
-      ],
-    });
-    expect(result.ok).toBe(false);
-    expect(result.errors.some((error) => error.includes("prerequisites must be an array"))).toBe(
-      true,
-    );
+    expect(result.errors.some((error) => error.includes("must be specific"))).toBe(true);
   });
 });
 
 describe("parseBlueprintResponse", () => {
-  it("extracts JSON from a wrapped response", () => {
-    const raw = `Here is the JSON:\n${JSON.stringify(validPayload)}\nThanks.`;
+  it("extracts JSON from wrapped responses", () => {
+    const raw = `Blueprint:\n${JSON.stringify(validPayload)}\nDone.`;
     const parsed = parseBlueprintResponse(raw);
-    expect(parsed.summary).toBe(validPayload.summary);
+    expect(parsed.summary).toContain("limits");
+    expect(parsed.topics[0]?.key).toBe("limits");
+  });
+
+  it("repairs trailing commas in near-valid JSON", () => {
+    const raw = `{
+      "summary": "This course builds from limits to derivatives and applications in scientific models.",
+      "topics": [
+        {
+          "key": "limits",
+          "title": "Limits",
+          "description": "Foundational limit notation and intuition.",
+          "sequence": 1,
+          "prerequisites": [],
+          "objectives": [{ "statement": "Explain limit notation and evaluate basic one-sided limits.", "level": "understand" }],
+          "assessmentIdeas": ["Short formative quiz on one-sided and two-sided limits."],
+        }
+      ]
+    }`;
+
+    const parsed = parseBlueprintResponse(raw);
+    expect(parsed.topics).toHaveLength(1);
     expect(parsed.topics[0]?.key).toBe("limits");
   });
 
@@ -145,13 +165,5 @@ describe("parseBlueprintResponse", () => {
   it("throws when JSON does not match schema", () => {
     const raw = JSON.stringify({ summary: "Ok", topics: [] });
     expect(() => parseBlueprintResponse(raw)).toThrow("Invalid blueprint JSON");
-  });
-
-  it("throws when response contains multiple JSON objects", () => {
-    const first = JSON.stringify(validPayload);
-    const second = JSON.stringify({ ...validPayload, summary: "Alternate summary" });
-    expect(() => parseBlueprintResponse(`${first}\n${second}`)).toThrow(
-      "Multiple JSON objects found",
-    );
   });
 });

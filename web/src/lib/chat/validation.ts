@@ -188,10 +188,20 @@ export function parseChatModelResponse(raw: string): ChatModelResponse {
     };
   });
 
+  const confidenceRaw = (parsed as { confidence?: unknown }).confidence;
+  let confidence: ChatModelResponse["confidence"];
+  if (
+    typeof confidenceRaw === "string" &&
+    (confidenceRaw === "low" || confidenceRaw === "medium" || confidenceRaw === "high")
+  ) {
+    confidence = confidenceRaw;
+  }
+
   return {
     answer,
     citations,
     safety,
+    confidence,
   };
 }
 

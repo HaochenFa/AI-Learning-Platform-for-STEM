@@ -30,6 +30,8 @@ import {
 } from "@/lib/quiz/validation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+const QUIZ_REQUEST_PURPOSE = "quiz_generation_v2";
+
 function redirectWithError(path: string, message: string) {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
@@ -59,7 +61,7 @@ async function logQuizAiRequest(input: {
     user_id: input.userId,
     provider: input.provider,
     model: input.model ?? null,
-    purpose: "quiz_generation",
+    purpose: QUIZ_REQUEST_PURPOSE,
     status: input.status,
     latency_ms: input.latencyMs,
     prompt_tokens: input.promptTokens ?? null,

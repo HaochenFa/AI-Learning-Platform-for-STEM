@@ -21,6 +21,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/ai/blueprint", () => ({
+  DEFAULT_BLUEPRINT_SCHEMA_VERSION: "v2",
   buildBlueprintPrompt: vi.fn(() => ({
     system: "system",
     user: "user",
@@ -189,6 +190,8 @@ describe("generateBlueprint", () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     let blueprintCall = 0;
     let topicCall = 0;
+    const latestBlueprintBuilder = makeBuilder({ data: null, error: null });
+    const insertBlueprintBuilder = makeBuilder({ data: { id: "bp-1" }, error: null });
 
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
@@ -215,9 +218,9 @@ describe("generateBlueprint", () => {
       if (table === "blueprints") {
         blueprintCall += 1;
         if (blueprintCall === 1) {
-          return makeBuilder({ data: null, error: null });
+          return latestBlueprintBuilder;
         }
-        return makeBuilder({ data: { id: "bp-1" }, error: null });
+        return insertBlueprintBuilder;
       }
       if (table === "topics") {
         topicCall += 1;
@@ -264,6 +267,12 @@ describe("generateBlueprint", () => {
       "/classes/class-1/blueprint?generated=1",
     );
     expect(redirect).toHaveBeenCalled();
+    expect(insertBlueprintBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content_json: expect.any(Object),
+        content_schema_version: "v2",
+      }),
+    );
   });
 });
 
@@ -276,6 +285,13 @@ describe("blueprint workflow actions", () => {
 
   it("saves a draft and redirects", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    const blueprintSelectBuilder = makeBuilder({
+      data: { id: "bp-1", status: "draft", content_json: {} },
+      error: null,
+    });
+    const blueprintUpdateBuilder = makeBuilder({ error: null });
+    let blueprintCalls = 0;
+
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
@@ -287,10 +303,8 @@ describe("blueprint workflow actions", () => {
         return makeBuilder({ data: null, error: null });
       }
       if (table === "blueprints") {
-        return makeBuilder({
-          data: { id: "bp-1", status: "draft" },
-          error: null,
-        });
+        blueprintCalls += 1;
+        return blueprintCalls === 1 ? blueprintSelectBuilder : blueprintUpdateBuilder;
       }
       if (table === "topics") {
         return makeBuilder({
@@ -329,6 +343,13 @@ describe("blueprint workflow actions", () => {
       "/classes/class-1/blueprint?saved=1",
     );
     expect(redirect).toHaveBeenCalled();
+    expect(blueprintUpdateBuilder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: "Summary",
+        content_json: expect.any(Object),
+        content_schema_version: "v2",
+      }),
+    );
   });
 
   it("rejects duplicate topic sequences", async () => {

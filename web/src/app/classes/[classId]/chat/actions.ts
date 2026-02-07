@@ -82,6 +82,19 @@ async function logChatAiRequest(input: {
   }
 }
 
+function collectSourceLabels(blueprintContext: string, materialContext: string) {
+  const labels = new Set<string>();
+  labels.add("Blueprint Context");
+  const content = [blueprintContext, materialContext].join("\n");
+  const matches = content.matchAll(/(?:^|\n)(Source\s+\d+)\s*\|/gi);
+  for (const match of matches) {
+    if (match[1]) {
+      labels.add(match[1].trim());
+    }
+  }
+  return labels;
+}
+
 async function generateChatResponse(input: {
   classId: string;
   classTitle: string;
@@ -89,7 +102,7 @@ async function generateChatResponse(input: {
   userMessage: string;
   transcript: ChatTurn[];
   assignmentInstructions?: string | null;
-  purpose: "student_chat_open" | "student_chat_assignment";
+  purpose: "student_chat_open_v2" | "student_chat_assignment_v2";
 }) {
   const supabase = await createServerSupabaseClient();
 
@@ -117,6 +130,26 @@ async function generateChatResponse(input: {
     });
 
     const parsed = parseChatModelResponse(result.content);
+    const sourceLabels = collectSourceLabels(blueprintContext.blueprintContext, materialContext);
+    const normalizedCitations = parsed.citations
+      .map((citation) =>
+        sourceLabels.has(citation.sourceLabel)
+          ? citation
+          : {
+              ...citation,
+              sourceLabel: sourceLabels.has("Blueprint Context")
+                ? "Blueprint Context"
+                : [...sourceLabels][0] ?? "Blueprint Context",
+            },
+      )
+      .filter(
+        (citation, index, list) =>
+          list.findIndex(
+            (item) =>
+              item.sourceLabel === citation.sourceLabel && item.rationale === citation.rationale,
+          ) === index,
+      );
+
     await logChatAiRequest({
       supabase,
       classId: input.classId,
@@ -131,7 +164,10 @@ async function generateChatResponse(input: {
       totalTokens: result.usage?.totalTokens,
     });
 
-    return parsed;
+    return {
+      ...parsed,
+      citations: normalizedCitations,
+    };
   } catch (error) {
     await logChatAiRequest({
       supabase,
@@ -183,7 +219,7 @@ export async function sendOpenPracticeMessage(
       userId: user.id,
       userMessage: message,
       transcript,
-      purpose: "student_chat_open",
+      purpose: "student_chat_open_v2",
     });
 
     return {
@@ -362,7 +398,7 @@ export async function sendAssignmentMessage(
       userMessage: message,
       transcript,
       assignmentInstructions,
-      purpose: "student_chat_assignment",
+      purpose: "student_chat_assignment_v2",
     });
 
     return {

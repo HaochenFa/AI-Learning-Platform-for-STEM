@@ -2,6 +2,9 @@ import { extractSingleJsonObject } from "@/lib/json/extract-object";
 import type { QuizGenerationPayload } from "@/lib/quiz/types";
 import { validateQuizGenerationPayload } from "@/lib/quiz/validation";
 
+const QUALITY_PROFILE = process.env.AI_PROMPT_QUALITY_PROFILE ?? "quality_v1";
+const GROUNDING_MODE = process.env.AI_GROUNDING_MODE ?? "balanced";
+
 export function buildQuizGenerationPrompt(input: {
   classTitle: string;
   questionCount: number;
@@ -12,8 +15,11 @@ export function buildQuizGenerationPrompt(input: {
   const system = [
     "You are an expert STEM assessment designer.",
     "Generate only valid JSON with deterministic structure.",
-    "Return multiple-choice questions only.",
-    "Each question must have exactly 4 choices and exactly one correct answer.",
+    "Use only the provided blueprint/material context for content and explanations.",
+    "Questions must be multiple choice with exactly 4 choices and exactly one correct answer.",
+    "Distractors must be plausible and non-trivial.",
+    `Quality profile: ${QUALITY_PROFILE}.`,
+    `Grounding mode: ${GROUNDING_MODE}.`,
   ].join(" ");
 
   const user = [
@@ -26,6 +32,12 @@ export function buildQuizGenerationPrompt(input: {
     "",
     "Retrieved class material context:",
     input.materialContext || "No material context provided.",
+    "",
+    "Generation objectives:",
+    "1) Cover multiple blueprint topics/objectives when possible.",
+    "2) Mix cognitive demand levels (recall, understanding, application, analysis) based on available context.",
+    "3) Avoid duplicate or near-duplicate question stems.",
+    "4) Explanations must justify the correct answer using class context, not generic trivia.",
     "",
     "Return JSON using this exact shape:",
     "{",
@@ -41,8 +53,9 @@ export function buildQuizGenerationPrompt(input: {
     "",
     "Rules:",
     "- No markdown.",
-    "- No additional keys.",
+    "- No additional top-level keys.",
     "- `answer` must exactly match one item in `choices`.",
+    "- Avoid weak distractors such as 'all of the above' or 'none of the above'.",
   ].join("\n");
 
   return { system, user };

@@ -13,6 +13,31 @@ function normalizeChoice(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function wordCount(value: string) {
+  if (!value.trim()) {
+    return 0;
+  }
+  return value.trim().split(/\s+/).length;
+}
+
+function isLowQualityDistractor(value: string) {
+  const normalized = normalizeText(value);
+  return (
+    normalized === "all of the above" ||
+    normalized === "none of the above" ||
+    normalized === "all of these" ||
+    normalized === "none of these"
+  );
+}
+
 export function parseQuestionCount(raw: FormDataEntryValue | null) {
   if (!raw || typeof raw !== "string" || !raw.trim()) {
     return DEFAULT_QUIZ_QUESTION_COUNT;
@@ -77,41 +102,67 @@ export function validateQuizGenerationPayload(
   }
 
   const data = payload as QuizGenerationPayload;
+  const normalizedQuestions: QuizGenerationPayload["questions"] = [];
+  const stemSet = new Set<string>();
   if (!Array.isArray(data.questions) || data.questions.length < MIN_QUIZ_QUESTIONS) {
     errors.push("questions must be a non-empty array.");
   } else if (data.questions.length > MAX_QUIZ_QUESTIONS) {
     errors.push(`questions cannot exceed ${MAX_QUIZ_QUESTIONS}.`);
   } else {
     data.questions.forEach((question, index) => {
+      const errorsBeforeQuestion = errors.length;
       if (!isNonEmptyString(question.question)) {
         errors.push(`questions[${index}].question is required.`);
+        return;
       }
+      const normalizedStem = normalizeText(question.question);
+      if (stemSet.has(normalizedStem)) {
+        errors.push(`questions[${index}].question duplicates an earlier stem.`);
+      }
+      stemSet.add(normalizedStem);
+
+      let normalizedChoices: string[] = [];
       if (!Array.isArray(question.choices) || question.choices.length !== 4) {
         errors.push(`questions[${index}].choices must contain exactly 4 options.`);
       } else {
-        const trimmedChoices = question.choices.map((choice) => normalizeChoice(choice));
-        if (trimmedChoices.some((choice) => !choice)) {
+        normalizedChoices = question.choices.map((choice) => normalizeChoice(choice));
+        if (normalizedChoices.some((choice) => !choice)) {
           errors.push(`questions[${index}].choices cannot be empty.`);
         }
-        if (new Set(trimmedChoices).size !== trimmedChoices.length) {
+        if (new Set(normalizedChoices.map((choice) => normalizeText(choice))).size !== normalizedChoices.length) {
           errors.push(`questions[${index}].choices must be unique.`);
+        }
+        if (normalizedChoices.some((choice) => isLowQualityDistractor(choice))) {
+          errors.push(`questions[${index}].choices include low-quality distractors.`);
         }
       }
       if (!isNonEmptyString(question.answer)) {
         errors.push(`questions[${index}].answer is required.`);
-      } else if (Array.isArray(question.choices)) {
-        const normalizedChoices = question.choices.map((choice) => normalizeChoice(choice));
-        if (!normalizedChoices.includes(question.answer.trim())) {
-          errors.push(`questions[${index}].answer must match one choice.`);
+      } else {
+        const answer = question.answer.trim();
+        const matches = normalizedChoices.filter((choice) => choice === answer).length;
+        if (matches !== 1) {
+          errors.push(`questions[${index}].answer must exactly match one choice.`);
         }
       }
       if (!isNonEmptyString(question.explanation)) {
         errors.push(`questions[${index}].explanation is required.`);
+      } else if (wordCount(question.explanation) < 6) {
+        errors.push(`questions[${index}].explanation must be at least 6 words.`);
+      }
+
+      if (errors.length === errorsBeforeQuestion) {
+        normalizedQuestions.push({
+          question: question.question.trim(),
+          choices: normalizedChoices,
+          answer: question.answer.trim(),
+          explanation: question.explanation.trim(),
+        });
       }
     });
   }
 
-  return errors.length > 0 ? { ok: false, errors } : { ok: true, value: data };
+  return errors.length > 0 ? { ok: false, errors } : { ok: true, value: { questions: normalizedQuestions } };
 }
 
 export function parseQuizDraftPayload(raw: FormDataEntryValue | null) {

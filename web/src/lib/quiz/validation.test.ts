@@ -14,7 +14,7 @@ describe("quiz validation", () => {
           question: "What is 2 + 2?",
           choices: ["3", "4", "5", "6"],
           answer: "4",
-          explanation: "2 + 2 equals 4.",
+          explanation: "Adding two and two yields four by basic arithmetic.",
         },
       ],
     });
@@ -29,7 +29,7 @@ describe("quiz validation", () => {
           question: "What is 2 + 2?",
           choices: ["3", "4"],
           answer: "4",
-          explanation: "2 + 2 equals 4.",
+          explanation: "Adding two and two yields four by basic arithmetic.",
         },
       ],
     });
@@ -47,7 +47,7 @@ describe("quiz validation", () => {
             question: "What is 2 + 2?",
             choices: ["3", "4", "5", "6"],
             answer: "4",
-            explanation: "2 + 2 equals 4.",
+            explanation: "Adding two and two yields four by basic arithmetic.",
           },
         ],
       }),

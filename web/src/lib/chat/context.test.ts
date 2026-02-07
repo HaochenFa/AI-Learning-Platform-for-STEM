@@ -61,7 +61,7 @@ describe("loadPublishedBlueprintContext", () => {
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "blueprints") {
         return makeBuilder({
-          data: { id: "bp-1", summary: "Limits then derivatives." },
+          data: { id: "bp-1", summary: "Limits then derivatives.", content_json: {} },
           error: null,
         });
       }
@@ -88,8 +88,44 @@ describe("loadPublishedBlueprintContext", () => {
 
     expect(context.blueprintId).toBe("bp-1");
     expect(context.topicCount).toBe(2);
+    expect(context.blueprintContext).toContain("Source: Blueprint Context");
     expect(context.blueprintContext).toContain("Limits");
     expect(context.blueprintContext).toContain("epsilon-delta");
+  });
+
+  it("prefers canonical blueprint content when available", async () => {
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "blueprints") {
+        return makeBuilder({
+          data: {
+            id: "bp-2",
+            summary: "Summary from row",
+            content_json: {
+              summary: "Canonical summary",
+              topics: [
+                {
+                  key: "limits",
+                  title: "Limits",
+                  sequence: 1,
+                  objectives: [{ statement: "Explain limit notation in context.", level: "understand" }],
+                  assessmentIdeas: ["Exit ticket on notation."],
+                },
+              ],
+            },
+          },
+          error: null,
+        });
+      }
+      return makeBuilder({ data: [], error: null });
+    });
+
+    const { loadPublishedBlueprintContext } = await import("@/lib/chat/context");
+    const context = await loadPublishedBlueprintContext("class-1");
+
+    expect(context.blueprintId).toBe("bp-2");
+    expect(context.topicCount).toBe(1);
+    expect(context.summary).toBe("Canonical summary");
+    expect(context.blueprintContext).toContain("Assessment ideas");
   });
 });
 
@@ -112,6 +148,8 @@ describe("buildChatPrompt", () => {
     });
 
     expect(prompt.system).toContain("Return JSON only");
+    expect(prompt.system).toContain("Ground every substantive claim");
+    expect(prompt.system).toContain("sourceLabel");
     expect(prompt.user).toContain("Assignment instructions");
     expect(prompt.user).toContain("Topic 1: Limits");
     expect(prompt.user).toContain("Source 1");
