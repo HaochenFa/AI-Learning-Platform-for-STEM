@@ -43,3 +43,14 @@ export type QuizAttemptSubmissionContent = {
   maxPoints: number;
   submittedAt: string;
 };
+
+export type FlashcardsSessionSubmissionContent = {
+  mode: "flashcards_session";
+  activityId: string;
+  sessionNumber: number;
+  cardsReviewed: number;
+  knownCount: number;
+  reviewCount: number;
+  scorePercent: number;
+  submittedAt: string;
+};

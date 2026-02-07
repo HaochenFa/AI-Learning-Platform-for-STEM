@@ -16,7 +16,7 @@ type ActivityAssignmentSummary = {
   assignmentId: string;
   title: string;
   dueAt: string | null;
-  activityType: "chat" | "quiz";
+  activityType: "chat" | "quiz" | "flashcards";
   status?: string;
 };
 
@@ -100,6 +100,8 @@ export default async function ClassOverviewPage({
   let teacherQuizAssignments: ActivityAssignmentSummary[] = [];
   let studentChatAssignments: ActivityAssignmentSummary[] = [];
   let studentQuizAssignments: ActivityAssignmentSummary[] = [];
+  let teacherFlashcardsAssignments: ActivityAssignmentSummary[] = [];
+  let studentFlashcardsAssignments: ActivityAssignmentSummary[] = [];
 
   if (isTeacher) {
     const { data: assignments } = await supabase
@@ -124,7 +126,10 @@ export default async function ClassOverviewPage({
     const mappedAssignments = (assignments ?? [])
       .map((assignment) => {
         const activity = activityById.get(assignment.activity_id);
-        if (!activity || (activity.type !== "chat" && activity.type !== "quiz")) {
+        if (
+          !activity ||
+          (activity.type !== "chat" && activity.type !== "quiz" && activity.type !== "flashcards")
+        ) {
           return null;
         }
         return {
@@ -137,10 +142,13 @@ export default async function ClassOverviewPage({
       .filter((value): value is ActivityAssignmentSummary => value !== null);
 
     teacherChatAssignments = mappedAssignments.filter(
-      (assignment) => assignment.activityType === "chat",
+      (assignment) => assignment.activityType === "chat"
     );
     teacherQuizAssignments = mappedAssignments.filter(
-      (assignment) => assignment.activityType === "quiz",
+      (assignment) => assignment.activityType === "quiz"
+    );
+    teacherFlashcardsAssignments = mappedAssignments.filter(
+      (assignment) => assignment.activityType === "flashcards"
     );
   } else {
     const { data: recipients } = await supabase
@@ -171,7 +179,7 @@ export default async function ClassOverviewPage({
         : { data: null };
 
     const assignmentById = new Map(
-      (assignments ?? []).map((assignment) => [assignment.id, assignment]),
+      (assignments ?? []).map((assignment) => [assignment.id, assignment])
     );
     const activityById = new Map((activities ?? []).map((activity) => [activity.id, activity]));
     const { data: submissions } =
@@ -187,7 +195,7 @@ export default async function ClassOverviewPage({
     (submissions ?? []).forEach((submission) => {
       submissionCountByAssignmentId.set(
         submission.assignment_id,
-        (submissionCountByAssignmentId.get(submission.assignment_id) ?? 0) + 1,
+        (submissionCountByAssignmentId.get(submission.assignment_id) ?? 0) + 1
       );
     });
 
@@ -199,7 +207,10 @@ export default async function ClassOverviewPage({
         return null;
       }
       const activity = activityById.get(assignment.activity_id);
-      if (!activity || (activity.type !== "chat" && activity.type !== "quiz")) {
+      if (
+        !activity ||
+        (activity.type !== "chat" && activity.type !== "quiz" && activity.type !== "flashcards")
+      ) {
         return null;
       }
 
@@ -234,13 +245,16 @@ export default async function ClassOverviewPage({
     });
 
     const filteredAssignments = mappedStudentAssignments.filter(
-      (value): value is ActivityAssignmentSummary => value !== null,
+      (value): value is ActivityAssignmentSummary => value !== null
     );
     studentChatAssignments = filteredAssignments.filter(
-      (assignment) => assignment.activityType === "chat",
+      (assignment) => assignment.activityType === "chat"
     );
     studentQuizAssignments = filteredAssignments.filter(
-      (assignment) => assignment.activityType === "quiz",
+      (assignment) => assignment.activityType === "quiz"
+    );
+    studentFlashcardsAssignments = filteredAssignments.filter(
+      (assignment) => assignment.activityType === "flashcards"
     );
   }
 
@@ -496,6 +510,90 @@ export default async function ClassOverviewPage({
               ) : (
                 <p className="text-sm text-slate-400">
                   No quiz assignments yet. Your teacher will publish them here.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-10 rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">Flashcards</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                {publishedBlueprint
+                  ? "Generate, curate, publish, and assign blueprint-grounded flashcards."
+                  : "Publish the blueprint to unlock flashcard generation."}
+              </p>
+            </div>
+            {isTeacher ? (
+              <Link
+                href={`/classes/${classRow.id}/activities/flashcards/new`}
+                className="rounded-xl bg-cyan-400/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+              >
+                Generate flashcards draft
+              </Link>
+            ) : null}
+          </div>
+
+          {isTeacher ? (
+            <div className="mt-5 space-y-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Recent flashcards assignments
+              </p>
+              {teacherFlashcardsAssignments.length > 0 ? (
+                teacherFlashcardsAssignments.slice(0, 5).map((assignment) => (
+                  <div
+                    key={assignment.assignmentId}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
+                      <p className="text-xs text-slate-500">{formatDueDate(assignment.dueAt)}</p>
+                    </div>
+                    <Link
+                      href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/review`}
+                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+                    >
+                      Review
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">
+                  No flashcards assignments yet. Generate and publish a draft to begin.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="mt-5 space-y-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Your flashcards assignments
+              </p>
+              {studentFlashcardsAssignments.length > 0 ? (
+                studentFlashcardsAssignments.slice(0, 5).map((assignment) => (
+                  <div
+                    key={assignment.assignmentId}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
+                      <p className="text-xs text-slate-500">
+                        {formatDueDate(assignment.dueAt)} · Status:{" "}
+                        {formatAssignmentStatus(assignment.status)}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/flashcards`}
+                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+                    >
+                      Open
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400">
+                  No flashcards assignments yet. Your teacher will publish them here.
                 </p>
               )}
             </div>

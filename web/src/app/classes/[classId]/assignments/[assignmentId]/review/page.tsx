@@ -4,6 +4,7 @@ import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { reviewChatSubmission } from "@/app/classes/[classId]/chat/actions";
 import { reviewQuizSubmission } from "@/app/classes/[classId]/quiz/actions";
+import { reviewFlashcardsSubmission } from "@/app/classes/[classId]/flashcards/actions";
 import type { ChatTurn } from "@/lib/chat/types";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
@@ -25,6 +26,15 @@ type ParsedQuizSubmission = {
   attemptNumber: number;
   scorePercent: number;
   answers: Array<{ questionId: string; selectedChoice: string }>;
+  submittedAt: string;
+};
+
+type ParsedFlashcardsSubmission = {
+  sessionNumber: number;
+  cardsReviewed: number;
+  knownCount: number;
+  reviewCount: number;
+  scorePercent: number;
   submittedAt: string;
 };
 
@@ -85,8 +95,8 @@ function parseQuizSubmissionContent(content: unknown): ParsedQuizSubmission {
             answer &&
             typeof answer === "object" &&
             typeof (answer as { questionId?: unknown }).questionId === "string" &&
-            typeof (answer as { selectedChoice?: unknown }).selectedChoice === "string",
-          ),
+            typeof (answer as { selectedChoice?: unknown }).selectedChoice === "string"
+          )
         )
         .map((answer) => ({
           questionId: answer.questionId,
@@ -102,6 +112,44 @@ function parseQuizSubmissionContent(content: unknown): ParsedQuizSubmission {
     scorePercent:
       typeof scorePercentRaw === "number" && Number.isFinite(scorePercentRaw) ? scorePercentRaw : 0,
     answers,
+    submittedAt: typeof submittedAtRaw === "string" ? submittedAtRaw : "",
+  };
+}
+
+function parseFlashcardsSubmissionContent(content: unknown): ParsedFlashcardsSubmission {
+  if (!content || typeof content !== "object") {
+    return {
+      sessionNumber: 1,
+      cardsReviewed: 0,
+      knownCount: 0,
+      reviewCount: 0,
+      scorePercent: 0,
+      submittedAt: "",
+    };
+  }
+
+  const sessionNumberRaw = (content as { sessionNumber?: unknown }).sessionNumber;
+  const cardsReviewedRaw = (content as { cardsReviewed?: unknown }).cardsReviewed;
+  const knownCountRaw = (content as { knownCount?: unknown }).knownCount;
+  const reviewCountRaw = (content as { reviewCount?: unknown }).reviewCount;
+  const scorePercentRaw = (content as { scorePercent?: unknown }).scorePercent;
+  const submittedAtRaw = (content as { submittedAt?: unknown }).submittedAt;
+
+  return {
+    sessionNumber:
+      typeof sessionNumberRaw === "number" && Number.isFinite(sessionNumberRaw)
+        ? sessionNumberRaw
+        : 1,
+    cardsReviewed:
+      typeof cardsReviewedRaw === "number" && Number.isFinite(cardsReviewedRaw)
+        ? cardsReviewedRaw
+        : 0,
+    knownCount:
+      typeof knownCountRaw === "number" && Number.isFinite(knownCountRaw) ? knownCountRaw : 0,
+    reviewCount:
+      typeof reviewCountRaw === "number" && Number.isFinite(reviewCountRaw) ? reviewCountRaw : 0,
+    scorePercent:
+      typeof scorePercentRaw === "number" && Number.isFinite(scorePercentRaw) ? scorePercentRaw : 0,
     submittedAt: typeof submittedAtRaw === "string" ? submittedAtRaw : "",
   };
 }
@@ -158,7 +206,10 @@ export default async function AssignmentReviewPage({
     .eq("class_id", classId)
     .single();
 
-  if (!activity || (activity.type !== "chat" && activity.type !== "quiz")) {
+  if (
+    !activity ||
+    (activity.type !== "chat" && activity.type !== "quiz" && activity.type !== "flashcards")
+  ) {
     redirect(`/classes/${classId}?error=${encodeURIComponent("Assignment activity not found.")}`);
   }
 
@@ -228,7 +279,9 @@ export default async function AssignmentReviewPage({
     resolvedSearchParams?.created === "1"
       ? activity.type === "quiz"
         ? "Quiz assignment created and assigned to the class."
-        : "Chat assignment created and assigned to the class."
+        : activity.type === "flashcards"
+          ? "Flashcards assignment created and assigned to the class."
+          : "Chat assignment created and assigned to the class."
       : null;
   const savedMessage =
     resolvedSearchParams?.saved === "1" ? "Feedback saved for this submission." : null;
@@ -288,7 +341,14 @@ export default async function AssignmentReviewPage({
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: classRow.title, href: `/classes/${classRow.id}` },
-          { label: activity.type === "quiz" ? "Quiz Assignment Review" : "Chat Assignment Review" },
+          {
+            label:
+              activity.type === "quiz"
+                ? "Quiz Assignment Review"
+                : activity.type === "flashcards"
+                  ? "Flashcards Assignment Review"
+                  : "Chat Assignment Review",
+          },
         ]}
       />
 
@@ -369,13 +429,16 @@ export default async function AssignmentReviewPage({
             recipients!.map((recipient) => {
               const attempts = submissionByStudentId.get(recipient.student_id) ?? [];
               const latestSubmission = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+              const parsedFlashcardsSubmission = latestSubmission
+                ? parseFlashcardsSubmissionContent(latestSubmission.content)
+                : null;
               const bestScore =
                 attempts.length > 0
                   ? Math.max(
                       ...attempts
                         .map((attempt) => attempt.score)
                         .filter((score): score is number => typeof score === "number"),
-                      0,
+                      0
                     )
                   : null;
 
@@ -421,7 +484,7 @@ export default async function AssignmentReviewPage({
                                       {turn.message}
                                     </p>
                                   </div>
-                                ),
+                                )
                               )}
                             </div>
                           )}
@@ -508,7 +571,7 @@ export default async function AssignmentReviewPage({
                     )
                   ) : attempts.length === 0 ? (
                     <p className="text-sm text-slate-400">No submission yet.</p>
-                  ) : (
+                  ) : activity.type === "quiz" ? (
                     <div className="space-y-4">
                       <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">
                         <p>Attempts submitted: {attempts.length}</p>
@@ -632,6 +695,90 @@ export default async function AssignmentReviewPage({
                           </div>
                         );
                       })}
+                    </div>
+                  ) : !latestSubmission ? (
+                    <p className="text-sm text-slate-400">No submission yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                          Session Summary
+                        </p>
+                        <div className="mt-3 space-y-2 text-sm text-slate-200">
+                          <p>Session {parsedFlashcardsSubmission?.sessionNumber ?? 1}</p>
+                          <p>Cards reviewed: {parsedFlashcardsSubmission?.cardsReviewed ?? 0}</p>
+                          <p>
+                            Known: {parsedFlashcardsSubmission?.knownCount ?? 0} · Needs review:{" "}
+                            {parsedFlashcardsSubmission?.reviewCount ?? 0}
+                          </p>
+                          <p>Score: {parsedFlashcardsSubmission?.scorePercent ?? 0}%</p>
+                        </div>
+                      </div>
+
+                      <form
+                        action={reviewFlashcardsSubmission.bind(null, classId, latestSubmission.id)}
+                        className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4"
+                      >
+                        <div className="space-y-2">
+                          <label
+                            className="text-sm text-slate-300"
+                            htmlFor={`score-${latestSubmission.id}`}
+                          >
+                            Score (0-100)
+                          </label>
+                          <input
+                            id={`score-${latestSubmission.id}`}
+                            type="number"
+                            name="score"
+                            min={0}
+                            max={100}
+                            defaultValue={latestSubmission.score?.toString() ?? ""}
+                            className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            className="text-sm text-slate-300"
+                            htmlFor={`comment-${latestSubmission.id}`}
+                          >
+                            Comment
+                          </label>
+                          <textarea
+                            id={`comment-${latestSubmission.id}`}
+                            name="comment"
+                            rows={3}
+                            defaultValue={
+                              latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""
+                            }
+                            className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label
+                            className="text-sm text-slate-300"
+                            htmlFor={`highlights-${latestSubmission.id}`}
+                          >
+                            Highlights (one per line)
+                          </label>
+                          <textarea
+                            id={`highlights-${latestSubmission.id}`}
+                            name="highlights"
+                            rows={3}
+                            defaultValue={(
+                              latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ?? []
+                            ).join("\n")}
+                            className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+
+                        <PendingSubmitButton
+                          label="Save Feedback"
+                          pendingLabel="Saving..."
+                          className="rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
+                        />
+                      </form>
                     </div>
                   )}
                 </section>
