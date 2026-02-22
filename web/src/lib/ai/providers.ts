@@ -8,6 +8,8 @@ export type AiGenerateOptions = {
   user: string;
   temperature?: number;
   maxTokens?: number;
+  sessionId?: string;
+  transforms?: string[];
 };
 
 export type AiUsage = {
@@ -248,6 +250,10 @@ async function callOpenRouter(options: AiGenerateOptions): Promise<AiGenerateRes
       temperature: options.temperature ?? 0.2,
       max_tokens: options.maxTokens ?? 1200,
       response_format: { type: "json_object" },
+      ...(options.sessionId ? { session_id: options.sessionId } : {}),
+      ...(options.transforms && options.transforms.length > 0
+        ? { transforms: options.transforms }
+        : {}),
     }),
   });
 

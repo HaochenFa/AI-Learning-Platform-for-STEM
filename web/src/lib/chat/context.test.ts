@@ -144,15 +144,19 @@ describe("buildChatPrompt", () => {
       ],
       blueprintContext: "Topic 1: Limits",
       materialContext: "Source 1 | Notes | page 1",
+      compactedMemoryContext: "Key terms: epsilon, delta",
       assignmentInstructions: "Focus on formal definitions only.",
     });
 
     expect(prompt.system).toContain("Return JSON only");
     expect(prompt.system).toContain("Ground every substantive claim");
     expect(prompt.system).toContain("sourceLabel");
+    expect(prompt.system).toContain("conflicts with recent transcript");
     expect(prompt.user).toContain("Assignment instructions");
     expect(prompt.user).toContain("Topic 1: Limits");
     expect(prompt.user).toContain("Source 1");
+    expect(prompt.user).toContain("Compacted conversation memory");
+    expect(prompt.user).toContain("Key terms: epsilon, delta");
     expect(prompt.user).toContain("Latest student message");
   });
 });

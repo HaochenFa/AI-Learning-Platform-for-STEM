@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  listClassChatMessages,
   listClassChatParticipants,
   listClassChatSessions,
   sendClassChatMessage,
@@ -31,6 +32,8 @@ function makeBuilder(result: unknown) {
   const resolveResult = () => result;
   builder.select = vi.fn(() => builder);
   builder.eq = vi.fn(() => builder);
+  builder.or = vi.fn(() => builder);
+  builder.lte = vi.fn(() => builder);
   builder.is = vi.fn(() => builder);
   builder.order = vi.fn(() => builder);
   builder.limit = vi.fn(() => builder);
@@ -46,6 +49,8 @@ function makeBuilder(result: unknown) {
   return builder as unknown as {
     select: () => typeof builder;
     eq: () => typeof builder;
+    or: () => typeof builder;
+    lte: () => typeof builder;
     is: () => typeof builder;
     order: () => typeof builder;
     limit: () => typeof builder;
@@ -198,6 +203,10 @@ describe("workspace chat actions", () => {
         return makeBuilder({ data: [], error: null });
       }
 
+      if (table === "class_chat_session_compactions") {
+        return makeBuilder({ data: null, error: null });
+      }
+
       return makeBuilder({ data: null, error: null });
     });
 
@@ -242,6 +251,7 @@ describe("workspace chat actions", () => {
     if (result.ok) {
       expect(result.data.response.answer).toContain("epsilon-delta");
       expect(result.data.assistantMessage.citations[0]?.sourceLabel).toBe("Blueprint Context");
+      expect(result.data.contextMeta.compacted).toBe(false);
     }
 
     expect(vi.mocked(generateGroundedChatResponse)).toHaveBeenCalled();
@@ -269,6 +279,10 @@ describe("workspace chat actions", () => {
 
       if (table === "class_chat_messages") {
         return makeBuilder({ data: [], error: null });
+      }
+
+      if (table === "class_chat_session_compactions") {
+        return makeBuilder({ data: null, error: null });
       }
 
       return makeBuilder({ data: null, error: null });
@@ -315,5 +329,233 @@ describe("workspace chat actions", () => {
     );
 
     errorSpy.mockRestore();
+  });
+
+  it("lists latest chat messages first page and returns pagination cursor", async () => {
+    const supabaseFromMock = vi.fn((table: string) => {
+      if (table === "class_chat_sessions") {
+        return makeBuilder({
+          data: {
+            id: "session-1",
+            class_id: "class-1",
+            owner_user_id: "student-1",
+            title: "Limits review",
+            is_pinned: false,
+            archived_at: null,
+            last_message_at: "2026-02-10T12:00:00.000Z",
+            created_at: "2026-02-09T12:00:00.000Z",
+            updated_at: "2026-02-10T12:00:00.000Z",
+          },
+          error: null,
+        });
+      }
+      if (table === "class_chat_messages") {
+        return makeBuilder({
+          data: [
+            {
+              id: "m3",
+              session_id: "session-1",
+              class_id: "class-1",
+              author_user_id: null,
+              author_kind: "assistant",
+              content: "Third",
+              citations: [],
+              safety: "ok",
+              provider: null,
+              model: null,
+              prompt_tokens: null,
+              completion_tokens: null,
+              total_tokens: null,
+              latency_ms: null,
+              created_at: "2026-02-10T12:03:00.000Z",
+            },
+            {
+              id: "m2",
+              session_id: "session-1",
+              class_id: "class-1",
+              author_user_id: "student-1",
+              author_kind: "student",
+              content: "Second",
+              citations: [],
+              safety: null,
+              provider: null,
+              model: null,
+              prompt_tokens: null,
+              completion_tokens: null,
+              total_tokens: null,
+              latency_ms: null,
+              created_at: "2026-02-10T12:02:00.000Z",
+            },
+            {
+              id: "m1",
+              session_id: "session-1",
+              class_id: "class-1",
+              author_user_id: "student-1",
+              author_kind: "student",
+              content: "First",
+              citations: [],
+              safety: null,
+              provider: null,
+              model: null,
+              prompt_tokens: null,
+              completion_tokens: null,
+              total_tokens: null,
+              latency_ms: null,
+              created_at: "2026-02-10T12:01:00.000Z",
+            },
+          ],
+          error: null,
+        });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    vi.mocked(requireAuthenticatedUser).mockResolvedValue({
+      supabase: {
+        from: supabaseFromMock,
+      },
+      user: { id: "student-1" },
+      profile: { id: "student-1", account_type: "student" },
+      isEmailVerified: true,
+      authError: null,
+    } as never);
+
+    vi.mocked(getClassAccess).mockResolvedValue({
+      found: true,
+      isTeacher: false,
+      isMember: true,
+      classTitle: "Calculus",
+      classOwnerId: "teacher-1",
+    });
+
+    const result = await listClassChatMessages("class-1", "session-1", undefined, { limit: 2 });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.messages).toHaveLength(2);
+      expect(result.data.messages[0]?.id).toBe("m2");
+      expect(result.data.messages[1]?.id).toBe("m3");
+      expect(result.data.pageInfo.hasMore).toBe(true);
+      expect(result.data.pageInfo.nextCursor).toBe("2026-02-10T12:02:00.000Z|m2");
+    }
+  });
+
+  it("uses strict DB cursor predicate and pageSize+1 for older-message pagination", async () => {
+    const messagesBuilder = makeBuilder({
+      data: [
+        {
+          id: "m2",
+          session_id: "session-1",
+          class_id: "class-1",
+          author_user_id: null,
+          author_kind: "assistant",
+          content: "Older same timestamp",
+          citations: [],
+          safety: "ok",
+          provider: null,
+          model: null,
+          prompt_tokens: null,
+          completion_tokens: null,
+          total_tokens: null,
+          latency_ms: null,
+          created_at: "2026-02-10T12:03:00.000Z",
+        },
+        {
+          id: "m1",
+          session_id: "session-1",
+          class_id: "class-1",
+          author_user_id: "student-1",
+          author_kind: "student",
+          content: "Older",
+          citations: [],
+          safety: null,
+          provider: null,
+          model: null,
+          prompt_tokens: null,
+          completion_tokens: null,
+          total_tokens: null,
+          latency_ms: null,
+          created_at: "2026-02-10T12:02:00.000Z",
+        },
+        {
+          id: "m0",
+          session_id: "session-1",
+          class_id: "class-1",
+          author_user_id: "student-1",
+          author_kind: "student",
+          content: "Oldest",
+          citations: [],
+          safety: null,
+          provider: null,
+          model: null,
+          prompt_tokens: null,
+          completion_tokens: null,
+          total_tokens: null,
+          latency_ms: null,
+          created_at: "2026-02-10T12:01:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    const supabaseFromMock = vi.fn((table: string) => {
+      if (table === "class_chat_sessions") {
+        return makeBuilder({
+          data: {
+            id: "session-1",
+            class_id: "class-1",
+            owner_user_id: "student-1",
+            title: "Limits review",
+            is_pinned: false,
+            archived_at: null,
+            last_message_at: "2026-02-10T12:00:00.000Z",
+            created_at: "2026-02-09T12:00:00.000Z",
+            updated_at: "2026-02-10T12:00:00.000Z",
+          },
+          error: null,
+        });
+      }
+      if (table === "class_chat_messages") {
+        return messagesBuilder;
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    vi.mocked(requireAuthenticatedUser).mockResolvedValue({
+      supabase: {
+        from: supabaseFromMock,
+      },
+      user: { id: "student-1" },
+      profile: { id: "student-1", account_type: "student" },
+      isEmailVerified: true,
+      authError: null,
+    } as never);
+
+    vi.mocked(getClassAccess).mockResolvedValue({
+      found: true,
+      isTeacher: false,
+      isMember: true,
+      classTitle: "Calculus",
+      classOwnerId: "teacher-1",
+    });
+
+    const cursor = "2026-02-10T12:03:00.000Z|m3";
+    const result = await listClassChatMessages("class-1", "session-1", undefined, {
+      limit: 2,
+      beforeCursor: cursor,
+    });
+
+    expect(messagesBuilder.or).toHaveBeenCalledWith(
+      "created_at.lt.2026-02-10T12:03:00.000Z,and(created_at.eq.2026-02-10T12:03:00.000Z,id.lt.m3)",
+    );
+    expect(messagesBuilder.limit).toHaveBeenCalledWith(3);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.messages).toHaveLength(2);
+      expect(result.data.messages[0]?.id).toBe("m1");
+      expect(result.data.messages[1]?.id).toBe("m2");
+      expect(result.data.pageInfo.hasMore).toBe(true);
+      expect(result.data.pageInfo.nextCursor).toBe("2026-02-10T12:02:00.000Z|m1");
+    }
   });
 });

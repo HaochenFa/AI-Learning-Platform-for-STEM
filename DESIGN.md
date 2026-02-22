@@ -46,6 +46,14 @@ Student Flow
   - Student completes assignment chat and submits transcript + reflection.
   - Teacher reviews submission, records manual score, and adds feedback highlights/comments.
 - Context policy: chat responses are grounded in published blueprint + retrieved material chunks.
+- Long-session context engineering:
+  - The API composes context from recent raw turns plus persisted compacted memory for older turns.
+  - Compaction is triggered when conversation length or estimated token pressure approaches the context budget.
+  - Compaction memory is stored per chat session as structured JSON + condensed text for prompt continuity.
+  - If compacted memory conflicts with recent transcript turns, recent raw turns take priority.
+- Message retrieval policy:
+  - Chat history queries fetch latest messages first and return chronological pages to the UI.
+  - History pagination loads older pages on demand, preventing loss of recent messages in long sessions.
 - Chat model responses are normalized to deterministic JSON and logged in `ai_requests`.
 
 **Quiz Vertical Slice (Implemented)**

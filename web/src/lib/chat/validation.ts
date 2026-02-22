@@ -1,5 +1,6 @@
 import type {
   ChatAssignmentSubmissionContent,
+  ChatCompactionSummary,
   ChatModelResponse,
   ChatRole,
   ChatTurn,
@@ -252,5 +253,89 @@ export function buildChatAssignmentSubmissionContent(input: {
     transcript: input.transcript,
     reflection: input.reflection,
     completedAt: new Date().toISOString(),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+export function parseChatCompactionSummary(raw: unknown): ChatCompactionSummary | null {
+  if (!isRecord(raw) || raw.version !== "v1") {
+    return null;
+  }
+
+  const compactedThrough = raw.compactedThrough;
+  if (
+    !isRecord(compactedThrough) ||
+    !isNonEmptyString(compactedThrough.createdAt) ||
+    !isNonEmptyString(compactedThrough.messageId) ||
+    typeof compactedThrough.turnCount !== "number"
+  ) {
+    return null;
+  }
+
+  const timeline = raw.timeline;
+  if (
+    !isRecord(timeline) ||
+    !isNonEmptyString(timeline.from) ||
+    !isNonEmptyString(timeline.to) ||
+    !Array.isArray(timeline.highlights)
+  ) {
+    return null;
+  }
+
+  const keyTerms = Array.isArray(raw.keyTerms)
+    ? raw.keyTerms.filter((item): item is ChatCompactionSummary["keyTerms"][number] => {
+        if (!isRecord(item)) {
+          return false;
+        }
+        return (
+          isNonEmptyString(item.term) &&
+          typeof item.weight === "number" &&
+          typeof item.occurrences === "number" &&
+          isNonEmptyString(item.lastSeen)
+        );
+      })
+    : [];
+
+  const resolvedFacts = Array.isArray(raw.resolvedFacts)
+    ? raw.resolvedFacts.filter((item): item is string => isNonEmptyString(item)).map((item) => item.trim())
+    : [];
+  const openQuestions = Array.isArray(raw.openQuestions)
+    ? raw.openQuestions.filter((item): item is string => isNonEmptyString(item)).map((item) => item.trim())
+    : [];
+  const studentNeeds = Array.isArray(raw.studentNeeds)
+    ? raw.studentNeeds.filter((item): item is string => isNonEmptyString(item)).map((item) => item.trim())
+    : [];
+  const highlights = timeline.highlights
+    .filter((item): item is string => isNonEmptyString(item))
+    .map((item) => item.trim());
+
+  return {
+    version: "v1",
+    generatedAt:
+      typeof raw.generatedAt === "string" && raw.generatedAt.trim().length > 0
+        ? raw.generatedAt.trim()
+        : new Date().toISOString(),
+    compactedThrough: {
+      createdAt: compactedThrough.createdAt.trim(),
+      messageId: compactedThrough.messageId.trim(),
+      turnCount: compactedThrough.turnCount,
+    },
+    keyTerms: keyTerms.map((item) => ({
+      term: item.term.trim(),
+      weight: item.weight,
+      occurrences: item.occurrences,
+      lastSeen: item.lastSeen.trim(),
+    })),
+    resolvedFacts,
+    openQuestions,
+    studentNeeds,
+    timeline: {
+      from: timeline.from.trim(),
+      to: timeline.to.trim(),
+      highlights,
+    },
   };
 }

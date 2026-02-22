@@ -3,13 +3,25 @@
 import { getClassAccess, requireAuthenticatedUser } from "@/lib/activities/access";
 import { generateGroundedChatResponse } from "@/lib/chat/generate";
 import type {
+  ChatCompactionSummary,
   ChatModelResponse,
   ChatTurn,
   ClassChatMessage,
+  ClassChatMessagesPageInfo,
   ClassChatParticipant,
   ClassChatSession,
 } from "@/lib/chat/types";
 import { MAX_CHAT_TURNS, parseChatMessage } from "@/lib/chat/validation";
+import {
+  buildCompactionDecision,
+  buildCompactionMemoryText,
+  buildCompactionResult,
+  CHAT_COMPACTION_TRIGGER_TURNS,
+  CHAT_CONTEXT_RECENT_TURNS,
+  compareMessageChronology,
+  parseCompactionSummary,
+  sortMessagesChronologically,
+} from "@/lib/chat/compaction";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 type ActionResult<T> =
@@ -51,6 +63,32 @@ type MessageRow = {
   latency_ms: number | null;
   created_at: string;
 };
+
+type SessionCompactionRow = {
+  session_id: string;
+  class_id: string;
+  owner_user_id: string;
+  summary_text: string;
+  summary_json: unknown;
+  compacted_through_created_at: string | null;
+  compacted_through_message_id: string | null;
+  compacted_turn_count: number | null;
+  last_compacted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function parsePositiveIntegerEnv(envValue: string | undefined, fallback: number) {
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  const normalized = Math.floor(parsed);
+  return normalized > 0 ? normalized : fallback;
+}
+
+const CHAT_HISTORY_PAGE_SIZE = parsePositiveIntegerEnv(process.env.CHAT_HISTORY_PAGE_SIZE, 120);
+const CHAT_CONTEXT_FETCH_LIMIT = Math.max(CHAT_COMPACTION_TRIGGER_TURNS * 3, CHAT_CONTEXT_RECENT_TURNS * 3, 180);
 
 function normalizeSession(row: SessionRow): ClassChatSession {
   return {
@@ -107,6 +145,53 @@ function normalizeMessage(row: MessageRow): ClassChatMessage {
     totalTokens: row.total_tokens,
     latencyMs: row.latency_ms,
     createdAt: row.created_at,
+  };
+}
+
+function normalizeMessagesChronological(rows: MessageRow[]) {
+  const normalized = rows.map((row) => normalizeMessage(row));
+  return normalized.sort(compareMessageChronology);
+}
+
+function encodeMessageCursor(message: ClassChatMessage) {
+  return `${message.createdAt}|${message.id}`;
+}
+
+function decodeMessageCursor(cursor: string | null | undefined) {
+  if (!cursor) {
+    return null;
+  }
+  const splitIndex = cursor.lastIndexOf("|");
+  if (splitIndex <= 0 || splitIndex >= cursor.length - 1) {
+    return null;
+  }
+  const createdAt = cursor.slice(0, splitIndex);
+  const id = cursor.slice(splitIndex + 1);
+  if (!createdAt || !id) {
+    return null;
+  }
+  return { createdAt, id };
+}
+
+function buildBeforeCursorPredicate(cursor: { createdAt: string; id: string }) {
+  return `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`;
+}
+
+function normalizeCompactionSummary(row: SessionCompactionRow | null | undefined): ChatCompactionSummary | null {
+  if (!row) {
+    return null;
+  }
+  const parsed = parseCompactionSummary(row.summary_json);
+  if (!parsed) {
+    return null;
+  }
+  return {
+    ...parsed,
+    compactedThrough: {
+      createdAt: row.compacted_through_created_at ?? parsed.compactedThrough.createdAt,
+      messageId: row.compacted_through_message_id ?? parsed.compactedThrough.messageId,
+      turnCount: row.compacted_turn_count ?? parsed.compactedThrough.turnCount,
+    },
   };
 }
 
@@ -443,7 +528,17 @@ export async function listClassChatMessages(
   classId: string,
   sessionId: string,
   ownerUserId?: string,
-): Promise<ActionResult<{ session: ClassChatSession; messages: ClassChatMessage[] }>> {
+  options?: {
+    beforeCursor?: string | null;
+    limit?: number;
+  },
+): Promise<
+  ActionResult<{
+    session: ClassChatSession;
+    messages: ClassChatMessage[];
+    pageInfo: ClassChatMessagesPageInfo;
+  }>
+> {
   const access = await resolveAccess(classId);
   if (!access.ok) {
     return access;
@@ -476,15 +571,28 @@ export async function listClassChatMessages(
     };
   }
 
-  const { data: rows, error } = await access.supabase
+  const requestedLimit =
+    typeof options?.limit === "number" && Number.isFinite(options.limit) ? options.limit : CHAT_HISTORY_PAGE_SIZE;
+  const pageSize = Math.max(1, Math.min(200, Math.floor(requestedLimit)));
+  const beforeCursor = decodeMessageCursor(options?.beforeCursor);
+  const queryLimit = pageSize + 1;
+
+  const query = access.supabase
     .from("class_chat_messages")
     .select(
       "id,session_id,class_id,author_user_id,author_kind,content,citations,safety,provider,model,prompt_tokens,completion_tokens,total_tokens,latency_ms,created_at",
     )
     .eq("class_id", classId)
     .eq("session_id", sessionId)
-    .order("created_at", { ascending: true })
-    .limit(400);
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(queryLimit);
+
+  if (beforeCursor) {
+    query.or(buildBeforeCursorPredicate(beforeCursor));
+  }
+
+  const { data: rows, error } = await query;
 
   if (error) {
     return {
@@ -493,19 +601,27 @@ export async function listClassChatMessages(
     };
   }
 
+  const descendingMessages = normalizeMessagesChronological((rows ?? []) as MessageRow[]).reverse();
+  const pageSlice = descendingMessages.slice(0, pageSize);
+  const hasMore = descendingMessages.length > pageSize;
+  const oldestInPage = pageSlice[pageSlice.length - 1];
+
   return {
     ok: true,
     data: {
       session: sessionResult.session,
-      messages: (rows ?? []).map((row) => normalizeMessage(row as MessageRow)),
+      messages: pageSlice.reverse(),
+      pageInfo: {
+        hasMore,
+        nextCursor: hasMore && oldestInPage ? encodeMessageCursor(oldestInPage) : null,
+      },
     },
   };
 }
 
-function messagesToTranscript(messages: ClassChatMessage[]): ChatTurn[] {
-  return messages
-    .slice(-MAX_CHAT_TURNS)
-    .map((message) => ({
+function messagesToTranscript(messages: ClassChatMessage[], maxTurns = MAX_CHAT_TURNS): ChatTurn[] {
+  const chronological = sortMessagesChronologically(messages);
+  return chronological.slice(-maxTurns).map((message) => ({
       role: message.authorKind === "assistant" ? "assistant" : "student",
       message: message.content,
       createdAt: message.createdAt,
@@ -522,6 +638,11 @@ export async function sendClassChatMessage(
     response: ChatModelResponse;
     userMessage: ClassChatMessage;
     assistantMessage: ClassChatMessage;
+    contextMeta: {
+      compacted: boolean;
+      compactedAt: string | null;
+      reason: string | null;
+    };
   }>
 > {
   const access = await resolveAccess(classId);
@@ -563,8 +684,9 @@ export async function sendClassChatMessage(
     )
     .eq("class_id", classId)
     .eq("session_id", sessionId)
-    .order("created_at", { ascending: true })
-    .limit(MAX_CHAT_TURNS);
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(CHAT_CONTEXT_FETCH_LIMIT);
 
   if (contextError) {
     return {
@@ -573,7 +695,105 @@ export async function sendClassChatMessage(
     };
   }
 
-  const transcript = messagesToTranscript((contextRows ?? []).map((row) => normalizeMessage(row as MessageRow)));
+  const chronologicalMessages = normalizeMessagesChronological((contextRows ?? []) as MessageRow[]);
+
+  const { data: compactionRow, error: compactionError } = await access.supabase
+    .from("class_chat_session_compactions")
+    .select(
+      "session_id,class_id,owner_user_id,summary_text,summary_json,compacted_through_created_at,compacted_through_message_id,compacted_turn_count,last_compacted_at,created_at,updated_at",
+    )
+    .eq("session_id", sessionId)
+    .eq("class_id", classId)
+    .eq("owner_user_id", access.user.id)
+    .maybeSingle<SessionCompactionRow>();
+
+  if (compactionError) {
+    return {
+      ok: false,
+      error: compactionError.message,
+    };
+  }
+
+  const existingCompaction = normalizeCompactionSummary(compactionRow ?? null);
+  const compactionDecision = buildCompactionDecision({
+    messages: chronologicalMessages,
+    existingSummary: existingCompaction,
+    pendingUserMessage: message,
+  });
+
+  let effectiveCompaction = existingCompaction;
+  let contextCompacted = false;
+  let compactionReason: string | null = null;
+  let compactedAt: string | null = null;
+
+  if (compactionDecision.shouldCompact) {
+    const compactionResult = buildCompactionResult({
+      messages: chronologicalMessages,
+      existingSummary: existingCompaction,
+      latestUserMessage: message,
+    });
+
+    if (compactionResult) {
+      effectiveCompaction = compactionResult.summary;
+      contextCompacted = true;
+      compactionReason = compactionDecision.reason;
+      compactedAt = compactionResult.summary.generatedAt;
+      const summaryPayload = {
+        session_id: sessionId,
+        class_id: classId,
+        owner_user_id: access.user.id,
+        summary_text: compactionResult.summaryText,
+        summary_json: compactionResult.summary,
+        compacted_through_created_at: compactionResult.summary.compactedThrough.createdAt,
+        compacted_through_message_id: compactionResult.summary.compactedThrough.messageId,
+        compacted_turn_count: compactionResult.summary.compactedThrough.turnCount,
+        last_compacted_at: compactionResult.summary.generatedAt,
+      };
+
+      try {
+        if (compactionRow) {
+          const { error: updateCompactionError } = await access.supabase
+            .from("class_chat_session_compactions")
+            .update(summaryPayload)
+            .eq("session_id", sessionId)
+            .eq("class_id", classId)
+            .eq("owner_user_id", access.user.id);
+
+          if (updateCompactionError) {
+            console.error("Failed to update class chat compaction summary", {
+              classId,
+              sessionId,
+              userId: access.user.id,
+              error: updateCompactionError.message,
+            });
+          }
+        } else {
+          const { error: insertCompactionError } = await access.supabase
+            .from("class_chat_session_compactions")
+            .insert(summaryPayload);
+
+          if (insertCompactionError) {
+            console.error("Failed to insert class chat compaction summary", {
+              classId,
+              sessionId,
+              userId: access.user.id,
+              error: insertCompactionError.message,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Unexpected error while persisting class chat compaction summary", {
+          classId,
+          sessionId,
+          userId: access.user.id,
+          error: error instanceof Error ? error.message : error,
+        });
+      }
+    }
+  }
+
+  const transcript = messagesToTranscript(chronologicalMessages, CHAT_CONTEXT_RECENT_TURNS);
+  const compactedMemoryContext = buildCompactionMemoryText(effectiveCompaction);
 
   let response: ChatModelResponse;
   try {
@@ -583,6 +803,8 @@ export async function sendClassChatMessage(
       userId: access.user.id,
       userMessage: message,
       transcript,
+      compactedMemoryContext,
+      sessionId: `class-chat-${sessionId}`,
       purpose: access.role.isTeacher ? "teacher_chat_always_on_v1" : "student_chat_always_on_v1",
     });
   } catch (error) {
@@ -722,6 +944,11 @@ export async function sendClassChatMessage(
       response,
       userMessage: normalizeMessage(userRow),
       assistantMessage: normalizeMessage(assistantRow),
+      contextMeta: {
+        compacted: contextCompacted,
+        compactedAt,
+        reason: compactionReason,
+      },
     },
   };
 }

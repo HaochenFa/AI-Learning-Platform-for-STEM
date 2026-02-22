@@ -8,7 +8,7 @@ import {
   listClassChatSessions,
   sendClassChatMessage,
 } from "@/app/classes/[classId]/chat/workspace-actions";
-import type { ClassChatMessage, ClassChatSession } from "@/lib/chat/types";
+import type { ClassChatMessage, ClassChatMessagesPageInfo, ClassChatSession } from "@/lib/chat/types";
 import { MAX_CHAT_MESSAGE_CHARS } from "@/lib/chat/validation";
 
 type ClassChatWorkspaceProps = {
@@ -17,6 +17,8 @@ type ClassChatWorkspaceProps = {
   readOnly?: boolean;
   heading?: string;
 };
+
+const CLIENT_COMPACTION_HINT_TURNS = 24;
 
 function formatTime(value: string) {
   const date = new Date(value);
@@ -48,11 +50,16 @@ export default function ClassChatWorkspace({
   const [sessions, setSessions] = useState<ClassChatSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ClassChatMessage[]>([]);
+  const [pageInfo, setPageInfo] = useState<ClassChatMessagesPageInfo>({ hasMore: false, nextCursor: null });
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [showCompactionStatus, setShowCompactionStatus] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isSessionPending, startSessionTransition] = useTransition();
   const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
+  const skipAutoScrollRef = useRef(false);
 
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === selectedSessionId) ?? null,
@@ -60,8 +67,12 @@ export default function ClassChatWorkspace({
   );
 
   useEffect(() => {
+    if (skipAutoScrollRef.current) {
+      skipAutoScrollRef.current = false;
+      return;
+    }
     endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
+  }, [messages, showCompactionStatus]);
 
   useEffect(() => {
     startSessionTransition(async () => {
@@ -72,6 +83,7 @@ export default function ClassChatWorkspace({
         setSessions([]);
         setSelectedSessionId(null);
         setMessages([]);
+        setPageInfo({ hasMore: false, nextCursor: null });
         return;
       }
 
@@ -95,6 +107,7 @@ export default function ClassChatWorkspace({
         }
         if (!nextSessions[0]?.id) {
           setMessages([]);
+          setPageInfo({ hasMore: false, nextCursor: null });
         }
         return nextSessions[0]?.id ?? null;
       });
@@ -111,10 +124,13 @@ export default function ClassChatWorkspace({
       if (!result.ok) {
         setError(result.error);
         setMessages([]);
+        setPageInfo({ hasMore: false, nextCursor: null });
         return;
       }
       setError(null);
+      setStatusNotice(null);
       setMessages(result.data.messages);
+      setPageInfo(result.data.pageInfo);
     });
   }, [classId, selectedSessionId, ownerUserId]);
 
@@ -131,6 +147,8 @@ export default function ClassChatWorkspace({
       setSessions((current) => [result.data.session, ...current]);
       setSelectedSessionId(result.data.session.id);
       setMessages([]);
+      setPageInfo({ hasMore: false, nextCursor: null });
+      setStatusNotice(null);
       setError(null);
     });
   };
@@ -153,10 +171,43 @@ export default function ClassChatWorkspace({
             return currentSelectedSessionId;
           }
           setMessages([]);
+          setPageInfo({ hasMore: false, nextCursor: null });
+          setStatusNotice(null);
           return remainingSessions[0]?.id ?? null;
         });
         return remainingSessions;
       });
+    });
+  };
+
+  const handleLoadOlder = () => {
+    if (!selectedSessionId || !pageInfo.hasMore || !pageInfo.nextCursor || isLoadingMore) {
+      return;
+    }
+    setIsLoadingMore(true);
+    startSessionTransition(async () => {
+      try {
+        const result = await listClassChatMessages(classId, selectedSessionId, ownerUserId, {
+          beforeCursor: pageInfo.nextCursor,
+        });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+
+        skipAutoScrollRef.current = true;
+        setMessages((current) => {
+          const existing = new Set(current.map((item) => item.id));
+          const older = result.data.messages.filter((item) => !existing.has(item.id));
+          return [...older, ...current];
+        });
+        setPageInfo(result.data.pageInfo);
+        setError(null);
+      } catch {
+        setError("Unable to load older messages right now. Please try again.");
+      } finally {
+        setIsLoadingMore(false);
+      }
     });
   };
 
@@ -173,12 +224,16 @@ export default function ClassChatWorkspace({
 
     startTransition(async () => {
       setError(null);
+      setStatusNotice(null);
+      const shouldShowCompactionHint = messages.length >= CLIENT_COMPACTION_HINT_TURNS;
+      setShowCompactionStatus(shouldShowCompactionHint);
       const formData = new FormData();
       formData.set("message", trimmed);
 
       const result = await sendClassChatMessage(classId, selectedSessionId, formData);
       if (!result.ok) {
         setError(result.error);
+        setShowCompactionStatus(false);
         return;
       }
 
@@ -196,6 +251,20 @@ export default function ClassChatWorkspace({
 
         return [updated, ...current.filter((session) => session.id !== selectedSessionId)];
       });
+      if (result.data.contextMeta.compacted) {
+        const compactedAtLabel = result.data.contextMeta.compactedAt
+          ? new Date(result.data.contextMeta.compactedAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : null;
+        setStatusNotice(
+          compactedAtLabel
+            ? `Context compacted at ${compactedAtLabel} to preserve long-chat memory.`
+            : "Context compacted to preserve long-chat memory.",
+        );
+      }
+      setShowCompactionStatus(false);
       setMessage("");
     });
   };
@@ -274,45 +343,86 @@ export default function ClassChatWorkspace({
           </div>
         ) : null}
 
+        {statusNotice ? (
+          <div className="mb-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+            {statusNotice}
+          </div>
+        ) : null}
+
         <div className="max-h-[32rem] space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+          {pageInfo.hasMore ? (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={handleLoadOlder}
+                disabled={isLoadingMore}
+                className="rounded-full border border-white/20 px-4 py-1 text-xs text-slate-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoadingMore ? "Loading older messages..." : "Load older messages"}
+              </button>
+            </div>
+          ) : null}
+
           {messages.length === 0 ? (
             <p className="text-sm text-slate-400">
               {isSessionPending ? "Loading conversation..." : "Start the conversation with a focused question."}
             </p>
           ) : (
             messages.map((turn) => (
-              <article
-                key={turn.id}
-                className={`rounded-2xl border p-4 ${
-                  turn.authorKind === "assistant"
-                    ? "border-white/10 bg-slate-900 text-slate-100"
-                    : "border-cyan-400/30 bg-cyan-400/10 text-cyan-100"
-                }`}
-              >
-                <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em]">
-                  <span>
-                    {turn.authorKind === "assistant"
-                      ? "AI Tutor"
-                      : turn.authorKind === "teacher"
-                        ? "Teacher"
-                        : "You"}
-                  </span>
-                  <span className="text-slate-400">{formatTime(turn.createdAt)}</span>
-                </div>
-                <p className="whitespace-pre-wrap text-sm">{turn.content}</p>
-                {turn.citations.length > 0 ? (
-                  <ul className="mt-3 space-y-1 text-xs text-slate-400">
-                    {turn.citations.map((citation) => (
-                      <li key={`${turn.id}-${citation.sourceLabel}-${citation.snippet ?? ""}`}>
-                        {citation.sourceLabel}
-                        {citation.snippet ? `: ${citation.snippet}` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </article>
+              <div key={turn.id} className={turn.authorKind === "assistant" ? "flex justify-center" : "flex justify-end"}>
+                {turn.authorKind === "assistant" ? (
+                  <article className="w-full max-w-3xl text-slate-100">
+                    <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
+                      <span>AI Tutor</span>
+                      <span>{formatTime(turn.createdAt)}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-100">{turn.content}</p>
+                    {turn.citations.length > 0 ? (
+                      <ul className="mt-3 space-y-1 text-xs text-slate-400">
+                        {turn.citations.map((citation) => (
+                          <li key={`${turn.id}-${citation.sourceLabel}-${citation.snippet ?? ""}`}>
+                            {citation.sourceLabel}
+                            {citation.snippet ? `: ${citation.snippet}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </article>
+                ) : (
+                  <article className="max-w-[85%] rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-cyan-100">
+                    <div className="mb-2 flex items-center justify-between gap-4 text-xs uppercase tracking-[0.2em] text-cyan-100/80">
+                      <span>{turn.authorKind === "teacher" ? "Teacher" : "You"}</span>
+                      <span className="text-cyan-100/70">{formatTime(turn.createdAt)}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm">{turn.content}</p>
+                  </article>
+                )}
+              </div>
             ))
           )}
+
+          {showCompactionStatus ? (
+            <div className="flex justify-center">
+              <div
+                className="w-full max-w-3xl rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-amber-100"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="inline-flex h-5 w-5 animate-spin rounded-full border-2 border-amber-200/20 border-t-amber-200"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm italic">Compacting our conversation so we can keep chatting...</p>
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30" aria-hidden="true">
+                  <div className="h-full w-1/2 animate-pulse rounded-full bg-amber-100/80" />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div ref={endOfMessagesRef} />
         </div>
 

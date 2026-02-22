@@ -10,6 +10,7 @@ import {
   parseDueAt,
   parseHighlights,
   parseOptionalScore,
+  parseChatCompactionSummary,
   parseReflection,
 } from "@/lib/chat/validation";
 
@@ -181,5 +182,35 @@ describe("chat validation", () => {
     expect(content.activityId).toBe("activity-1");
     expect(content.transcript).toHaveLength(1);
     expect(content.reflection).toContain("review");
+  });
+
+  it("parses chat compaction summary payloads", () => {
+    const parsed = parseChatCompactionSummary({
+      version: "v1",
+      generatedAt: "2026-02-10T00:00:00.000Z",
+      compactedThrough: {
+        createdAt: "2026-02-10T00:00:00.000Z",
+        messageId: "m-1",
+        turnCount: 10,
+      },
+      keyTerms: [
+        {
+          term: "checksum",
+          weight: 2,
+          occurrences: 2,
+          lastSeen: "2026-02-10T00:00:00.000Z",
+        },
+      ],
+      resolvedFacts: ["checksum uses one's complement"],
+      openQuestions: ["why complement output?"],
+      studentNeeds: ["more examples"],
+      timeline: {
+        from: "2026-02-09T00:00:00.000Z",
+        to: "2026-02-10T00:00:00.000Z",
+        highlights: ["reviewed algorithm"],
+      },
+    });
+    expect(parsed?.version).toBe("v1");
+    expect(parsed?.keyTerms[0]?.term).toBe("checksum");
   });
 });

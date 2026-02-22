@@ -13,6 +13,18 @@ export type GroundedChatPurpose =
   | "student_chat_always_on_v1"
   | "teacher_chat_always_on_v1";
 
+function resolveOpenRouterTransforms() {
+  const raw = process.env.OPENROUTER_CHAT_TRANSFORMS;
+  if (!raw) {
+    return undefined;
+  }
+  const transforms = raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return transforms.length > 0 ? transforms : undefined;
+}
+
 async function logChatAiRequest(input: {
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
   classId: string;
@@ -82,6 +94,8 @@ export async function generateGroundedChatResponse(input: {
   userId: string;
   userMessage: string;
   transcript: ChatTurn[];
+  compactedMemoryContext?: string;
+  sessionId?: string;
   assignmentInstructions?: string | null;
   purpose: GroundedChatPurpose;
 }): Promise<ChatModelResponse> {
@@ -98,6 +112,7 @@ export async function generateGroundedChatResponse(input: {
     transcript: input.transcript,
     blueprintContext: blueprintContext.blueprintContext,
     materialContext,
+    compactedMemoryContext: input.compactedMemoryContext,
     assignmentInstructions: input.assignmentInstructions,
   });
 
@@ -108,6 +123,8 @@ export async function generateGroundedChatResponse(input: {
       user: prompt.user,
       temperature: 0.2,
       maxTokens: 1200,
+      sessionId: input.sessionId,
+      transforms: resolveOpenRouterTransforms(),
     });
 
     const parsed = parseChatModelResponse(result.content);

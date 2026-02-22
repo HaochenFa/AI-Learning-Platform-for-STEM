@@ -38,6 +38,8 @@ This roadmap focuses on production ready delivery with subject agnostic function
 - Exam review plan based on topic mastery.
 - Status update: Always-on AI Chat is implemented with persistent sessions,
   student chat-focused workspace transformation, and teacher chat monitoring.
+- Status update: Always-on AI Chat now uses recency-first message retrieval with pagination and
+  hybrid context compaction (recent turns + persisted memory summary) for long-running sessions.
 - Status update: Quiz vertical slice is implemented with draft generation, teacher curation + publish,
   whole-class assignment, 2-attempt best-score policy, auto-grading, and teacher override review.
 - Flashcards, homework assistance, and exam review remain next.
