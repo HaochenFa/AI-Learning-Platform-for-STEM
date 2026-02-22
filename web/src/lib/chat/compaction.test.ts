@@ -136,6 +136,56 @@ describe("chat compaction", () => {
     expect(decision.shouldCompact).toBe(true);
   });
 
+  it("tracks compacted turn count through the selected anchor only", () => {
+    const messages = Array.from({ length: 30 }, (_, index) =>
+      makeMessage({
+        id: `m${index + 1}`,
+        createdAt: `2026-02-10T10:${String(index).padStart(2, "0")}:00.000Z`,
+        authorKind: index % 2 === 0 ? "student" : "assistant",
+        content:
+          index < 20
+            ? "Can you explain derivative chain rule checksum overlap terms again?"
+            : "Thanks.",
+      }),
+    );
+
+    const result = buildCompactionResult({
+      messages,
+      existingSummary: {
+        version: "v1",
+        generatedAt: "2026-02-09T09:00:00.000Z",
+        compactedThrough: {
+          createdAt: "2026-02-09T09:00:00.000Z",
+          messageId: "m0",
+          turnCount: 5,
+        },
+        keyTerms: [],
+        resolvedFacts: [],
+        openQuestions: [],
+        studentNeeds: [],
+        timeline: {
+          from: "2026-02-09T09:00:00.000Z",
+          to: "2026-02-09T09:00:00.000Z",
+          highlights: [],
+        },
+      },
+      latestUserMessage: "Explain derivative chain rule overlap terms.",
+      recentTurns: 2,
+    });
+
+    expect(result).not.toBeNull();
+    if (!result) {
+      return;
+    }
+
+    const compactableCandidates = messages.slice(0, messages.length - 2);
+    const anchorIndex = compactableCandidates.findIndex(
+      (candidate) => candidate.id === result.summary.compactedThrough.messageId,
+    );
+    expect(anchorIndex).toBeGreaterThanOrEqual(0);
+    expect(result.summary.compactedThrough.turnCount).toBe(5 + anchorIndex + 1);
+  });
+
   it("builds readable memory context text", () => {
     const summary: ChatCompactionSummary = {
       version: "v1",

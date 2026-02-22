@@ -186,24 +186,28 @@ export default function ClassChatWorkspace({
     }
     setIsLoadingMore(true);
     startSessionTransition(async () => {
-      const result = await listClassChatMessages(classId, selectedSessionId, ownerUserId, {
-        beforeCursor: pageInfo.nextCursor,
-      });
-      if (!result.ok) {
-        setError(result.error);
-        setIsLoadingMore(false);
-        return;
-      }
+      try {
+        const result = await listClassChatMessages(classId, selectedSessionId, ownerUserId, {
+          beforeCursor: pageInfo.nextCursor,
+        });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
 
-      skipAutoScrollRef.current = true;
-      setMessages((current) => {
-        const existing = new Set(current.map((item) => item.id));
-        const older = result.data.messages.filter((item) => !existing.has(item.id));
-        return [...older, ...current];
-      });
-      setPageInfo(result.data.pageInfo);
-      setError(null);
-      setIsLoadingMore(false);
+        skipAutoScrollRef.current = true;
+        setMessages((current) => {
+          const existing = new Set(current.map((item) => item.id));
+          const older = result.data.messages.filter((item) => !existing.has(item.id));
+          return [...older, ...current];
+        });
+        setPageInfo(result.data.pageInfo);
+        setError(null);
+      } catch {
+        setError("Unable to load older messages right now. Please try again.");
+      } finally {
+        setIsLoadingMore(false);
+      }
     });
   };
 
@@ -399,12 +403,20 @@ export default function ClassChatWorkspace({
 
           {showCompactionStatus ? (
             <div className="flex justify-center">
-              <div className="w-full max-w-3xl rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-amber-100">
+              <div
+                className="w-full max-w-3xl rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-amber-100"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-5 w-5 animate-spin rounded-full border-2 border-amber-200/20 border-t-amber-200" />
+                  <span
+                    className="inline-flex h-5 w-5 animate-spin rounded-full border-2 border-amber-200/20 border-t-amber-200"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm italic">Compacting our conversation so we can keep chatting...</p>
                 </div>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30">
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30" aria-hidden="true">
                   <div className="h-full w-1/2 animate-pulse rounded-full bg-amber-100/80" />
                 </div>
               </div>

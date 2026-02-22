@@ -2,13 +2,21 @@ import type { ChatCompactionSummary, ClassChatMessage } from "@/lib/chat/types";
 import { parseChatCompactionSummary } from "@/lib/chat/validation";
 import { estimateTokenCount } from "@/lib/materials/chunking";
 
-export const CHAT_CONTEXT_RECENT_TURNS = Number(process.env.CHAT_CONTEXT_RECENT_TURNS ?? 12);
-export const CHAT_COMPACTION_TRIGGER_TURNS = Number(process.env.CHAT_COMPACTION_TRIGGER_TURNS ?? 30);
-export const CHAT_COMPACTION_MIN_NEW_TURNS = Number(process.env.CHAT_COMPACTION_MIN_NEW_TURNS ?? 6);
-export const CHAT_CONTEXT_WINDOW_TOKENS = Number(process.env.CHAT_CONTEXT_WINDOW_TOKENS ?? 12000);
-export const CHAT_OUTPUT_TOKEN_RESERVE = Number(process.env.CHAT_OUTPUT_TOKEN_RESERVE ?? 1400);
+function parseFiniteNumberEnv(envValue: string | undefined, fallback: number) {
+  if (typeof envValue === "string" && envValue.trim().length === 0) {
+    return fallback;
+  }
+  const parsed = Number(envValue ?? fallback);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
 
-const CHAT_COMPACTION_CONTEXT_PRESSURE = Number(process.env.CHAT_COMPACTION_CONTEXT_PRESSURE ?? 0.8);
+export const CHAT_CONTEXT_RECENT_TURNS = parseFiniteNumberEnv(process.env.CHAT_CONTEXT_RECENT_TURNS, 12);
+export const CHAT_COMPACTION_TRIGGER_TURNS = parseFiniteNumberEnv(process.env.CHAT_COMPACTION_TRIGGER_TURNS, 30);
+export const CHAT_COMPACTION_MIN_NEW_TURNS = parseFiniteNumberEnv(process.env.CHAT_COMPACTION_MIN_NEW_TURNS, 6);
+export const CHAT_CONTEXT_WINDOW_TOKENS = parseFiniteNumberEnv(process.env.CHAT_CONTEXT_WINDOW_TOKENS, 12000);
+export const CHAT_OUTPUT_TOKEN_RESERVE = parseFiniteNumberEnv(process.env.CHAT_OUTPUT_TOKEN_RESERVE, 1400);
+
+const CHAT_COMPACTION_CONTEXT_PRESSURE = parseFiniteNumberEnv(process.env.CHAT_COMPACTION_CONTEXT_PRESSURE, 0.8);
 const MAX_KEY_TERMS = 12;
 const MAX_LIST_ITEMS = 8;
 const MAX_HIGHLIGHTS = 8;
@@ -195,12 +203,16 @@ export function buildCompactionResult(input: {
   if (!compactedThrough) {
     return null;
   }
+  const compactedThroughIndex = candidates.findIndex(
+    (candidate) => candidate.id === compactedThrough.id && candidate.createdAt === compactedThrough.createdAt,
+  );
+  const compactedTurnDelta = compactedThroughIndex >= 0 ? compactedThroughIndex + 1 : candidates.length;
 
   const merged = mergeSummary({
     existingSummary: input.existingSummary,
     selected,
-    candidates,
     compactedThrough,
+    compactedTurnDelta,
     latestQueryTerms,
   });
 
@@ -306,8 +318,8 @@ function selectChronologicalHighlights(scoredTurns: ScoredTurn[]) {
 function mergeSummary(input: {
   existingSummary: ChatCompactionSummary | null;
   selected: ClassChatMessage[];
-  candidates: ClassChatMessage[];
   compactedThrough: ClassChatMessage;
+  compactedTurnDelta: number;
   latestQueryTerms: string[];
 }): ChatCompactionSummary {
   const previous = input.existingSummary;
@@ -385,7 +397,7 @@ function mergeSummary(input: {
     compactedThrough: {
       createdAt: input.compactedThrough.createdAt,
       messageId: input.compactedThrough.id,
-      turnCount: priorCount + input.candidates.length,
+      turnCount: priorCount + input.compactedTurnDelta,
     },
     keyTerms,
     resolvedFacts,

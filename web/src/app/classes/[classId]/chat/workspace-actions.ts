@@ -78,7 +78,16 @@ type SessionCompactionRow = {
   updated_at: string;
 };
 
-const CHAT_HISTORY_PAGE_SIZE = Number(process.env.CHAT_HISTORY_PAGE_SIZE ?? 120);
+function parsePositiveIntegerEnv(envValue: string | undefined, fallback: number) {
+  const parsed = Number(envValue);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  const normalized = Math.floor(parsed);
+  return normalized > 0 ? normalized : fallback;
+}
+
+const CHAT_HISTORY_PAGE_SIZE = parsePositiveIntegerEnv(process.env.CHAT_HISTORY_PAGE_SIZE, 120);
 const CHAT_CONTEXT_FETCH_LIMIT = Math.max(CHAT_COMPACTION_TRIGGER_TURNS * 3, CHAT_CONTEXT_RECENT_TURNS * 3, 180);
 
 function normalizeSession(row: SessionRow): ClassChatSession {
@@ -164,11 +173,8 @@ function decodeMessageCursor(cursor: string | null | undefined) {
   return { createdAt, id };
 }
 
-function isStrictlyOlderThanCursor(message: ClassChatMessage, cursor: { createdAt: string; id: string }) {
-  if (message.createdAt !== cursor.createdAt) {
-    return message.createdAt < cursor.createdAt;
-  }
-  return message.id < cursor.id;
+function buildBeforeCursorPredicate(cursor: { createdAt: string; id: string }) {
+  return `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`;
 }
 
 function normalizeCompactionSummary(row: SessionCompactionRow | null | undefined): ChatCompactionSummary | null {
@@ -565,10 +571,11 @@ export async function listClassChatMessages(
     };
   }
 
-  const requestedLimit = options?.limit ?? CHAT_HISTORY_PAGE_SIZE;
+  const requestedLimit =
+    typeof options?.limit === "number" && Number.isFinite(options.limit) ? options.limit : CHAT_HISTORY_PAGE_SIZE;
   const pageSize = Math.max(1, Math.min(200, Math.floor(requestedLimit)));
   const beforeCursor = decodeMessageCursor(options?.beforeCursor);
-  const queryLimit = beforeCursor ? pageSize * 3 : pageSize + 1;
+  const queryLimit = pageSize + 1;
 
   const query = access.supabase
     .from("class_chat_messages")
@@ -582,7 +589,7 @@ export async function listClassChatMessages(
     .limit(queryLimit);
 
   if (beforeCursor) {
-    query.lte("created_at", beforeCursor.createdAt);
+    query.or(buildBeforeCursorPredicate(beforeCursor));
   }
 
   const { data: rows, error } = await query;
@@ -594,11 +601,7 @@ export async function listClassChatMessages(
     };
   }
 
-  let descendingMessages = normalizeMessagesChronological((rows ?? []) as MessageRow[]).reverse();
-  if (beforeCursor) {
-    descendingMessages = descendingMessages.filter((message) => isStrictlyOlderThanCursor(message, beforeCursor));
-  }
-
+  const descendingMessages = normalizeMessagesChronological((rows ?? []) as MessageRow[]).reverse();
   const pageSlice = descendingMessages.slice(0, pageSize);
   const hasMore = descendingMessages.length > pageSize;
   const oldestInPage = pageSlice[pageSlice.length - 1];
