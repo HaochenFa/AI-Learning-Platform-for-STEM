@@ -12,11 +12,11 @@ type QueueMessage = {
   };
 };
 
-type MaterialKind = "pdf" | "docx" | "pptx" | "image";
+type MaterialKind = "pdf" | "docx" | "pptx";
 
 type MaterialSegment = {
   text: string;
-  sourceType: "page" | "slide" | "paragraph" | "image";
+  sourceType: "page" | "slide" | "paragraph";
   sourceIndex: number;
   sectionTitle?: string;
   extractionMethod: "text";
@@ -82,10 +82,6 @@ const SUPPORTED_MIME_TO_KIND: Record<string, MaterialKind> = {
   "application/pdf": "pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
-  "image/png": "image",
-  "image/jpeg": "image",
-  "image/webp": "image",
-  "image/gif": "image",
 };
 
 Deno.serve(async (req) => {
@@ -291,6 +287,14 @@ async function processMaterialJob(supabase: SupabaseClient, materialId: string, 
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const kind = resolveKind(material.mime_type, asRecord(material.metadata)?.kind, material.storage_path);
+  if (!kind) {
+    await updateMaterialStatus(supabase, materialId, asRecord(material.metadata), {
+      status: "failed",
+      warnings: ["Unsupported material type. Upload PDF, DOCX, or PPTX."],
+      extraction_stats: { charCount: 0, segmentCount: 0 },
+    });
+    return;
+  }
 
   const extraction = await extractTextFromBinary({
     kind,
@@ -379,11 +383,6 @@ async function extractTextFromBinary(input: {
   bytes: Uint8Array;
 }): Promise<ExtractionResult> {
   const warnings: string[] = [];
-
-  if (input.kind === "image") {
-    warnings.push("Image extraction is not supported. Upload PDF, DOCX, or PPTX.");
-    return buildExtractionResult([], warnings);
-  }
 
   try {
     let segments: MaterialSegment[] = [];
@@ -525,7 +524,11 @@ function cleanText(text: string) {
     .trim();
 }
 
-function resolveKind(mimeType?: string | null, metadataKind?: unknown, path?: string): MaterialKind {
+function resolveKind(
+  mimeType?: string | null,
+  metadataKind?: unknown,
+  path?: string,
+): MaterialKind | null {
   if (typeof metadataKind === "string" && isMaterialKind(metadataKind)) {
     return metadataKind;
   }
@@ -539,16 +542,13 @@ function resolveKind(mimeType?: string | null, metadataKind?: unknown, path?: st
     if (lower.endsWith(".pdf")) return "pdf";
     if (lower.endsWith(".docx")) return "docx";
     if (lower.endsWith(".pptx")) return "pptx";
-    if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp") || lower.endsWith(".gif")) {
-      return "image";
-    }
   }
 
-  return "pdf";
+  return null;
 }
 
 function isMaterialKind(value: string): value is MaterialKind {
-  return value === "pdf" || value === "docx" || value === "pptx" || value === "image";
+  return value === "pdf" || value === "docx" || value === "pptx";
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

@@ -57,11 +57,14 @@ describe("detectMaterialKind", () => {
 });
 
 describe("extractTextFromBuffer", () => {
-  it("fails extraction for images", async () => {
-    const result = await extractTextFromBuffer(Buffer.from("fake"), "image");
+  it("fails extraction for unsupported kinds", async () => {
+    const result = await extractTextFromBuffer(
+      Buffer.from("fake"),
+      "unsupported" as unknown as Parameters<typeof extractTextFromBuffer>[1],
+    );
     expect(result.status).toBe("failed");
     expect(result.text).toBe("");
-    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.warnings).toContain("Unsupported material kind. Upload PDF, DOCX, or PPTX.");
   });
 
   it("extracts and normalizes text from PDFs", async () => {

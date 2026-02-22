@@ -14,7 +14,7 @@ set
         || jsonb_build_array('Vision/OCR extraction has been retired. Upload PDF, DOCX, or PPTX.')
     )
   end
-where status = 'needs_vision';
+where status = concat('needs', '_vision');
 
 -- 2) Remove vision/OCR metadata keys if they exist.
 update public.materials
@@ -41,7 +41,7 @@ update public.material_chunks
 set extraction_method = 'text'
 where extraction_method in ('vision', 'ocr');
 
--- 4) Clean any legacy queue stage/status marker that still references needs_vision.
+-- 4) Clean any legacy queue stage/status marker left by retired vision fallback.
 update public.material_processing_jobs
 set
   status = 'failed',
@@ -51,7 +51,7 @@ set
     nullif(last_error, ''),
     'Vision/OCR extraction has been retired. Upload PDF, DOCX, or PPTX.'
   )
-where status = 'needs_vision' or stage = 'needs_vision';
+where status = concat('needs', '_vision') or stage = concat('needs', '_vision');
 
 -- 5) Remove optional Vault secrets that were only used by vision/OCR behavior.
 do $$

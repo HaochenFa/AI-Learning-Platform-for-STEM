@@ -22,10 +22,6 @@ const SUPPORTED_MIME_TO_KIND: Record<string, MaterialKind> = {
   "application/pdf": "pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
-  "image/png": "image",
-  "image/jpeg": "image",
-  "image/webp": "image",
-  "image/gif": "image",
 };
 
 async function handleProcessRequest(req: Request) {
@@ -134,6 +130,14 @@ async function processMaterialJob(
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const kind = resolveKind(material.mime_type, material.metadata?.kind, material.storage_path);
+  if (!kind) {
+    await updateMaterialStatus(admin, materialId, material.metadata, {
+      status: "failed",
+      warnings: ["Unsupported material type. Upload PDF, DOCX, or PPTX."],
+      extraction_stats: { charCount: 0, segmentCount: 0 },
+    });
+    return;
+  }
 
   const extraction = await extractTextFromBuffer(buffer, kind);
   if (extraction.status !== "ready" || extraction.segments.length === 0) {
@@ -216,7 +220,11 @@ async function processMaterialJob(
   });
 }
 
-function resolveKind(mimeType?: string | null, metadataKind?: string, path?: string) {
+function resolveKind(
+  mimeType?: string | null,
+  metadataKind?: string,
+  path?: string,
+): MaterialKind | null {
   if (metadataKind && isMaterialKind(metadataKind)) {
     return metadataKind;
   }
@@ -228,21 +236,12 @@ function resolveKind(mimeType?: string | null, metadataKind?: string, path?: str
     if (lower.endsWith(".pdf")) return "pdf";
     if (lower.endsWith(".docx")) return "docx";
     if (lower.endsWith(".pptx")) return "pptx";
-    if (
-      lower.endsWith(".png") ||
-      lower.endsWith(".jpg") ||
-      lower.endsWith(".jpeg") ||
-      lower.endsWith(".webp") ||
-      lower.endsWith(".gif")
-    ) {
-      return "image";
-    }
   }
-  return "pdf";
+  return null;
 }
 
 function isMaterialKind(value: string): value is MaterialKind {
-  return value === "pdf" || value === "docx" || value === "pptx" || value === "image";
+  return value === "pdf" || value === "docx" || value === "pptx";
 }
 
 function getCronSecretFromRequest(req: Request) {

@@ -2,11 +2,11 @@ import JSZip from "jszip";
 import pdfParse from "pdf-parse";
 import { ALLOWED_EXTENSIONS } from "./constants";
 
-export type MaterialKind = "pdf" | "docx" | "pptx" | "image";
+export type MaterialKind = "pdf" | "docx" | "pptx";
 
 export type MaterialSegment = {
   text: string;
-  sourceType: "page" | "slide" | "paragraph" | "image";
+  sourceType: "page" | "slide" | "paragraph";
   sourceIndex: number;
   sectionTitle?: string;
   extractionMethod: "text";
@@ -140,7 +140,7 @@ export async function extractTextFromBuffer(
     return buildExtractionResult({
       segments: [],
       status: "failed",
-      warnings: ["Image extraction is not supported. Upload PDF, DOCX, or PPTX."],
+      warnings: ["Unsupported material kind. Upload PDF, DOCX, or PPTX."],
     });
   } catch (error) {
     return buildExtractionResult({
