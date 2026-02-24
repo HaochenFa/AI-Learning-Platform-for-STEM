@@ -720,7 +720,7 @@ export function BlueprintEditor({
       </div>
 
       {warningMessage ? (
-        <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-800">
           {warningMessage}
         </div>
       ) : null}
@@ -1075,12 +1075,12 @@ export function BlueprintEditor({
               ) : topicMap.errorMessage ? (
                 <div className="space-y-2 text-sm text-amber-700">
                   <p>{topicMap.errorMessage}</p>
-                  <p className="text-xs text-amber-100">{dependencySummary}</p>
+                  <p className="text-xs text-amber-700">{dependencySummary}</p>
                 </div>
               ) : topicMap.hasCycle ? (
                 <div className="space-y-3 text-sm text-amber-700">
                   <p>Cycle detected in prerequisites. Fix the loop to view the map.</p>
-                  <ul className="list-disc pl-5 text-xs text-amber-100">
+                  <ul className="list-disc pl-5 text-xs text-amber-700">
                     {draft.topics.map((topic) => (
                       <li key={`cycle-${topic.clientId}`}>
                         {topic.title || "Untitled"} →

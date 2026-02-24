@@ -193,7 +193,11 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
       className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-default bg-[var(--background)] transition-all duration-300"
       style={{ width: "var(--sidebar-width)" }}
     >
-      <div className="flex h-16 items-center justify-between border-b border-default px-4">
+      <div
+        className={`flex h-16 items-center border-b border-default px-4 ${
+          isCompact ? "justify-center" : "justify-between"
+        }`}
+      >
         {!isCompact && (
           <Link
             href={accountType === "teacher" ? "/teacher/dashboard" : "/student/dashboard"}
@@ -207,7 +211,7 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
         )}
         <button
           onClick={() => setIsCollapsed((value) => !value)}
-          className="ui-motion-color flex h-10 w-10 items-center justify-center rounded-full border border-default bg-white text-ui-muted hover:border-accent hover:text-accent"
+          className="ui-motion-color flex h-10 w-10 items-center justify-center rounded-xl border border-default bg-white text-ui-muted hover:border-accent hover:text-accent"
           aria-label={isCompact ? "Expand sidebar" : "Collapse sidebar"}
           type="button"
         >
@@ -215,16 +219,25 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 px-2 py-4">
+      <nav
+        className={`flex-1 py-4 ${
+          isCompact ? "flex flex-col items-center gap-2 px-0" : "space-y-1 px-2"
+        }`}
+      >
         {navItems.map((item) => (
           <Link
             key={item.label}
             href={item.href}
-            className={`ui-motion-color flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${
+            className={`ui-motion-color flex items-center text-sm font-medium ${
+              isCompact ? "h-10 w-10 justify-center rounded-xl border" : "gap-3 rounded-lg px-3 py-2.5"
+            } ${
               isActive(item.href)
                 ? "border border-accent bg-accent-soft text-accent"
-                : "text-ui-muted hover:bg-[var(--surface-muted)] hover:text-ui-primary"
+                : isCompact
+                  ? "border-transparent text-ui-muted hover:bg-[var(--surface-muted)] hover:text-ui-primary"
+                  : "text-ui-muted hover:bg-[var(--surface-muted)] hover:text-ui-primary"
             }`}
+            aria-label={isCompact ? item.label : undefined}
             title={isCompact ? item.label : undefined}
           >
             {item.icon}
@@ -282,8 +295,9 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
         <form action={signOut} className={`mt-3 ${isCompact ? "flex justify-center" : ""}`}>
           <button
             type="submit"
-            className={`ui-motion-color flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ui-muted hover:bg-rose-50 hover:text-rose-700 ${
-              isCompact ? "w-full" : ""
+            aria-label={isCompact ? "Sign out" : undefined}
+            className={`ui-motion-color flex items-center justify-center text-sm font-medium text-ui-muted hover:bg-rose-50 hover:text-rose-700 ${
+              isCompact ? "h-10 w-10 rounded-xl border border-transparent" : "gap-2 rounded-lg px-3 py-2"
             }`}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
