@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { generateBlueprint } from "@/app/classes/[classId]/blueprint/actions";
 import { BlueprintEditor } from "@/app/classes/[classId]/blueprint/BlueprintEditor";
+import BlueprintTimeoutRetryBanner from "@/app/classes/[classId]/blueprint/BlueprintTimeoutRetryBanner";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 
@@ -125,6 +126,9 @@ export default async function BlueprintPage({
 
   const errorMessage =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
+  const isBlueprintTimeoutError = Boolean(errorMessage && /timed out/i.test(errorMessage));
+  const canRetryTimeoutGeneration = isBlueprintTimeoutError && isTeacher && hasReadyMaterials;
+  const retryGenerationAction = generateBlueprint.bind(null, classRow.id);
   const generatedMessage =
     resolvedSearchParams?.generated === "1" ? "Blueprint generated in draft mode." : null;
   const savedMessage = resolvedSearchParams?.saved === "1" ? "Draft saved." : null;
@@ -174,9 +178,14 @@ export default async function BlueprintPage({
           </p>
         </header>
 
-        {errorMessage ? (
+        {errorMessage && canRetryTimeoutGeneration ? (
+          <BlueprintTimeoutRetryBanner
+            message={errorMessage}
+            retryAction={retryGenerationAction}
+          />
+        ) : errorMessage ? (
           <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
+            <p>{errorMessage}</p>
           </div>
         ) : null}
 

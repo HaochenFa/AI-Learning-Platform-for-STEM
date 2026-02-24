@@ -186,6 +186,48 @@ describe("generateBlueprint", () => {
     expect(redirect).toHaveBeenCalled();
   });
 
+  it("redirects with a friendly timeout message when generation exceeds the time budget", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: {
+            id: "class-1",
+            owner_id: "u1",
+            title: "Math",
+            subject: "Mathematics",
+            level: "College",
+          },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({
+          data: [{ id: "m1", title: "Lecture", extracted_text: "content", status: "ready" }],
+          error: null,
+        });
+      }
+      if (table === "ai_requests") {
+        return makeBuilder({ error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    vi.mocked(retrieveMaterialContext).mockResolvedValue("context");
+    vi.mocked(generateTextWithFallback).mockRejectedValue(
+      new Error("OpenRouter generation request timed out after 1000ms."),
+    );
+
+    await expectRedirect(
+      () => generateBlueprint("class-1"),
+      "/classes/class-1/blueprint?error=Blueprint%20generation%20timed%20out%20after%202%20minutes.%20Please%20retry%20generation.",
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
   it("generates a blueprint and redirects on success", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     let blueprintCall = 0;

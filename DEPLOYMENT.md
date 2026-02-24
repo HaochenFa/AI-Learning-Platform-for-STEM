@@ -64,6 +64,9 @@ npx supabase secrets set MATERIAL_WORKER_TOKEN="<strong-random-token>"
 Also set required AI and worker tuning secrets on Supabase (same values used by web app where relevant):
 
 - `AI_PROVIDER_DEFAULT`
+- `AI_REQUEST_TIMEOUT_MS` (recommended: `30000`)
+- `AI_EMBEDDING_TIMEOUT_MS` (recommended: `30000`)
+- `BLUEPRINT_TOTAL_TIMEOUT_MS` (recommended: `120000`)
 - `OPENROUTER_API_KEY`, `OPENROUTER_EMBEDDING_MODEL` (and optional metadata envs)
 - `OPENAI_API_KEY`, `OPENAI_EMBEDDING_MODEL` (if used)
 - `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL` (if used)
@@ -113,6 +116,9 @@ Legacy fallback names (optional):
 ### Required AI (OpenRouter-first)
 
 - `AI_PROVIDER_DEFAULT=openrouter`
+- `AI_REQUEST_TIMEOUT_MS=30000`
+- `AI_EMBEDDING_TIMEOUT_MS=30000`
+- `BLUEPRINT_TOTAL_TIMEOUT_MS=120000`
 - `OPENROUTER_API_KEY`
 - `OPENROUTER_MODEL`
 - `OPENROUTER_EMBEDDING_MODEL`

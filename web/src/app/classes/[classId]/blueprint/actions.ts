@@ -15,6 +15,13 @@ import { requireVerifiedUser } from "@/lib/auth/session";
 
 const DRAFT_ALREADY_EXISTS_MESSAGE = "A draft version already exists. Open it to continue editing.";
 const BLUEPRINT_REQUEST_PURPOSE = "blueprint_generation_v2";
+const BLUEPRINT_TOTAL_TIMEOUT_MS = parseTimeoutMs(
+  process.env.BLUEPRINT_TOTAL_TIMEOUT_MS,
+  120000,
+);
+const BLUEPRINT_TIMEOUT_ERROR_MESSAGE = `Blueprint generation timed out after ${formatDuration(
+  BLUEPRINT_TOTAL_TIMEOUT_MS,
+)}. Please retry generation.`;
 
 type DraftObjectiveInput = {
   id?: string;
@@ -40,6 +47,45 @@ type DraftPayload = {
 
 function redirectWithError(path: string, message: string) {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
+}
+
+function parseTimeoutMs(value: string | undefined, fallbackMs: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallbackMs;
+  }
+  return Math.floor(parsed);
+}
+
+function formatDuration(durationMs: number) {
+  const totalSeconds = Math.max(1, Math.floor(durationMs / 1000));
+  if (totalSeconds % 60 === 0) {
+    const minutes = totalSeconds / 60;
+    return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  }
+  return `${totalSeconds} seconds`;
+}
+
+function toFriendlyBlueprintError(error: unknown, fallbackMessage: string) {
+  if (!(error instanceof Error)) {
+    return fallbackMessage;
+  }
+  if (/timed out/i.test(error.message)) {
+    return BLUEPRINT_TIMEOUT_ERROR_MESSAGE;
+  }
+  return error.message;
+}
+
+function remainingBudgetMs(startedAtMs: number) {
+  return BLUEPRINT_TOTAL_TIMEOUT_MS - (Date.now() - startedAtMs);
+}
+
+function requireRemainingBudget(startedAtMs: number) {
+  const remaining = remainingBudgetMs(startedAtMs);
+  if (remaining <= 0) {
+    throw new Error(BLUEPRINT_TIMEOUT_ERROR_MESSAGE);
+  }
+  return remaining;
 }
 
 async function requireTeacherAccess(
@@ -546,6 +592,7 @@ async function rollbackDraftCreation(
 }
 
 export async function generateBlueprint(classId: string) {
+  const startedAtMs = Date.now();
   const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
@@ -574,11 +621,14 @@ export async function generateBlueprint(classId: string) {
   const query = `Course blueprint for ${classRow.title}. Focus on core topics, objectives, prerequisites, and assessment ideas.`;
   let materialText = "";
   try {
-    materialText = await retrieveMaterialContext(classId, query);
+    const contextTimeoutMs = requireRemainingBudget(startedAtMs);
+    materialText = await retrieveMaterialContext(classId, query, undefined, {
+      timeoutMs: contextTimeoutMs,
+    });
   } catch (error) {
     redirectWithError(
       `/classes/${classId}/blueprint`,
-      error instanceof Error ? error.message : "Failed to retrieve material context.",
+      toFriendlyBlueprintError(error, "Failed to retrieve material context."),
     );
     return;
   }
@@ -601,11 +651,13 @@ export async function generateBlueprint(classId: string) {
   let blueprintId: string | null = null;
   let usedProvider: string | null = null;
   try {
+    const generationTimeoutMs = requireRemainingBudget(startedAtMs);
     const result = await generateTextWithFallback({
       system: prompt.system,
       user: prompt.user,
       temperature: 0.2,
       maxTokens: 8000,
+      timeoutMs: generationTimeoutMs,
     });
     usedProvider = result.provider;
 
@@ -729,7 +781,7 @@ export async function generateBlueprint(classId: string) {
       latency_ms: Date.now() - start,
       status: "error",
     });
-    const message = error instanceof Error ? error.message : "Blueprint generation failed.";
+    const message = toFriendlyBlueprintError(error, "Blueprint generation failed.");
     redirectWithError(`/classes/${classId}/blueprint`, message);
   }
 }

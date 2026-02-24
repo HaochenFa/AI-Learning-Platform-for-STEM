@@ -22,9 +22,11 @@ export async function retrieveMaterialContext(
   classId: string,
   query: string,
   maxTokens = DEFAULT_CONTEXT_TOKENS,
+  options?: { timeoutMs?: number },
 ) {
   const embeddingResult = await generateEmbeddingsWithFallback({
     inputs: [query],
+    timeoutMs: options?.timeoutMs,
   });
 
   const [embedding] = embeddingResult.embeddings;
