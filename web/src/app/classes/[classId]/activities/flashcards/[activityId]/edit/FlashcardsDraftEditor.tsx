@@ -79,7 +79,7 @@ export default function FlashcardsDraftEditor({
         <input type="hidden" name="flashcards_payload" value={payload} readOnly />
 
         <div className="space-y-2">
-          <label className="text-sm text-slate-600" htmlFor="flashcards-title">
+          <label className="text-sm text-ui-muted" htmlFor="flashcards-title">
             Flashcards Title
           </label>
           <input
@@ -87,12 +87,12 @@ export default function FlashcardsDraftEditor({
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             disabled={isPublished}
-            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm text-slate-600" htmlFor="flashcards-instructions">
+          <label className="text-sm text-ui-muted" htmlFor="flashcards-instructions">
             Instructions
           </label>
           <textarea
@@ -101,7 +101,7 @@ export default function FlashcardsDraftEditor({
             onChange={(event) => setInstructions(event.target.value)}
             rows={3}
             disabled={isPublished}
-            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
           />
         </div>
 
@@ -112,7 +112,7 @@ export default function FlashcardsDraftEditor({
               className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4"
             >
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-700">Card {cardIndex + 1}</p>
+                <p className="text-sm font-semibold text-ui-subtle">Card {cardIndex + 1}</p>
                 <button
                   type="button"
                   onClick={() => removeCard(cardIndex)}
@@ -126,7 +126,7 @@ export default function FlashcardsDraftEditor({
               <div className="space-y-3">
                 <div className="space-y-1">
                   <label
-                    className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                    className="text-xs uppercase tracking-[0.2em] text-ui-muted"
                     htmlFor={`flashcard-front-${cardIndex}`}
                   >
                     Front
@@ -137,13 +137,13 @@ export default function FlashcardsDraftEditor({
                     onChange={(event) => updateCard(cardIndex, { front: event.target.value })}
                     rows={2}
                     disabled={isPublished}
-                    className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label
-                    className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                    className="text-xs uppercase tracking-[0.2em] text-ui-muted"
                     htmlFor={`flashcard-back-${cardIndex}`}
                   >
                     Back
@@ -154,7 +154,7 @@ export default function FlashcardsDraftEditor({
                     onChange={(event) => updateCard(cardIndex, { back: event.target.value })}
                     rows={3}
                     disabled={isPublished}
-                    className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </div>
               </div>
@@ -167,14 +167,14 @@ export default function FlashcardsDraftEditor({
             <button
               type="button"
               onClick={addCard}
-              className="rounded-xl border border-white/20 px-4 py-2 text-sm text-slate-700 hover:border-white/40"
+              className="rounded-xl border border-white/20 px-4 py-2 text-sm text-ui-subtle hover:border-white/40"
             >
               Add Card
             </button>
             <PendingSubmitButton
               label="Save Draft"
               pendingLabel="Saving..."
-              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
         ) : null}
@@ -182,7 +182,7 @@ export default function FlashcardsDraftEditor({
 
       <div className="rounded-2xl border border-default bg-white p-4">
         <h2 className="text-lg font-semibold">Publish and Assign</h2>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-ui-muted">
           Publish to lock card content, then create a whole-class assignment.
         </p>
 
@@ -192,7 +192,7 @@ export default function FlashcardsDraftEditor({
               <PendingSubmitButton
                 label="Publish Flashcards"
                 pendingLabel="Publishing..."
-                className="rounded-xl bg-emerald-400/90 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-emerald-400/50"
+                className="rounded-xl bg-emerald-400/90 px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-emerald-400/50"
               />
             </form>
           ) : (
@@ -208,13 +208,13 @@ export default function FlashcardsDraftEditor({
             <input
               name="due_at"
               type="datetime-local"
-              className="rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+              className="rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
             />
             <PendingSubmitButton
               label="Create Assignment"
               pendingLabel="Creating..."
               disabled={!isPublished}
-              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
             />
           </form>
         </div>

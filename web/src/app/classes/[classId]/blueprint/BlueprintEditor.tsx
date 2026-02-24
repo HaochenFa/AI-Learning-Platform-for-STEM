@@ -249,7 +249,7 @@ function SaveDraftButton() {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className="rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 disabled:opacity-60"
+      className="rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-ui-primary disabled:opacity-60"
     >
       {pending ? "Saving..." : "Save draft"}
     </button>
@@ -279,7 +279,7 @@ function ApproveBlueprintButton() {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+      className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Approving..." : "Approve & view"}
     </button>
@@ -673,7 +673,7 @@ export function BlueprintEditor({
 
   if (!blueprint || !initialDraft) {
     return (
-      <div className="rounded-3xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-slate-500">
+      <div className="rounded-3xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-ui-muted">
         No blueprint yet. Generate one to start editing.
       </div>
     );
@@ -683,16 +683,16 @@ export function BlueprintEditor({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
+          <p className="text-xs uppercase tracking-[0.25em] text-ui-muted">
             Version {blueprint.version}
           </p>
-          <p className="text-sm text-slate-600">Status: {blueprint.status}</p>
+          <p className="text-sm text-ui-muted">Status: {blueprint.status}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {canViewOverview ? (
             <Link
               href={`/classes/${classId}/blueprint/overview`}
-              className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 transition hover:border-accent"
+              className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-ui-subtle transition hover:border-accent"
             >
               View overview
             </Link>
@@ -711,7 +711,7 @@ export function BlueprintEditor({
             <button
               type="button"
               onClick={() => setIsEditing((prev) => !prev)}
-              className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 transition hover:border-accent"
+              className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-ui-subtle transition hover:border-accent"
             >
               {isEditing ? "Close editor" : "Edit draft"}
             </button>
@@ -761,7 +761,7 @@ export function BlueprintEditor({
                 value={draft.summary}
                 onChange={(event) => handleSummaryChange(event.target.value)}
                 rows={4}
-                className="mt-3 w-full rounded-2xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm"
+                className="mt-3 w-full rounded-2xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm"
               />
             </div>
 
@@ -793,7 +793,7 @@ export function BlueprintEditor({
                     <div className="mt-4 grid gap-4 md:grid-cols-3">
                       <div className="md:col-span-2">
                         <label
-                          className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                          className="text-xs uppercase tracking-[0.2em] text-ui-muted"
                           htmlFor={`topic-${topic.clientId}-title`}
                         >
                           Title
@@ -806,12 +806,12 @@ export function BlueprintEditor({
                               title: event.target.value,
                             })
                           }
-                          className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                          className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                         />
                       </div>
                       <div>
                         <label
-                          className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                          className="text-xs uppercase tracking-[0.2em] text-ui-muted"
                           htmlFor={`topic-${topic.clientId}-sequence`}
                         >
                           Sequence
@@ -828,13 +828,13 @@ export function BlueprintEditor({
                               sequence: Number(event.target.value),
                             })
                           }
-                          className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                          className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                         />
                       </div>
                     </div>
                     <div className="mt-4">
                       <label
-                        className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                        className="text-xs uppercase tracking-[0.2em] text-ui-muted"
                         htmlFor={`topic-${topic.clientId}-description`}
                       >
                         Description
@@ -848,12 +848,12 @@ export function BlueprintEditor({
                           })
                         }
                         rows={3}
-                        className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                        className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                       />
                     </div>
                     <div className="mt-4">
                       <label
-                        className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                        className="text-xs uppercase tracking-[0.2em] text-ui-muted"
                         htmlFor={`topic-${topic.clientId}-section`}
                       >
                         Section
@@ -866,12 +866,12 @@ export function BlueprintEditor({
                             section: event.target.value,
                           })
                         }
-                        className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                        className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                       />
                     </div>
 
                     <div className="mt-4">
-                      <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                      <label className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                         Prerequisites
                       </label>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -879,7 +879,7 @@ export function BlueprintEditor({
                           selectedPrereqs.map((prereqId, prereqIndex) => (
                             <div
                               key={`${topic.clientId}-prereq-${prereqId}`}
-                              className="flex flex-wrap items-center gap-2 rounded-full border border-default bg-[var(--surface-muted)] px-3 py-1 text-xs text-slate-700"
+                              className="flex flex-wrap items-center gap-2 rounded-full border border-default bg-[var(--surface-muted)] px-3 py-1 text-xs text-ui-subtle"
                             >
                               <span>{topicTitleById.get(prereqId) ?? "Untitled"}</span>
                               <button
@@ -908,7 +908,7 @@ export function BlueprintEditor({
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-slate-500">No prerequisites selected yet.</p>
+                          <p className="text-xs text-ui-muted">No prerequisites selected yet.</p>
                         )}
                       </div>
                       <select
@@ -921,7 +921,7 @@ export function BlueprintEditor({
                           handleAddPrerequisite(topic.clientId, value);
                           event.currentTarget.value = "";
                         }}
-                        className="mt-3 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                        className="mt-3 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                       >
                         <option value="">Add prerequisite</option>
                         {availablePrereqs.map((option) => (
@@ -934,7 +934,7 @@ export function BlueprintEditor({
 
                     <div className="mt-4 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                        <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                           Objectives
                         </p>
                         <button
@@ -951,7 +951,7 @@ export function BlueprintEditor({
                           className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                               Objective
                             </p>
                             <button
@@ -966,7 +966,7 @@ export function BlueprintEditor({
                             </button>
                           </div>
                           <label
-                            className="mt-3 block text-xs uppercase tracking-[0.2em] text-slate-500"
+                            className="mt-3 block text-xs uppercase tracking-[0.2em] text-ui-muted"
                             htmlFor={`objective-${objective.clientId}-statement`}
                           >
                             Statement
@@ -980,11 +980,11 @@ export function BlueprintEditor({
                               })
                             }
                             rows={2}
-                            className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                            className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                           />
                           <div className="mt-3">
                             <label
-                              className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                              className="text-xs uppercase tracking-[0.2em] text-ui-muted"
                               htmlFor={`objective-${objective.clientId}-level`}
                             >
                               Bloom level
@@ -997,7 +997,7 @@ export function BlueprintEditor({
                                   level: event.target.value,
                                 })
                               }
-                              className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                              className="mt-2 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                             >
                               <option value="">Select level</option>
                               {BLOOM_LEVELS.map((level) => (
@@ -1029,7 +1029,7 @@ export function BlueprintEditor({
                   type="button"
                   onClick={() => dispatch({ type: "undo" })}
                   disabled={!canUndo}
-                  className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 disabled:opacity-40"
+                  className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-ui-subtle disabled:opacity-40"
                 >
                   Undo
                 </button>
@@ -1037,7 +1037,7 @@ export function BlueprintEditor({
                   type="button"
                   onClick={() => dispatch({ type: "redo" })}
                   disabled={!canRedo}
-                  className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 disabled:opacity-40"
+                  className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-ui-subtle disabled:opacity-40"
                 >
                   Redo
                 </button>
@@ -1045,7 +1045,7 @@ export function BlueprintEditor({
                   type="button"
                   onClick={handleReset}
                   disabled={!hasChanges}
-                  className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 disabled:opacity-40"
+                  className="rounded-full border border-default px-4 py-2 text-xs uppercase tracking-[0.2em] text-ui-subtle disabled:opacity-40"
                 >
                   Discard changes
                 </button>
@@ -1065,13 +1065,13 @@ export function BlueprintEditor({
           <aside className="space-y-4">
             <div className="rounded-3xl border border-default bg-white p-6">
               <h2 className="text-lg font-semibold">Topic map</h2>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ui-muted">
                 A quick dependency view based on sequences and prerequisites.
               </p>
             </div>
             <div className="rounded-3xl border border-default bg-white p-6">
               {draft.topics.length === 0 ? (
-                <p className="text-sm text-slate-500">Add topics to see the map.</p>
+                <p className="text-sm text-ui-muted">Add topics to see the map.</p>
               ) : topicMap.errorMessage ? (
                 <div className="space-y-2 text-sm text-amber-700">
                   <p>{topicMap.errorMessage}</p>
@@ -1181,7 +1181,7 @@ export function BlueprintEditor({
         <div className="space-y-6">
           <div className="rounded-3xl border border-default bg-white p-6">
             <h2 className="text-lg font-semibold">Blueprint summary</h2>
-            <p className="mt-2 text-sm text-slate-500">{draft.summary}</p>
+            <p className="mt-2 text-sm text-ui-muted">{draft.summary}</p>
           </div>
           <div className="space-y-4">
             {draft.topics.map((topic) => (
@@ -1193,27 +1193,27 @@ export function BlueprintEditor({
                   <div>
                     <h3 className="text-base font-semibold">{topic.title}</h3>
                     {topic.section ? (
-                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">
+                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-ui-muted">
                         Section: {topic.section}
                       </p>
                     ) : null}
                   </div>
-                  <span className="rounded-full border border-default px-3 py-1 text-xs text-slate-500">
+                  <span className="rounded-full border border-default px-3 py-1 text-xs text-ui-muted">
                     Sequence {topic.sequence}
                   </span>
                 </div>
                 {topic.description ? (
-                  <p className="mt-2 text-sm text-slate-500">{topic.description}</p>
+                  <p className="mt-2 text-sm text-ui-muted">{topic.description}</p>
                 ) : null}
                 {topic.prerequisiteClientIds?.length ? (
-                  <p className="mt-3 text-xs text-slate-500">
+                  <p className="mt-3 text-xs text-ui-muted">
                     Prerequisites:{" "}
                     {topic.prerequisiteClientIds
                       .map((id) => topicTitleById.get(id) ?? "Untitled")
                       .join(", ")}
                   </p>
                 ) : null}
-                <ul className="mt-3 space-y-1 text-sm text-slate-500">
+                <ul className="mt-3 space-y-1 text-sm text-ui-muted">
                   {topic.objectives.map((objective) => (
                     <li key={objective.clientId}>
                       - {objective.statement}

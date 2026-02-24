@@ -183,8 +183,8 @@ export default async function StudentDashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">
                 Student Dashboard
               </p>
-              <h1 className="editorial-title mt-2 text-4xl text-slate-900">Welcome, {displayName}</h1>
-              <p className="mt-2 text-sm text-slate-600">
+              <h1 className="editorial-title mt-2 text-4xl text-ui-primary">Welcome, {displayName}</h1>
+              <p className="mt-2 text-sm text-ui-muted">
                 Join classes and complete your assignments in one place.
               </p>
             </div>
@@ -195,7 +195,7 @@ export default async function StudentDashboardPage() {
 
           {(current.length > 0 || upcoming.length > 0 || completed.length > 0) && (
             <section className="mt-8">
-              <h2 className="text-lg font-semibold text-slate-900">Your Progress</h2>
+              <h2 className="text-lg font-semibold text-ui-primary">Your Progress</h2>
               <div className="mt-4 grid grid-cols-3 gap-4">
                 <div className="rounded-2xl border border-[#e3c6b8] bg-[#fdf1eb] p-4">
                   <div className="flex items-center gap-2">
@@ -261,8 +261,8 @@ export default async function StudentDashboardPage() {
                             {getActivityIcon(assignment.activityType)}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-900">{assignment.activityTitle}</p>
-                            <p className="text-xs text-slate-500">{assignment.classTitle}</p>
+                            <p className="text-sm font-medium text-ui-primary">{assignment.activityTitle}</p>
+                            <p className="text-xs text-ui-muted">{assignment.classTitle}</p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -299,8 +299,8 @@ export default async function StudentDashboardPage() {
                             {getActivityIcon(assignment.activityType)}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-900">{assignment.activityTitle}</p>
-                            <p className="text-xs text-slate-500">{assignment.classTitle}</p>
+                            <p className="text-sm font-medium text-ui-primary">{assignment.activityTitle}</p>
+                            <p className="text-xs text-ui-muted">{assignment.classTitle}</p>
                           </div>
                         </div>
                         <p className="text-xs font-medium text-[#6a6458]">{formatDueDate(assignment.dueAt)}</p>
@@ -313,7 +313,7 @@ export default async function StudentDashboardPage() {
           )}
 
           <section id="classes" className="mt-8">
-            <h2 className="text-lg font-semibold text-slate-900">Your Classes</h2>
+            <h2 className="text-lg font-semibold text-ui-primary">Your Classes</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               {classes && classes.length > 0 ? (
                 classes.map((classItem) => {
@@ -329,21 +329,21 @@ export default async function StudentDashboardPage() {
                     >
                       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">Student</p>
                       <Link href={`/classes/${classItem.id}`} className="mt-2 block">
-                        <h3 className="text-xl font-semibold text-slate-900">{classItem.title}</h3>
+                        <h3 className="text-xl font-semibold text-ui-primary">{classItem.title}</h3>
                       </Link>
-                      <p className="mt-2 text-sm text-slate-500">
+                      <p className="mt-2 text-sm text-ui-muted">
                         {classItem.subject || "General"} · {classItem.level || "Mixed"}
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link
                           href={`/classes/${classItem.id}`}
-                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
+                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-ui-muted hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
                         >
                           Open class
                         </Link>
                         <Link
                           href={`/classes/${classItem.id}?view=chat`}
-                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
+                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-ui-muted hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
                         >
                           Open AI chat
                         </Link>
@@ -352,7 +352,7 @@ export default async function StudentDashboardPage() {
                   );
                 })
               ) : (
-                <div className="rounded-2xl border border-dashed border-default bg-[#f7f2e8] p-6 text-sm text-slate-500">
+                <div className="rounded-2xl border border-dashed border-default bg-[#f7f2e8] p-6 text-sm text-ui-muted">
                   No classes joined yet. Use a join code from your teacher.
                 </div>
               )}

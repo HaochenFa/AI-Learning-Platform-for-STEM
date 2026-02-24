@@ -26,7 +26,7 @@ export default function AuthShell({
       <AmbientBackground />
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10">
         <Link
-          className="ui-motion-color inline-flex w-fit items-center gap-2 rounded-full border border-[#d8cdbb] bg-white/95 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-[#c8a786] hover:text-[#884a35]"
+          className="ui-motion-color inline-flex w-fit items-center gap-2 rounded-full border border-[#d8cdbb] bg-white/95 px-4 py-2 text-xs font-semibold text-ui-muted hover:border-[#c8a786] hover:text-[#884a35]"
           href="/"
           aria-label="Back to home"
         >
@@ -48,9 +48,9 @@ export default function AuthShell({
         <div className="grid flex-1 items-center gap-8 lg:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
           <section className="hero-card rounded-[2rem] border-default bg-white/90 p-8 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8c4a35]">{eyebrow}</p>
-            <h1 className="editorial-title mt-4 text-4xl leading-tight text-slate-900">{title}</h1>
-            <p className="mt-4 text-sm text-slate-600">{description}</p>
-            <div className="mt-8 space-y-3 text-sm text-slate-600">
+            <h1 className="editorial-title mt-4 text-4xl leading-tight text-ui-primary">{title}</h1>
+            <p className="mt-4 text-sm text-ui-muted">{description}</p>
+            <div className="mt-8 space-y-3 text-sm text-ui-muted">
               <p className="flex items-center gap-3">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#b76a51]" />
                 Blueprint-first workflow with teacher control.
@@ -68,7 +68,7 @@ export default function AuthShell({
 
           <section className="surface-card rounded-[2rem] p-8 shadow-sm">
             {children}
-            <div className="mt-7 flex items-center justify-between text-sm text-slate-500">
+            <div className="mt-7 flex items-center justify-between text-sm text-ui-muted">
               <span>{footerLabel}</span>
               <Link className="ui-motion-color link-warm font-semibold" href={footerHref}>
                 {footerLinkLabel}

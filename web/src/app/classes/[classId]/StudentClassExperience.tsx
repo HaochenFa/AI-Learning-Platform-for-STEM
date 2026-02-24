@@ -133,8 +133,8 @@ export default function StudentClassExperience({
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-default bg-white px-4 py-3"
           >
             <div>
-              <p className="text-sm font-semibold text-slate-900">{assignment.title}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-sm font-semibold text-ui-primary">{assignment.title}</p>
+              <p className="text-xs text-ui-muted">
                 {formatDueDate(assignment.dueAt)} · Status: {formatAssignmentStatus(assignment.status)}
               </p>
             </div>
@@ -148,7 +148,7 @@ export default function StudentClassExperience({
         ))}
       </div>
     ) : (
-      <p className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-4 text-sm text-slate-600">
+      <p className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-4 text-sm text-ui-muted">
         {emptyMessage}
       </p>
     );
@@ -167,7 +167,7 @@ export default function StudentClassExperience({
     if (activeWidget === "chat_assignments") {
       return (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-slate-900">Your chat assignments</h3>
+          <h3 className="text-lg font-semibold text-ui-primary">Your chat assignments</h3>
           {renderAssignmentList(
             chatAssignments,
             "No chat assignments yet. Use AI Chat while you wait.",
@@ -180,7 +180,7 @@ export default function StudentClassExperience({
     if (activeWidget === "quizzes") {
       return (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-slate-900">Your quizzes</h3>
+          <h3 className="text-lg font-semibold text-ui-primary">Your quizzes</h3>
           {renderAssignmentList(
             quizAssignments,
             "No quiz assignments yet. Your teacher will publish them here.",
@@ -193,7 +193,7 @@ export default function StudentClassExperience({
     if (activeWidget === "flashcards") {
       return (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-slate-900">Your flashcards</h3>
+          <h3 className="text-lg font-semibold text-ui-primary">Your flashcards</h3>
           {renderAssignmentList(
             flashcardsAssignments,
             "No flashcard assignments yet. Your teacher will publish them here.",
@@ -205,7 +205,7 @@ export default function StudentClassExperience({
 
     return (
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-slate-900">Published blueprint</h3>
+        <h3 className="text-lg font-semibold text-ui-primary">Published blueprint</h3>
         {publishedBlueprint ? (
           <div className="rounded-2xl border border-accent bg-accent-soft px-4 py-4 text-sm text-accent-strong">
             Use the blueprint to align your questions, quizzes, and revision plan.
@@ -219,7 +219,7 @@ export default function StudentClassExperience({
             </div>
           </div>
         ) : (
-          <p className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-4 text-sm text-slate-600">
+          <p className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-4 text-sm text-ui-muted">
             Blueprint publication is pending. Ask your teacher when it will be available.
           </p>
         )}
@@ -237,9 +237,9 @@ export default function StudentClassExperience({
 
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-500">Student Hub</p>
-          <h1 className="text-3xl font-semibold text-slate-900">{classTitle}</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm font-medium text-ui-muted">Student Hub</p>
+          <h1 className="text-3xl font-semibold text-ui-primary">{classTitle}</h1>
+          <p className="text-sm text-ui-muted">
             {subject || "General"} · {level || "Mixed level"}
           </p>
         </header>
@@ -265,9 +265,9 @@ export default function StudentClassExperience({
                 onClick={() => setActiveWidget(widget.key)}
                 className="ui-motion-lift rounded-3xl border border-default bg-white p-6 text-left hover:-translate-y-0.5 hover:border-accent"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Widget</p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-900">{widget.title}</h2>
-                <p className="mt-3 text-sm text-slate-600">{widget.description}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ui-muted">Widget</p>
+                <h2 className="mt-2 text-xl font-semibold text-ui-primary">{widget.title}</h2>
+                <p className="mt-3 text-sm text-ui-muted">{widget.description}</p>
                 <span className="mt-5 inline-flex rounded-xl border border-accent px-3 py-1.5 text-xs font-semibold text-accent">
                   Open workspace
                 </span>
@@ -282,7 +282,7 @@ export default function StudentClassExperience({
             main={renderFocusedMain()}
             sidebar={
               <div className="space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-ui-muted">
                   Class tools
                 </h3>
                 {widgetItems.map((widget) => (
@@ -293,11 +293,11 @@ export default function StudentClassExperience({
                     className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
                       widget.key === activeWidget
                         ? "border-accent bg-accent-soft text-accent-strong"
-                        : "border-default bg-white text-slate-700 hover:border-accent hover:bg-accent-soft"
+                        : "border-default bg-white text-ui-subtle hover:border-accent hover:bg-accent-soft"
                     }`}
                   >
                     <p className="font-semibold">{widget.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">{widget.description}</p>
+                    <p className="mt-1 text-xs text-ui-muted">{widget.description}</p>
                   </button>
                 ))}
               </div>

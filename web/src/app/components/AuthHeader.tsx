@@ -61,7 +61,7 @@ export default function AuthHeader({
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
         <Link
           href={dashboardHref}
-          className="ui-motion-color flex items-center gap-2 text-sm font-semibold tracking-wide text-slate-700 hover:text-[#7d412f]"
+          className="ui-motion-color flex items-center gap-2 text-sm font-semibold tracking-wide text-ui-subtle hover:text-[#7d412f]"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#1d1d1b] text-[#f8f2ea]">
             <BrandMark className="h-4 w-4" />
@@ -101,7 +101,7 @@ export default function AuthHeader({
                     ? `/classes/${classContext.classId}#teacher-chat-monitor`
                     : `/classes/${classContext.classId}?view=chat`
                 }
-                className="ui-motion-color rounded-full border border-[#ddd4c4] bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-[#d2b08f] hover:text-[#874935]"
+                className="ui-motion-color rounded-full border border-[#ddd4c4] bg-white px-4 py-2 text-xs font-semibold text-ui-muted hover:border-[#d2b08f] hover:text-[#874935]"
               >
                 {classContext.isTeacher ? "Chat Monitor" : "Open AI Chat"}
               </Link>
@@ -118,7 +118,7 @@ export default function AuthHeader({
           <form action={signOut}>
             <button
               type="submit"
-              className="ui-motion-color rounded-full border border-[#ddd4c4] bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+              className="ui-motion-color rounded-full border border-[#ddd4c4] bg-white px-4 py-2 text-xs font-semibold text-ui-muted hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
             >
               Sign Out
             </button>
@@ -127,7 +127,7 @@ export default function AuthHeader({
       </div>
       {breadcrumbs && breadcrumbs.length > 0 ? (
         <div className="mx-auto w-full max-w-6xl px-6 pb-5">
-          <nav className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
+          <nav className="flex flex-wrap items-center gap-2 text-xs font-medium text-ui-muted">
             {breadcrumbs.map((crumb, index) => {
               const isLast = index === breadcrumbs.length - 1;
               if (crumb.href && !isLast) {
@@ -136,12 +136,12 @@ export default function AuthHeader({
                     <Link href={crumb.href} className="ui-motion-color hover:text-[#81412d]">
                       {crumb.label}
                     </Link>
-                    <span className="text-slate-300">/</span>
+                    <span className="text-ui-subtle">/</span>
                   </span>
                 );
               }
               return (
-                <span key={`${crumb.label}-${index}`} className="text-slate-700">
+                <span key={`${crumb.label}-${index}`} className="text-ui-subtle">
                   {crumb.label}
                 </span>
               );

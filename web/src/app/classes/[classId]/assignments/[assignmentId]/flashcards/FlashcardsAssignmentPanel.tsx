@@ -61,7 +61,7 @@ export default function FlashcardsAssignmentPanel({
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-default bg-white p-4 text-sm text-slate-600">
+      <div className="rounded-2xl border border-default bg-white p-4 text-sm text-ui-muted">
         <p>Attempts used: {attemptsUsed}</p>
         <p>Attempts remaining: {attemptsRemaining}</p>
         <p>{dueLocked ? "Due date passed. New attempts are locked." : "Due date is still open."}</p>
@@ -80,19 +80,19 @@ export default function FlashcardsAssignmentPanel({
             className="rounded-2xl border border-default bg-white p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-900">Card {index + 1}</p>
+              <p className="text-sm font-semibold text-ui-primary">Card {index + 1}</p>
               <button
                 type="button"
                 onClick={() =>
                   setFlipped((current) => ({ ...current, [card.id]: !current[card.id] }))
                 }
-                className="rounded-lg border border-default px-3 py-1 text-xs text-slate-700 hover:border-accent hover:bg-accent-soft"
+                className="rounded-lg border border-default px-3 py-1 text-xs text-ui-subtle hover:border-accent hover:bg-accent-soft"
               >
                 {flipped[card.id] ? "Show front" : "Show back"}
               </button>
             </div>
 
-            <div className="mt-3 rounded-xl border border-default bg-[var(--surface-muted)] px-3 py-3 text-sm text-slate-900">
+            <div className="mt-3 rounded-xl border border-default bg-[var(--surface-muted)] px-3 py-3 text-sm text-ui-primary">
               {flipped[card.id] ? card.back : card.front}
             </div>
 
@@ -106,7 +106,7 @@ export default function FlashcardsAssignmentPanel({
                 className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
                   cardStatus[card.id] === "known"
                     ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-default text-slate-700 hover:border-accent hover:bg-accent-soft"
+                    : "border-default text-ui-subtle hover:border-accent hover:bg-accent-soft"
                 }`}
               >
                 I know this
@@ -120,7 +120,7 @@ export default function FlashcardsAssignmentPanel({
                 className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
                   cardStatus[card.id] === "review"
                     ? "border-accent bg-accent-soft text-accent"
-                    : "border-default text-slate-700 hover:border-accent hover:bg-accent-soft"
+                    : "border-default text-ui-subtle hover:border-accent hover:bg-accent-soft"
                 }`}
               >
                 Needs review
@@ -133,7 +133,7 @@ export default function FlashcardsAssignmentPanel({
           label="Submit Session"
           pendingLabel="Submitting..."
           disabled={!canSubmit}
-          className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         />
       </form>
     </div>

@@ -53,7 +53,7 @@ export default async function NewChatAssignmentPage({
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
 
   return (
-    <div className="min-h-screen surface-page text-slate-900">
+    <div className="min-h-screen surface-page text-ui-primary">
       <AuthHeader
         activeNav="dashboard"
         accountType="teacher"
@@ -67,10 +67,10 @@ export default async function NewChatAssignmentPage({
 
       <div className="mx-auto w-full max-w-3xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-500">Teacher Studio</p>
+          <p className="text-sm font-medium text-ui-muted">Teacher Studio</p>
           <h1 className="text-3xl font-semibold">Create Chat Assignment</h1>
-          <p className="text-sm text-slate-500">Assigns to all enrolled students in this class.</p>
-          <p className="text-xs text-slate-500">Target students: {studentCount ?? 0}</p>
+          <p className="text-sm text-ui-muted">Assigns to all enrolled students in this class.</p>
+          <p className="text-xs text-ui-muted">Target students: {studentCount ?? 0}</p>
         </header>
 
         {errorMessage ? (
@@ -81,7 +81,7 @@ export default async function NewChatAssignmentPage({
 
         <form action={createChatAssignment.bind(null, classId)} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm text-slate-600" htmlFor="title">
+            <label className="text-sm text-ui-muted" htmlFor="title">
               Assignment Title
             </label>
             <input
@@ -89,12 +89,12 @@ export default async function NewChatAssignmentPage({
               name="title"
               required
               placeholder="Week 2 Guided Chat: Limits"
-              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm"
+              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-slate-600" htmlFor="instructions">
+            <label className="text-sm text-ui-muted" htmlFor="instructions">
               Instructions
             </label>
             <textarea
@@ -103,26 +103,26 @@ export default async function NewChatAssignmentPage({
               required
               rows={5}
               placeholder="Ask at least three questions about formal limit definitions, then summarize what changed in your understanding."
-              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm"
+              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-slate-600" htmlFor="due_at">
+            <label className="text-sm text-ui-muted" htmlFor="due_at">
               Due Date (Optional)
             </label>
             <input
               id="due_at"
               name="due_at"
               type="datetime-local"
-              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm"
+              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm"
             />
           </div>
 
           <PendingSubmitButton
             label="Create and Assign"
             pendingLabel="Creating assignment..."
-            className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           />
         </form>
       </div>

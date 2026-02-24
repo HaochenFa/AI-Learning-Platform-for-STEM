@@ -32,9 +32,9 @@ export default async function RegisterPage({
 
       <form className="space-y-4" action={signUp}>
         <div className="space-y-2">
-          <span className="text-sm font-medium text-slate-600">Account type</span>
+          <span className="text-sm font-medium text-ui-muted">Account type</span>
           <div className="grid grid-cols-2 gap-2">
-            <label className="ui-motion-color flex cursor-pointer items-center gap-2 rounded-xl border border-[#dfd3c1] bg-white px-3 py-2 text-sm text-slate-700 hover:border-[#cda785]">
+            <label className="ui-motion-color flex cursor-pointer items-center gap-2 rounded-xl border border-[#dfd3c1] bg-white px-3 py-2 text-sm text-ui-subtle hover:border-[#cda785]">
               <input
                 type="radio"
                 name="account_type"
@@ -44,7 +44,7 @@ export default async function RegisterPage({
               />
               Teacher
             </label>
-            <label className="ui-motion-color flex cursor-pointer items-center gap-2 rounded-xl border border-[#dfd3c1] bg-white px-3 py-2 text-sm text-slate-700 hover:border-[#cda785]">
+            <label className="ui-motion-color flex cursor-pointer items-center gap-2 rounded-xl border border-[#dfd3c1] bg-white px-3 py-2 text-sm text-ui-subtle hover:border-[#cda785]">
               <input
                 type="radio"
                 name="account_type"
@@ -56,7 +56,7 @@ export default async function RegisterPage({
           </div>
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600" htmlFor="email">
+          <label className="text-sm font-medium text-ui-muted" htmlFor="email">
             Email
           </label>
           <input
@@ -68,7 +68,7 @@ export default async function RegisterPage({
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600" htmlFor="password">
+          <label className="text-sm font-medium text-ui-muted" htmlFor="password">
             Password
           </label>
           <input

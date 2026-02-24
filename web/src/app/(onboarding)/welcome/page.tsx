@@ -114,10 +114,10 @@ export default async function WelcomePage({
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold text-slate-900">
+          <h1 className="text-4xl font-bold text-ui-primary">
             Welcome to Learning Platform
           </h1>
-          <p className="mt-4 text-lg text-slate-600">
+          <p className="mt-4 text-lg text-ui-muted">
             {accountType === "teacher"
               ? "Your AI-powered teaching assistant is ready."
               : "Your AI-powered learning experience awaits."}
@@ -131,12 +131,12 @@ export default async function WelcomePage({
               key={index}
               className="flex gap-4 rounded-2xl border border-default bg-white p-6 shadow-sm"
             >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-muted)] text-slate-600">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-muted)] text-ui-muted">
                 {feature.icon}
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900">{feature.title}</h3>
-                <p className="mt-1 text-sm text-slate-600">{feature.description}</p>
+                <h3 className="font-semibold text-ui-primary">{feature.title}</h3>
+                <p className="mt-1 text-sm text-ui-muted">{feature.description}</p>
               </div>
             </div>
           ))}
@@ -152,7 +152,7 @@ export default async function WelcomePage({
           </Link>
           <Link
             href={dashboardHref}
-            className="text-sm text-slate-500 hover:text-slate-700"
+            className="text-sm text-ui-muted hover:text-ui-subtle"
           >
             Skip for now
           </Link>

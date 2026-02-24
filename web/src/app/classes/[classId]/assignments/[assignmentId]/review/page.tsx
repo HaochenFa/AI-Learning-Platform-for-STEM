@@ -331,7 +331,7 @@ export default async function AssignmentReviewPage({
   }
 
   return (
-    <div className="min-h-screen surface-page text-slate-900">
+    <div className="min-h-screen surface-page text-ui-primary">
       <AuthHeader
         activeNav="dashboard"
         accountType="teacher"
@@ -352,9 +352,9 @@ export default async function AssignmentReviewPage({
 
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-500">Teacher Review</p>
+          <p className="text-sm font-medium text-ui-muted">Teacher Review</p>
           <h1 className="text-3xl font-semibold">{activity.title}</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ui-muted">
             {assignment.due_at
               ? `Due ${new Date(assignment.due_at).toLocaleString()}`
               : "No due date"}
@@ -378,7 +378,7 @@ export default async function AssignmentReviewPage({
         ) : null}
 
         {totalRecipients > 0 ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-default bg-white px-4 py-3 text-sm text-slate-600">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-default bg-white px-4 py-3 text-sm text-ui-muted">
             <p>
               Showing {rangeStart + 1}-
               {Math.min(rangeStart + (recipients?.length ?? 0), totalRecipients)} of{" "}
@@ -389,27 +389,27 @@ export default async function AssignmentReviewPage({
                 {currentPage > 1 ? (
                   <Link
                     href={buildPageHref(currentPage - 1)}
-                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white/10"
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-ui-subtle hover:bg-white/10"
                   >
                     Previous
                   </Link>
                 ) : (
-                  <span className="rounded-lg border border-default px-3 py-1.5 text-xs text-slate-500">
+                  <span className="rounded-lg border border-default px-3 py-1.5 text-xs text-ui-muted">
                     Previous
                   </span>
                 )}
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-ui-muted">
                   Page {currentPage} of {totalPages}
                 </span>
                 {currentPage < totalPages ? (
                   <Link
                     href={buildPageHref(currentPage + 1)}
-                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white/10"
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-ui-subtle hover:bg-white/10"
                   >
                     Next
                   </Link>
                 ) : (
-                  <span className="rounded-lg border border-default px-3 py-1.5 text-xs text-slate-500">
+                  <span className="rounded-lg border border-default px-3 py-1.5 text-xs text-ui-muted">
                     Next
                   </span>
                 )}
@@ -420,7 +420,7 @@ export default async function AssignmentReviewPage({
 
         <div className="space-y-6">
           {(recipients ?? []).length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-slate-500">
+            <div className="rounded-3xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-ui-muted">
               No students are currently assigned to this activity.
             </div>
           ) : (
@@ -447,26 +447,26 @@ export default async function AssignmentReviewPage({
                 >
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Student</p>
-                      <p className="text-sm font-semibold text-slate-700">{recipient.student_id}</p>
+                      <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">Student</p>
+                      <p className="text-sm font-semibold text-ui-subtle">{recipient.student_id}</p>
                     </div>
-                    <span className="rounded-full border border-default px-3 py-1 text-xs text-slate-600">
+                    <span className="rounded-full border border-default px-3 py-1 text-xs text-ui-muted">
                       {recipient.status}
                     </span>
                   </div>
 
                   {activity.type === "chat" ? (
                     !latestSubmission ? (
-                      <p className="text-sm text-slate-500">No submission yet.</p>
+                      <p className="text-sm text-ui-muted">No submission yet.</p>
                     ) : (
                       <div className="space-y-4">
                         <div className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                          <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                             Transcript
                           </p>
                           {parseChatSubmissionContent(latestSubmission.content).transcript
                             .length === 0 ? (
-                            <p className="mt-2 text-sm text-slate-500">No transcript saved.</p>
+                            <p className="mt-2 text-sm text-ui-muted">No transcript saved.</p>
                           ) : (
                             <div className="mt-3 space-y-3">
                               {parseChatSubmissionContent(latestSubmission.content).transcript.map(
@@ -475,10 +475,10 @@ export default async function AssignmentReviewPage({
                                     key={`${latestSubmission.id}-${turn.role}-${turn.createdAt}-${index}`}
                                     className="rounded-xl border border-default bg-white p-3"
                                   >
-                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                                       {turn.role === "student" ? "Student" : "AI Tutor"}
                                     </p>
-                                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-900">
+                                    <p className="mt-2 whitespace-pre-wrap text-sm text-ui-primary">
                                       {turn.message}
                                     </p>
                                   </div>
@@ -489,10 +489,10 @@ export default async function AssignmentReviewPage({
                         </div>
 
                         <div className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                          <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                             Reflection
                           </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-900">
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-ui-primary">
                             {parseChatSubmissionContent(latestSubmission.content).reflection ||
                               "No reflection submitted."}
                           </p>
@@ -506,7 +506,7 @@ export default async function AssignmentReviewPage({
 
                           <div className="space-y-2">
                             <label
-                              className="text-sm text-slate-600"
+                              className="text-sm text-ui-muted"
                               htmlFor={`score-${latestSubmission.id}`}
                             >
                               Score (0-100)
@@ -518,13 +518,13 @@ export default async function AssignmentReviewPage({
                               min={0}
                               max={100}
                               defaultValue={latestSubmission.score?.toString() ?? ""}
-                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                             />
                           </div>
 
                           <div className="space-y-2">
                             <label
-                              className="text-sm text-slate-600"
+                              className="text-sm text-ui-muted"
                               htmlFor={`comment-${latestSubmission.id}`}
                             >
                               Comment
@@ -536,13 +536,13 @@ export default async function AssignmentReviewPage({
                               defaultValue={
                                 latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""
                               }
-                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                             />
                           </div>
 
                           <div className="space-y-2">
                             <label
-                              className="text-sm text-slate-600"
+                              className="text-sm text-ui-muted"
                               htmlFor={`highlights-${latestSubmission.id}`}
                             >
                               Highlights (one per line)
@@ -555,23 +555,23 @@ export default async function AssignmentReviewPage({
                                 latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ??
                                 []
                               ).join("\n")}
-                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                             />
                           </div>
 
                           <PendingSubmitButton
                             label="Save Review"
                             pendingLabel="Saving..."
-                            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
                           />
                         </form>
                       </div>
                     )
                   ) : attempts.length === 0 ? (
-                    <p className="text-sm text-slate-500">No submission yet.</p>
+                    <p className="text-sm text-ui-muted">No submission yet.</p>
                   ) : activity.type === "quiz" ? (
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4 text-sm text-slate-600">
+                      <div className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4 text-sm text-ui-muted">
                         <p>Attempts submitted: {attempts.length}</p>
                         <p>Best score: {bestScore === null ? "N/A" : `${bestScore}%`}</p>
                       </div>
@@ -585,11 +585,11 @@ export default async function AssignmentReviewPage({
                             key={attempt.id}
                             className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4"
                           >
-                            <p className="text-sm font-semibold text-slate-900">
+                            <p className="text-sm font-semibold text-ui-primary">
                               Attempt {parsed.attemptNumber} · Score:{" "}
                               {attempt.score ?? parsed.scorePercent}%
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-ui-muted">
                               Submitted {new Date(attempt.submitted_at).toLocaleString()}
                             </p>
 
@@ -604,13 +604,13 @@ export default async function AssignmentReviewPage({
                                     key={`${attempt.id}-${answer.questionId}-${answerIndex}`}
                                     className="rounded-xl border border-default bg-white p-3"
                                   >
-                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                                       Question {answerIndex + 1}
                                     </p>
-                                    <p className="mt-1 text-sm text-slate-700">
+                                    <p className="mt-1 text-sm text-ui-subtle">
                                       {question?.question ?? "Unknown question"}
                                     </p>
-                                    <p className="mt-2 text-sm text-slate-600">
+                                    <p className="mt-2 text-sm text-ui-muted">
                                       Selected: {answer.selectedChoice}
                                     </p>
                                     <p
@@ -619,7 +619,7 @@ export default async function AssignmentReviewPage({
                                       Correct answer: {question?.answer ?? "Unavailable"}
                                     </p>
                                     {question?.explanation ? (
-                                      <p className="mt-1 text-xs text-slate-500">
+                                      <p className="mt-1 text-xs text-ui-muted">
                                         {question.explanation}
                                       </p>
                                     ) : null}
@@ -636,7 +636,7 @@ export default async function AssignmentReviewPage({
 
                               <div className="space-y-2">
                                 <label
-                                  className="text-sm text-slate-600"
+                                  className="text-sm text-ui-muted"
                                   htmlFor={`quiz-score-${attempt.id}`}
                                 >
                                   Override score (0-100)
@@ -648,13 +648,13 @@ export default async function AssignmentReviewPage({
                                   min={0}
                                   max={100}
                                   defaultValue={attempt.score?.toString() ?? ""}
-                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                                 />
                               </div>
 
                               <div className="space-y-2">
                                 <label
-                                  className="text-sm text-slate-600"
+                                  className="text-sm text-ui-muted"
                                   htmlFor={`quiz-comment-${attempt.id}`}
                                 >
                                   Comment
@@ -664,13 +664,13 @@ export default async function AssignmentReviewPage({
                                   name="comment"
                                   rows={3}
                                   defaultValue={feedback?.comment ?? ""}
-                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                                 />
                               </div>
 
                               <div className="space-y-2">
                                 <label
-                                  className="text-sm text-slate-600"
+                                  className="text-sm text-ui-muted"
                                   htmlFor={`quiz-highlights-${attempt.id}`}
                                 >
                                   Highlights (one per line)
@@ -680,14 +680,14 @@ export default async function AssignmentReviewPage({
                                   name="highlights"
                                   rows={3}
                                   defaultValue={(feedback?.highlights ?? []).join("\n")}
-                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                                 />
                               </div>
 
                               <PendingSubmitButton
                                 label="Save Review"
                                 pendingLabel="Saving..."
-                                className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
                               />
                             </form>
                           </div>
@@ -695,14 +695,14 @@ export default async function AssignmentReviewPage({
                       })}
                     </div>
                   ) : !latestSubmission ? (
-                    <p className="text-sm text-slate-500">No submission yet.</p>
+                    <p className="text-sm text-ui-muted">No submission yet.</p>
                   ) : (
                     <div className="space-y-4">
                       <div className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                        <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                           Session Summary
                         </p>
-                        <div className="mt-3 space-y-2 text-sm text-slate-700">
+                        <div className="mt-3 space-y-2 text-sm text-ui-subtle">
                           <p>Session {parsedFlashcardsSubmission?.sessionNumber ?? 1}</p>
                           <p>Cards reviewed: {parsedFlashcardsSubmission?.cardsReviewed ?? 0}</p>
                           <p>
@@ -719,7 +719,7 @@ export default async function AssignmentReviewPage({
                       >
                         <div className="space-y-2">
                           <label
-                            className="text-sm text-slate-600"
+                            className="text-sm text-ui-muted"
                             htmlFor={`score-${latestSubmission.id}`}
                           >
                             Score (0-100)
@@ -731,13 +731,13 @@ export default async function AssignmentReviewPage({
                             min={0}
                             max={100}
                             defaultValue={latestSubmission.score?.toString() ?? ""}
-                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                           />
                         </div>
 
                         <div className="space-y-2">
                           <label
-                            className="text-sm text-slate-600"
+                            className="text-sm text-ui-muted"
                             htmlFor={`comment-${latestSubmission.id}`}
                           >
                             Comment
@@ -749,13 +749,13 @@ export default async function AssignmentReviewPage({
                             defaultValue={
                               latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""
                             }
-                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                           />
                         </div>
 
                         <div className="space-y-2">
                           <label
-                            className="text-sm text-slate-600"
+                            className="text-sm text-ui-muted"
                             htmlFor={`highlights-${latestSubmission.id}`}
                           >
                             Highlights (one per line)
@@ -767,14 +767,14 @@ export default async function AssignmentReviewPage({
                             defaultValue={(
                               latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ?? []
                             ).join("\n")}
-                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                           />
                         </div>
 
                         <PendingSubmitButton
                           label="Save Feedback"
                           pendingLabel="Saving..."
-                          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
                         />
                       </form>
                     </div>

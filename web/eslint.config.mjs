@@ -12,15 +12,15 @@ const eslintConfig = defineConfig([
         "error",
         {
           selector:
-            "Literal[value=/\\b(?:border-slate-\\d+|bg-slate-\\d+|focus:border-cyan|focus:ring-cyan|bg-cyan-\\d+)\\b/]",
+            "Literal[value=/\\b(?:border-slate-\\d+|bg-slate-\\d+|text-slate-\\d+|focus:border-cyan|focus:ring-cyan|bg-cyan-\\d+)\\b/]",
           message:
-            "Use warm design system utilities/tokens instead of raw slate/cyan classes in className strings.",
+            "Use warm design system utilities/tokens (`text-ui-*`, `border-default`, `bg-accent*`, `focus-ring-warm`) instead of raw slate/cyan classes in className strings.",
         },
         {
           selector:
-            "TemplateElement[value.raw=/\\b(?:border-slate-\\d+|bg-slate-\\d+|focus:border-cyan|focus:ring-cyan|bg-cyan-\\d+)\\b/]",
+            "TemplateElement[value.raw=/\\b(?:border-slate-\\d+|bg-slate-\\d+|text-slate-\\d+|focus:border-cyan|focus:ring-cyan|bg-cyan-\\d+)\\b/]",
           message:
-            "Use warm design system utilities/tokens instead of raw slate/cyan classes in className templates.",
+            "Use warm design system utilities/tokens (`text-ui-*`, `border-default`, `bg-accent*`, `focus-ring-warm`) instead of raw slate/cyan classes in className templates.",
         },
         {
           selector: "Literal[value=/border-\\[#(?:e6dece|e5d2c4|ddd2c2|dfd5c4)\\]/]",

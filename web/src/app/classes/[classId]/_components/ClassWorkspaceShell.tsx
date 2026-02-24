@@ -22,14 +22,14 @@ export default function ClassWorkspaceShell({
       <header className="rounded-3xl border border-default bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Focused Workspace</p>
-            <h2 className="mt-1 text-2xl font-semibold text-slate-900">{title}</h2>
-            <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">Focused Workspace</p>
+            <h2 className="mt-1 text-2xl font-semibold text-ui-primary">{title}</h2>
+            <p className="mt-1 text-sm text-ui-muted">{subtitle}</p>
           </div>
           <button
             type="button"
             onClick={onExit}
-            className="ui-motion-color rounded-xl border border-default bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-accent hover:text-accent"
+            className="ui-motion-color rounded-xl border border-default bg-white px-4 py-2 text-xs font-semibold text-ui-muted hover:border-accent hover:text-accent"
           >
             Back to overview
           </button>

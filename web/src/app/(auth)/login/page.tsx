@@ -40,7 +40,7 @@ export default async function LoginPage({
 
       <form className="space-y-4" action={signIn}>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600" htmlFor="email">
+          <label className="text-sm font-medium text-ui-muted" htmlFor="email">
             Email
           </label>
           <input
@@ -52,7 +52,7 @@ export default async function LoginPage({
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600" htmlFor="password">
+          <label className="text-sm font-medium text-ui-muted" htmlFor="password">
             Password
           </label>
           <input

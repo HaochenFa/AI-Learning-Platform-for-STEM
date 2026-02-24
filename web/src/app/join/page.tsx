@@ -29,9 +29,9 @@ export default async function JoinClassPage({
       />
       <div className="mx-auto w-full max-w-lg px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-sm font-medium text-slate-500">Student Hub</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Join a class</h1>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm font-medium text-ui-muted">Student Hub</p>
+          <h1 className="text-3xl font-semibold text-ui-primary">Join a class</h1>
+          <p className="text-sm text-ui-muted">
             Enter the join code from your teacher to access assignments.
           </p>
         </header>
@@ -44,14 +44,14 @@ export default async function JoinClassPage({
 
         <form className="space-y-6" action={joinClass}>
           <div className="space-y-2">
-            <label className="text-sm text-slate-600" htmlFor="join_code">
+            <label className="text-sm text-ui-muted" htmlFor="join_code">
               Join code
             </label>
             <input
               id="join_code"
               name="join_code"
               required
-              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm tracking-[0.25em] text-slate-900 outline-none focus-ring-warm"
+              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm tracking-[0.25em] text-ui-primary outline-none focus-ring-warm"
               placeholder="AB12CD"
             />
           </div>

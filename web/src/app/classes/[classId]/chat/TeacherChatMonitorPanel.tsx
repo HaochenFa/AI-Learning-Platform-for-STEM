@@ -44,7 +44,7 @@ export default function TeacherChatMonitorPanel({ classId }: TeacherChatMonitorP
       ) : null}
 
       <div className="space-y-2">
-        <label className="text-sm text-slate-600" htmlFor="chat-monitor-student">
+        <label className="text-sm text-ui-muted" htmlFor="chat-monitor-student">
           Student
         </label>
         <select
@@ -74,7 +74,7 @@ export default function TeacherChatMonitorPanel({ classId }: TeacherChatMonitorP
           heading="Student chat history"
         />
       ) : (
-        <p className="rounded-xl border border-dashed border-default bg-[var(--surface-muted)] px-4 py-6 text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-default bg-[var(--surface-muted)] px-4 py-6 text-sm text-ui-muted">
           Select a student to view chat history.
         </p>
       )}

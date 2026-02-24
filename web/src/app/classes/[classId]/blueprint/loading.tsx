@@ -1,6 +1,6 @@
 export default function BlueprintLoading() {
   return (
-    <div className="min-h-screen surface-page text-slate-900">
+    <div className="min-h-screen surface-page text-ui-primary">
       <div className="border-b border-default bg-white/90">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
           <div className="h-3 w-56 animate-pulse rounded bg-[var(--border-default)]" />

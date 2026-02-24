@@ -98,7 +98,7 @@ export default function AssignmentChatPanel({
 
       <div className="max-h-104 space-y-3 overflow-y-auto rounded-3xl border border-default bg-[var(--surface-muted)] p-4">
         {transcript.length === 0 ? (
-          <p className="text-sm text-slate-500">Start by asking your first assignment question.</p>
+          <p className="text-sm text-ui-muted">Start by asking your first assignment question.</p>
         ) : (
           transcript.map((turn, index) => (
             <div
@@ -106,16 +106,16 @@ export default function AssignmentChatPanel({
               className={`rounded-2xl border p-4 ${
                 turn.role === "student"
                   ? "border-accent bg-accent-soft text-accent"
-                  : "border-default bg-white text-slate-900"
+                  : "border-default bg-white text-ui-primary"
               }`}
             >
               <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em]">
                 <span>{turn.role === "student" ? "You" : "AI Tutor"}</span>
-                <span className="text-slate-500">{formatDate(turn.createdAt)}</span>
+                <span className="text-ui-muted">{formatDate(turn.createdAt)}</span>
               </div>
               <p className="whitespace-pre-wrap text-sm">{turn.message}</p>
               {turn.citations && turn.citations.length > 0 ? (
-                <ul className="mt-3 space-y-1 text-xs text-slate-500">
+                <ul className="mt-3 space-y-1 text-xs text-ui-muted">
                   {turn.citations.map((citation) => (
                     <li key={`${citation.sourceLabel}-${citation.snippet ?? ""}`}>
                       {citation.sourceLabel}
@@ -130,7 +130,7 @@ export default function AssignmentChatPanel({
       </div>
 
       <form className="space-y-3" onSubmit={handleSend}>
-        <label className="text-sm text-slate-600" htmlFor="assignment-chat-message">
+        <label className="text-sm text-ui-muted" htmlFor="assignment-chat-message">
           Message
         </label>
         <textarea
@@ -141,16 +141,16 @@ export default function AssignmentChatPanel({
           rows={4}
           disabled={isSubmitted}
           placeholder="Continue the assignment conversation..."
-          className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-60"
         />
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ui-muted">
             {message.length}/{MAX_CHAT_MESSAGE_CHARS}
           </p>
           <button
             type="submit"
             disabled={isPending || isSubmitted || !message.trim()}
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:bg-accent-soft"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary disabled:cursor-not-allowed disabled:bg-accent-soft"
           >
             {isPending ? "Thinking..." : "Send"}
           </button>
@@ -160,7 +160,7 @@ export default function AssignmentChatPanel({
       <form action={submitChatAssignment.bind(null, classId, assignmentId)} className="space-y-3">
         <input type="hidden" name="transcript" value={serializedTranscript} readOnly />
         <div className="space-y-2">
-          <label className="text-sm text-slate-600" htmlFor="assignment-reflection">
+          <label className="text-sm text-ui-muted" htmlFor="assignment-reflection">
             Reflection
           </label>
           <textarea
@@ -172,9 +172,9 @@ export default function AssignmentChatPanel({
             rows={4}
             disabled={isSubmitted}
             placeholder="What did you learn from this chat?"
-            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-60"
           />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ui-muted">
             {reflection.length}/{MAX_REFLECTION_CHARS}
           </p>
         </div>
@@ -182,7 +182,7 @@ export default function AssignmentChatPanel({
           label={isSubmitted ? "Submitted" : "Submit Assignment"}
           pendingLabel="Submitting..."
           disabled={isSubmitted}
-          className="rounded-xl bg-emerald-400/90 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-emerald-400/40"
+          className="rounded-xl bg-emerald-400/90 px-5 py-3 text-sm font-semibold text-ui-primary hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-emerald-400/40"
         />
       </form>
     </div>

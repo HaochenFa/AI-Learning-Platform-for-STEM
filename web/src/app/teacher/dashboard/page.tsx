@@ -70,8 +70,8 @@ export default async function TeacherDashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">
                 Teacher Dashboard
               </p>
-              <h1 className="editorial-title mt-2 text-4xl text-slate-900">Welcome, {displayName}</h1>
-              <p className="mt-2 text-sm text-slate-600">
+              <h1 className="editorial-title mt-2 text-4xl text-ui-primary">Welcome, {displayName}</h1>
+              <p className="mt-2 text-sm text-ui-muted">
                 Manage classes, materials, and assignment workflows.
               </p>
             </div>
@@ -84,7 +84,7 @@ export default async function TeacherDashboardPage() {
           </header>
 
           <section id="classes" className="mt-8">
-            <h2 className="text-lg font-semibold text-slate-900">Your teaching classes</h2>
+            <h2 className="text-lg font-semibold text-ui-primary">Your teaching classes</h2>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               {classes.length > 0 ? (
                 classes.map((classItem) => {
@@ -108,21 +108,21 @@ export default async function TeacherDashboardPage() {
                     >
                       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">{role}</p>
                       <Link href={`/classes/${classItem.id}`} className="mt-2 block">
-                        <h3 className="text-xl font-semibold text-slate-900">{classItem.title}</h3>
+                        <h3 className="text-xl font-semibold text-ui-primary">{classItem.title}</h3>
                       </Link>
-                      <p className="mt-2 text-sm text-slate-500">
+                      <p className="mt-2 text-sm text-ui-muted">
                         {classItem.subject || "General"} · {classItem.level || "Mixed"}
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link
                           href={`/classes/${classItem.id}`}
-                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
+                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-ui-muted hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
                         >
                           Open class
                         </Link>
                         <Link
                           href={`/classes/${classItem.id}#teacher-chat-monitor`}
-                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
+                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-ui-muted hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
                         >
                           Chat monitor
                         </Link>
@@ -143,7 +143,7 @@ export default async function TeacherDashboardPage() {
                   );
                 })
               ) : (
-                <div className="rounded-2xl border border-dashed border-default bg-[#f7f2e8] p-6 text-sm text-slate-500">
+                <div className="rounded-2xl border border-dashed border-default bg-[#f7f2e8] p-6 text-sm text-ui-muted">
                   No classes yet. Create one to get started.
                 </div>
               )}

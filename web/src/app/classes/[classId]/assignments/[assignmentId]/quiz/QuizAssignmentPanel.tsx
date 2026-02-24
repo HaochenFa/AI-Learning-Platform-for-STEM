@@ -64,7 +64,7 @@ export default function QuizAssignmentPanel({
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-default bg-white p-4 text-sm text-slate-600">
+      <div className="rounded-2xl border border-default bg-white p-4 text-sm text-ui-muted">
         <p>Attempts used: {attemptsUsed}</p>
         <p>Attempts remaining: {attemptsRemaining}</p>
         <p>{dueLocked ? "Due date passed. New attempts are locked." : "Due date is still open."}</p>
@@ -79,7 +79,7 @@ export default function QuizAssignmentPanel({
             key={question.id}
             className="rounded-2xl border border-default bg-white p-4"
           >
-            <p className="text-sm font-semibold text-slate-900">
+            <p className="text-sm font-semibold text-ui-primary">
               {questionIndex + 1}. {question.question}
             </p>
 
@@ -87,7 +87,7 @@ export default function QuizAssignmentPanel({
               {question.choices.map((choice) => (
                 <label
                   key={`${question.id}-${choice}`}
-                  className="flex cursor-pointer items-start gap-2 rounded-xl border border-default bg-[var(--surface-muted)] px-3 py-2 text-sm text-slate-700"
+                  className="flex cursor-pointer items-start gap-2 rounded-xl border border-default bg-[var(--surface-muted)] px-3 py-2 text-sm text-ui-subtle"
                 >
                   <input
                     type="radio"
@@ -121,7 +121,7 @@ export default function QuizAssignmentPanel({
           label="Submit Attempt"
           pendingLabel="Submitting..."
           disabled={!canSubmit}
-          className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         />
       </form>
     </div>

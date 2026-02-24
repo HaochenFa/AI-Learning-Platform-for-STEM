@@ -134,7 +134,7 @@ export default async function AssignmentChatPage({
       : null;
 
   return (
-    <div className="min-h-screen surface-page text-slate-900">
+    <div className="min-h-screen surface-page text-ui-primary">
       <AuthHeader
         activeNav="dashboard"
         classContext={{ classId: classRow.id, isTeacher: false }}
@@ -147,9 +147,9 @@ export default async function AssignmentChatPage({
 
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-500">Assignment Workspace</p>
+          <p className="text-sm font-medium text-ui-muted">Assignment Workspace</p>
           <h1 className="text-3xl font-semibold">{activity.title}</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ui-muted">
             {assignment.due_at
               ? `Due ${new Date(assignment.due_at).toLocaleString()}`
               : "No due date"}

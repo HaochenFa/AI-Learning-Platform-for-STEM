@@ -32,7 +32,7 @@ function UploadProgress() {
 
   return (
     <div className="space-y-2" aria-live="polite">
-      <div className="flex items-center gap-3 text-xs text-slate-600">
+      <div className="flex items-center gap-3 text-xs text-ui-muted">
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-default border-t-slate-600" />
         Uploading your materials. Large files can take a minute.
       </div>
@@ -86,7 +86,7 @@ export default function MaterialUploadForm({ action }: MaterialUploadFormProps) 
   return (
     <form className="space-y-4" action={handleSubmit}>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-700" htmlFor="title">
+        <label className="text-sm font-medium text-ui-subtle" htmlFor="title">
           Title
         </label>
         <input
@@ -94,16 +94,16 @@ export default function MaterialUploadForm({ action }: MaterialUploadFormProps) 
           name="title"
           placeholder="Lecture 3: Limits and Continuity"
           disabled={files.length > 1}
-          className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-slate-900 outline-none transition focus-ring-warm disabled:bg-[var(--surface-muted)] disabled:text-slate-500"
+          className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none transition focus-ring-warm disabled:bg-[var(--surface-muted)] disabled:text-ui-muted"
         />
         {files.length > 1 && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ui-muted">
             Multiple files detected. Each file will be uploaded with its filename as title.
           </p>
         )}
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-ui-subtle">
           Files
         </label>
         <FileUploadZone

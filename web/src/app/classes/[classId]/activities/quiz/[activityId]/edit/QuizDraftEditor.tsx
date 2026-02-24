@@ -110,7 +110,7 @@ export default function QuizDraftEditor({
         <input type="hidden" name="quiz_payload" value={payload} readOnly />
 
         <div className="space-y-2">
-          <label className="text-sm text-slate-600" htmlFor="quiz-title">
+          <label className="text-sm text-ui-muted" htmlFor="quiz-title">
             Quiz Title
           </label>
           <input
@@ -118,12 +118,12 @@ export default function QuizDraftEditor({
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             disabled={isPublished}
-            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm text-slate-600" htmlFor="quiz-instructions">
+          <label className="text-sm text-ui-muted" htmlFor="quiz-instructions">
             Instructions
           </label>
           <textarea
@@ -132,7 +132,7 @@ export default function QuizDraftEditor({
             onChange={(event) => setInstructions(event.target.value)}
             rows={3}
             disabled={isPublished}
-            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
           />
         </div>
 
@@ -143,7 +143,7 @@ export default function QuizDraftEditor({
               className="rounded-2xl border border-default bg-[var(--surface-muted)] p-4"
             >
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-700">Question {questionIndex + 1}</p>
+                <p className="text-sm font-semibold text-ui-subtle">Question {questionIndex + 1}</p>
                 <button
                   type="button"
                   onClick={() => removeQuestion(questionIndex)}
@@ -155,7 +155,7 @@ export default function QuizDraftEditor({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Prompt</label>
+                <label className="text-xs uppercase tracking-[0.2em] text-ui-muted">Prompt</label>
                 <textarea
                   value={question.question}
                   onChange={(event) =>
@@ -165,14 +165,14 @@ export default function QuizDraftEditor({
                   }
                   rows={2}
                   disabled={isPublished}
-                  className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+                  className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
                 />
               </div>
 
               <div className="mt-4 space-y-3">
                 {question.choices.map((choice, choiceIndex) => (
                   <div key={`choice-${questionIndex}-${choiceIndex}`} className="space-y-1">
-                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    <label className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                       Choice {choiceIndex + 1}
                     </label>
                     <input
@@ -181,7 +181,7 @@ export default function QuizDraftEditor({
                         updateChoice(questionIndex, choiceIndex, event.target.value)
                       }
                       disabled={isPublished}
-                      className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+                      className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
                     />
                   </div>
                 ))}
@@ -189,7 +189,7 @@ export default function QuizDraftEditor({
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  <label className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                     Correct Answer
                   </label>
                   <select
@@ -200,7 +200,7 @@ export default function QuizDraftEditor({
                       })
                     }
                     disabled={isPublished}
-                    className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     <option value="">Select a correct answer</option>
                     {question.choices.map((choice, choiceIndex) => (
@@ -212,7 +212,7 @@ export default function QuizDraftEditor({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  <label className="text-xs uppercase tracking-[0.2em] text-ui-muted">
                     Explanation
                   </label>
                   <textarea
@@ -224,7 +224,7 @@ export default function QuizDraftEditor({
                     }
                     rows={2}
                     disabled={isPublished}
-                    className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </div>
               </div>
@@ -237,14 +237,14 @@ export default function QuizDraftEditor({
             <button
               type="button"
               onClick={addQuestion}
-              className="rounded-xl border border-white/20 px-4 py-2 text-sm text-slate-700 hover:border-white/40"
+              className="rounded-xl border border-white/20 px-4 py-2 text-sm text-ui-subtle hover:border-white/40"
             >
               Add Question
             </button>
             <PendingSubmitButton
               label="Save Draft"
               pendingLabel="Saving..."
-              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
         ) : null}
@@ -252,7 +252,7 @@ export default function QuizDraftEditor({
 
       <div className="rounded-2xl border border-default bg-white p-4">
         <h2 className="text-lg font-semibold">Publish and Assign</h2>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-ui-muted">
           Publish to lock question content, then create a whole-class assignment.
         </p>
 
@@ -262,7 +262,7 @@ export default function QuizDraftEditor({
               <PendingSubmitButton
                 label="Publish Quiz"
                 pendingLabel="Publishing..."
-                className="rounded-xl bg-emerald-400/90 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-emerald-400/50"
+                className="rounded-xl bg-emerald-400/90 px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-emerald-400/50"
               />
             </form>
           ) : (
@@ -278,13 +278,13 @@ export default function QuizDraftEditor({
             <input
               name="due_at"
               type="datetime-local"
-              className="rounded-xl border border-default bg-white px-3 py-2 text-sm text-slate-900 outline-none focus-ring-warm"
+              className="rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
             />
             <PendingSubmitButton
               label="Create Assignment"
               pendingLabel="Creating..."
               disabled={!isPublished}
-              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
             />
           </form>
         </div>

@@ -98,7 +98,7 @@ export default async function BlueprintOverviewPage({
       : null;
 
   return (
-    <div className="min-h-screen surface-page text-slate-900">
+    <div className="min-h-screen surface-page text-ui-primary">
       <AuthHeader
         activeNav="dashboard"
         classContext={{ classId: classRow.id, isTeacher }}
@@ -112,15 +112,15 @@ export default async function BlueprintOverviewPage({
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-500">Blueprint Overview</p>
+            <p className="text-sm font-medium text-ui-muted">Blueprint Overview</p>
             <h1 className="text-3xl font-semibold">{classRow.title}</h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ui-muted">
               {classRow.subject || "General"} · {classRow.level || "Mixed level"}
             </p>
           </div>
           <Link
             href={`/classes/${classRow.id}/blueprint`}
-            className="ui-motion-color text-xs font-medium text-slate-500 hover:text-slate-700"
+            className="ui-motion-color text-xs font-medium text-ui-muted hover:text-ui-subtle"
           >
             Back to editor
           </Link>
@@ -135,17 +135,17 @@ export default async function BlueprintOverviewPage({
         <div className="rounded-3xl border border-default bg-white p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
+              <p className="text-xs uppercase tracking-[0.25em] text-ui-muted">
                 Version {blueprint.version}
               </p>
-              <p className="text-sm text-slate-600">Status: {blueprint.status}</p>
+              <p className="text-sm text-ui-muted">Status: {blueprint.status}</p>
             </div>
             {blueprint.status === "approved" ? (
               <form action={publishBlueprint.bind(null, classRow.id, blueprint.id)}>
                 <PendingSubmitButton
                   label="Publish blueprint"
                   pendingLabel="Publishing..."
-                  className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-ui-primary disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </form>
             ) : (
@@ -156,20 +156,20 @@ export default async function BlueprintOverviewPage({
           </div>
         </div>
 
-        <section className="mt-10 rounded-4xl border border-default bg-white text-slate-900 shadow-2xl">
+        <section className="mt-10 rounded-4xl border border-default bg-white text-ui-primary shadow-2xl">
           <div className="border-b border-default px-10 py-8">
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Compiled Blueprint</p>
-            <h2 className="mt-3 text-3xl font-semibold text-slate-900">{classRow.title}</h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="text-xs uppercase tracking-[0.3em] text-ui-muted">Compiled Blueprint</p>
+            <h2 className="mt-3 text-3xl font-semibold text-ui-primary">{classRow.title}</h2>
+            <p className="mt-2 text-sm text-ui-muted">
               {classRow.subject || "General"} · {classRow.level || "Mixed level"}
             </p>
           </div>
           <div className="px-10 py-8">
             <div className="rounded-2xl border border-default bg-[var(--surface-muted)] p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ui-muted">
                 Summary
               </p>
-              <p className="mt-3 text-base text-slate-700">
+              <p className="mt-3 text-base text-ui-subtle">
                 {blueprint.summary || "No summary provided."}
               </p>
             </div>
@@ -180,22 +180,22 @@ export default async function BlueprintOverviewPage({
                   <div key={topic.id} className="rounded-2xl border border-default bg-white p-6">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-900">{topic.title}</h3>
+                        <h3 className="text-xl font-semibold text-ui-primary">{topic.title}</h3>
                         {topic.section ? (
-                          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">
+                          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-ui-muted">
                             Section: {topic.section}
                           </p>
                         ) : null}
                       </div>
-                      <span className="rounded-full border border-default px-3 py-1 text-xs text-slate-500">
+                      <span className="rounded-full border border-default px-3 py-1 text-xs text-ui-muted">
                         Sequence {topic.sequence}
                       </span>
                     </div>
                     {topic.description ? (
-                      <p className="mt-3 text-sm text-slate-600">{topic.description}</p>
+                      <p className="mt-3 text-sm text-ui-muted">{topic.description}</p>
                     ) : null}
                     {topic.prerequisite_topic_ids.length > 0 ? (
-                      <p className="mt-3 text-xs text-slate-500">
+                      <p className="mt-3 text-xs text-ui-muted">
                         Prerequisites:{" "}
                         {topic.prerequisite_topic_ids
                           .map((id: string) => titleById.get(id))
@@ -203,7 +203,7 @@ export default async function BlueprintOverviewPage({
                           .join(", ")}
                       </p>
                     ) : null}
-                    <ul className="mt-4 space-y-2 text-sm text-slate-700">
+                    <ul className="mt-4 space-y-2 text-sm text-ui-subtle">
                       {(objectivesByTopic.get(topic.id) ?? []).map((objective, index) => (
                         <li key={`${topic.id}-objective-${index}`}>
                           - {objective.statement}
@@ -214,7 +214,7 @@ export default async function BlueprintOverviewPage({
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-slate-500">
+                <div className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-ui-muted">
                   No topics found in this blueprint.
                 </div>
               )}

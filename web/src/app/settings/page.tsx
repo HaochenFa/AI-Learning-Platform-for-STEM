@@ -34,9 +34,9 @@ export default async function SettingsPage({
       <div className="sidebar-content">
         <main className="mx-auto max-w-5xl p-6 pt-16">
           <header className="mb-8 space-y-2">
-            <p className="text-sm font-medium text-slate-500">Account Settings</p>
-            <h1 className="text-3xl font-semibold text-slate-900">Settings</h1>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm font-medium text-ui-muted">Account Settings</p>
+            <h1 className="text-3xl font-semibold text-ui-primary">Settings</h1>
+            <p className="text-sm text-ui-muted">
               Manage your profile, credentials, and account-level preferences.
             </p>
           </header>
@@ -44,34 +44,34 @@ export default async function SettingsPage({
           <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-6">
               <div className="rounded-3xl border border-default bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Account Information</h2>
-                <p className="mt-2 text-sm text-slate-600">Core identity and role details.</p>
+                <h2 className="text-lg font-semibold text-ui-primary">Account Information</h2>
+                <p className="mt-2 text-sm text-ui-muted">Core identity and role details.</p>
 
                 <div className="mt-6 space-y-4">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-slate-500">Display Name</span>
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm text-ui-muted">Display Name</span>
+                    <span className="text-sm font-semibold text-ui-primary">
                       {profile.display_name || "Not set"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-slate-500">Email</span>
-                    <span className="text-sm font-semibold text-slate-900">{user.email}</span>
+                    <span className="text-sm text-ui-muted">Email</span>
+                    <span className="text-sm font-semibold text-ui-primary">{user.email}</span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-slate-500">Account Type</span>
-                    <span className="text-sm font-semibold capitalize text-slate-900">{accountType}</span>
+                    <span className="text-sm text-ui-muted">Account Type</span>
+                    <span className="text-sm font-semibold capitalize text-ui-primary">{accountType}</span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-slate-500">User ID</span>
-                    <span className="truncate text-xs font-mono text-slate-500">{user.id}</span>
+                    <span className="text-sm text-ui-muted">User ID</span>
+                    <span className="truncate text-xs font-mono text-ui-muted">{user.id}</span>
                   </div>
                 </div>
               </div>
 
               <div className="rounded-3xl border border-default bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Profile Name</h2>
-                <p className="mt-2 text-sm text-slate-600">
+                <h2 className="text-lg font-semibold text-ui-primary">Profile Name</h2>
+                <p className="mt-2 text-sm text-ui-muted">
                   This name appears in shared class experiences and chat surfaces.
                 </p>
 
@@ -89,7 +89,7 @@ export default async function SettingsPage({
 
                 <form className="mt-5 space-y-4" action={updateDisplayName}>
                   <div className="space-y-2">
-                    <label className="text-sm text-slate-600" htmlFor="display_name">
+                    <label className="text-sm text-ui-muted" htmlFor="display_name">
                       Display name
                     </label>
                     <input
@@ -99,7 +99,7 @@ export default async function SettingsPage({
                       minLength={2}
                       maxLength={60}
                       defaultValue={profile.display_name ?? ""}
-                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus-ring-warm"
+                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none transition focus-ring-warm"
                       placeholder="e.g., Dr. Fa"
                     />
                   </div>
@@ -114,8 +114,8 @@ export default async function SettingsPage({
 
             <div className="space-y-6">
               <div className="rounded-3xl border border-default bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Change Password</h2>
-                <p className="mt-2 text-sm text-slate-600">
+                <h2 className="text-lg font-semibold text-ui-primary">Change Password</h2>
+                <p className="mt-2 text-sm text-ui-muted">
                   Confirm your current password before setting a new one.
                 </p>
 
@@ -133,7 +133,7 @@ export default async function SettingsPage({
 
                 <form className="mt-5 space-y-4" action={changePassword}>
                   <div className="space-y-2">
-                    <label className="text-sm text-slate-600" htmlFor="current_password">
+                    <label className="text-sm text-ui-muted" htmlFor="current_password">
                       Current password
                     </label>
                     <input
@@ -141,11 +141,11 @@ export default async function SettingsPage({
                       name="current_password"
                       type="password"
                       required
-                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus-ring-warm"
+                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none transition focus-ring-warm"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-slate-600" htmlFor="new_password">
+                    <label className="text-sm text-ui-muted" htmlFor="new_password">
                       New password
                     </label>
                     <input
@@ -154,11 +154,11 @@ export default async function SettingsPage({
                       type="password"
                       required
                       minLength={8}
-                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus-ring-warm"
+                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none transition focus-ring-warm"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-slate-600" htmlFor="confirm_password">
+                    <label className="text-sm text-ui-muted" htmlFor="confirm_password">
                       Confirm new password
                     </label>
                     <input
@@ -167,7 +167,7 @@ export default async function SettingsPage({
                       type="password"
                       required
                       minLength={8}
-                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus-ring-warm"
+                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none transition focus-ring-warm"
                     />
                   </div>
                   <PendingSubmitButton
@@ -179,8 +179,8 @@ export default async function SettingsPage({
               </div>
 
               <div className="rounded-3xl border border-default bg-[var(--surface-muted)] p-6">
-                <h2 className="text-lg font-semibold text-slate-900">Security Notes</h2>
-                <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                <h2 className="text-lg font-semibold text-ui-primary">Security Notes</h2>
+                <ul className="mt-3 space-y-2 text-sm text-ui-muted">
                   <li>Your role and class permissions are enforced by secure server checks.</li>
                   <li>Only classes where you are enrolled are accessible from your dashboard.</li>
                   <li>Use Sign Out from the sidebar on shared devices.</li>

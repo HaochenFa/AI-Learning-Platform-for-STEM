@@ -29,18 +29,18 @@ export default async function HomePage() {
       <AmbientBackground />
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-12 px-6 pb-16 pt-10">
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-slate-700">
+          <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-ui-subtle">
             <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[#2f2b24] text-white">
               <BrandMark className="h-4 w-4" />
             </span>
             Learning Platform
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <Link className="ui-motion-color text-slate-600 hover:text-[#8f4a35]" href={secondaryHref}>
+            <Link className="ui-motion-color text-ui-muted hover:text-[#8f4a35]" href={secondaryHref}>
               {secondaryLabel}
             </Link>
             <Link
-              className="ui-motion-color rounded-full border border-default bg-white px-4 py-2 font-semibold text-slate-600 hover:border-[#d8c8b9] hover:text-[#8f4a35]"
+              className="ui-motion-color rounded-full border border-default bg-white px-4 py-2 font-semibold text-ui-muted hover:border-[#d8c8b9] hover:text-[#8f4a35]"
               href={primaryHref}
             >
               {primaryLabel}
@@ -55,15 +55,15 @@ export default async function HomePage() {
               Trustworthy AI for real classrooms
             </div>
             <div className="space-y-5">
-              <p className="text-sm font-medium text-slate-600">For teachers and students</p>
-              <h1 className="editorial-title text-4xl leading-tight text-slate-900 sm:text-[3.35rem]">
+              <p className="text-sm font-medium text-ui-muted">For teachers and students</p>
+              <h1 className="editorial-title text-4xl leading-tight text-ui-primary sm:text-[3.35rem]">
                 Transform course materials into structured learning that feels rigorous, clear, and human.
               </h1>
-              <p className="text-base text-slate-600 sm:text-lg">
+              <p className="text-base text-ui-muted sm:text-lg">
                 Build from one editable blueprint, launch class-ready activities, and keep AI responses
                 grounded in what your learners are actually studying.
               </p>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ui-muted">
                 Evidence-based workflow: Upload · Curate · Launch
               </p>
             </div>
@@ -97,8 +97,8 @@ export default async function HomePage() {
                 },
               ].map((item) => (
                 <div key={item.label} className="hero-card rounded-2xl p-4">
-                  <p className="text-xs font-semibold tracking-wide text-slate-700">{item.label}</p>
-                  <p className="mt-1 text-xs text-slate-500">{item.detail}</p>
+                  <p className="text-xs font-semibold tracking-wide text-ui-subtle">{item.label}</p>
+                  <p className="mt-1 text-xs text-ui-muted">{item.detail}</p>
                 </div>
               ))}
             </div>
@@ -106,15 +106,15 @@ export default async function HomePage() {
 
           <div className="space-y-4">
             <div className="hero-card rounded-3xl p-6 shadow-sm">
-              <p className="text-xs font-semibold tracking-wide text-slate-500">Blueprint Studio</p>
-              <h2 className="mt-3 text-2xl font-semibold text-slate-900">
+              <p className="text-xs font-semibold tracking-wide text-ui-muted">Blueprint Studio</p>
+              <h2 className="mt-3 text-2xl font-semibold text-ui-primary">
                 One class blueprint powers every activity.
               </h2>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-ui-muted">
                 Teachers stay in control of scope and rigor. Students benefit from consistent AI support
                 across activities.
               </p>
-              <ul className="mt-5 space-y-3 text-sm text-slate-700">
+              <ul className="mt-5 space-y-3 text-sm text-ui-subtle">
                 {[
                   "Teacher-reviewed structure before student release.",
                   "Single source of truth for chat and assessments.",
@@ -129,14 +129,14 @@ export default async function HomePage() {
             </div>
             <div className="hero-card grid gap-4 rounded-3xl p-6 sm:grid-cols-2">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Teacher</p>
-                <p className="mt-2 text-sm text-slate-700">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ui-muted">Teacher</p>
+                <p className="mt-2 text-sm text-ui-subtle">
                   Upload materials, curate AI blueprint drafts, and launch assignments confidently.
                 </p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Student</p>
-                <p className="mt-2 text-sm text-slate-700">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ui-muted">Student</p>
+                <p className="mt-2 text-sm text-ui-subtle">
                   Access guided AI chat and assignments grounded in your class context.
                 </p>
               </div>
