@@ -67,15 +67,17 @@ export default async function TeacherDashboardPage() {
         <main className="mx-auto max-w-5xl p-6 pt-16">
           <header className="flex flex-wrap items-center justify-between gap-6">
             <div>
-              <p className="text-sm font-medium text-slate-500">Teacher Dashboard</p>
-              <h1 className="text-3xl font-semibold text-slate-900">Welcome, {displayName}</h1>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">
+                Teacher Dashboard
+              </p>
+              <h1 className="editorial-title mt-2 text-4xl text-slate-900">Welcome, {displayName}</h1>
+              <p className="mt-2 text-sm text-slate-600">
                 Manage classes, materials, and assignment workflows.
               </p>
             </div>
             <Link
               href="/classes/new"
-              className="btn-secondary rounded-xl px-4 py-2 text-sm font-semibold"
+              className="btn-warm ui-motion-lift rounded-xl px-4 py-2 text-sm font-semibold"
             >
               Create class
             </Link>
@@ -102,9 +104,9 @@ export default async function TeacherDashboardPage() {
                   return (
                     <div
                       key={classItem.id}
-                      className="ui-motion-lift group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                      className="ui-motion-lift group rounded-2xl border border-[#e6dece] bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#cfab8a] hover:shadow-md"
                     >
-                      <p className="text-xs font-medium text-slate-500">{role}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">{role}</p>
                       <Link href={`/classes/${classItem.id}`} className="mt-2 block">
                         <h3 className="text-xl font-semibold text-slate-900">{classItem.title}</h3>
                       </Link>
@@ -114,25 +116,25 @@ export default async function TeacherDashboardPage() {
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link
                           href={`/classes/${classItem.id}`}
-                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 hover:border-cyan-300 hover:text-cyan-700"
+                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
                         >
                           Open class
                         </Link>
                         <Link
                           href={`/classes/${classItem.id}#teacher-chat-monitor`}
-                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 hover:border-cyan-300 hover:text-cyan-700"
+                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
                         >
                           Chat monitor
                         </Link>
                         <Link
                           href={`/classes/${classItem.id}/activities/chat/new`}
-                          className="rounded-full border border-cyan-300 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700 hover:border-cyan-400 hover:bg-cyan-100"
+                          className="ui-motion-color rounded-full border border-[#d7b79a] bg-[#fdf1eb] px-3 py-1 text-xs font-semibold text-[#8f4934] hover:bg-[#fbe7dd]"
                         >
                           New chat
                         </Link>
                         <Link
                           href={`/classes/${classItem.id}/activities/quiz/new`}
-                          className="rounded-full border border-cyan-300 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700 hover:border-cyan-400 hover:bg-cyan-100"
+                          className="ui-motion-color rounded-full border border-[#d7b79a] bg-[#fdf1eb] px-3 py-1 text-xs font-semibold text-[#8f4934] hover:bg-[#fbe7dd]"
                         >
                           New quiz
                         </Link>
@@ -141,7 +143,7 @@ export default async function TeacherDashboardPage() {
                   );
                 })
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                <div className="rounded-2xl border border-dashed border-[#dfd5c4] bg-[#f7f2e8] p-6 text-sm text-slate-500">
                   No classes yet. Create one to get started.
                 </div>
               )}

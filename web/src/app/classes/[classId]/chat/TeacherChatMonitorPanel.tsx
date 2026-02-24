@@ -33,7 +33,7 @@ export default function TeacherChatMonitorPanel({ classId }: TeacherChatMonitorP
 
   return (
     <div className="space-y-4" id="teacher-chat-monitor">
-      <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
+      <div className="notice-warm rounded-2xl px-4 py-3 text-sm">
         Student always-on chats are visible here for coaching and support. This view is read-only.
       </div>
 
@@ -52,7 +52,7 @@ export default function TeacherChatMonitorPanel({ classId }: TeacherChatMonitorP
           value={selectedUserId}
           onChange={(event) => setSelectedUserId(event.target.value)}
           disabled={isPending || participants.length === 0}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+          className="input-shell w-full rounded-xl px-4 py-2 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60"
         >
           {participants.length === 0 ? (
             <option value="">No students yet</option>

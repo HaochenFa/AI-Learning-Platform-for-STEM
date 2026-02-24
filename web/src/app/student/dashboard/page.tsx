@@ -180,13 +180,15 @@ export default async function StudentDashboardPage() {
         <main className="mx-auto max-w-5xl p-6 pt-16">
           <header className="flex flex-wrap items-center justify-between gap-6">
             <div>
-              <p className="text-sm font-medium text-slate-500">Student Dashboard</p>
-              <h1 className="text-3xl font-semibold text-slate-900">Welcome, {displayName}</h1>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">
+                Student Dashboard
+              </p>
+              <h1 className="editorial-title mt-2 text-4xl text-slate-900">Welcome, {displayName}</h1>
+              <p className="mt-2 text-sm text-slate-600">
                 Join classes and complete your assignments in one place.
               </p>
             </div>
-            <Link href="/join" className="btn-secondary rounded-xl px-4 py-2 text-sm font-semibold">
+            <Link href="/join" className="btn-warm ui-motion-lift rounded-xl px-4 py-2 text-sm font-semibold">
               Join class
             </Link>
           </header>
@@ -195,9 +197,9 @@ export default async function StudentDashboardPage() {
             <section className="mt-8">
               <h2 className="text-lg font-semibold text-slate-900">Your Progress</h2>
               <div className="mt-4 grid grid-cols-3 gap-4">
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                <div className="rounded-2xl border border-[#e3c6b8] bg-[#fdf1eb] p-4">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-600">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f6ddcf] text-[#9a513b]">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path
                           strokeLinecap="round"
@@ -206,13 +208,13 @@ export default async function StudentDashboardPage() {
                         />
                       </svg>
                     </div>
-                    <span className="text-2xl font-bold text-red-700">{current.length}</span>
+                    <span className="text-2xl font-bold text-[#954d37]">{current.length}</span>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-red-600">Due Now</p>
+                  <p className="mt-2 text-sm font-medium text-[#914933]">Due Now</p>
                 </div>
-                <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                <div className="rounded-2xl border border-[#ddd6c8] bg-[#f7f3ea] p-4">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#ece6d9] text-[#6b6458]">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path
                           strokeLinecap="round"
@@ -221,13 +223,13 @@ export default async function StudentDashboardPage() {
                         />
                       </svg>
                     </div>
-                    <span className="text-2xl font-bold text-blue-700">{upcoming.length}</span>
+                    <span className="text-2xl font-bold text-[#5f5a4f]">{upcoming.length}</span>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-blue-600">Upcoming</p>
+                  <p className="mt-2 text-sm font-medium text-[#646055]">Upcoming</p>
                 </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="rounded-2xl border border-[#d8d7cb] bg-[#f8f8f3] p-4">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e8e7de] text-[#5f6354]">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path
                           strokeLinecap="round"
@@ -236,15 +238,15 @@ export default async function StudentDashboardPage() {
                         />
                       </svg>
                     </div>
-                    <span className="text-2xl font-bold text-emerald-700">{completed.length}</span>
+                    <span className="text-2xl font-bold text-[#545948]">{completed.length}</span>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-emerald-600">Completed</p>
+                  <p className="mt-2 text-sm font-medium text-[#5a5f4d]">Completed</p>
                 </div>
               </div>
 
               {current.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-red-600">
+                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#95503a]">
                     Due Now
                   </h3>
                   <div className="space-y-2">
@@ -252,10 +254,10 @@ export default async function StudentDashboardPage() {
                       <Link
                         key={assignment.id}
                         href={`/classes/${assignment.classId}/assignments/${assignment.id}/${assignment.activityType}`}
-                        className="flex items-center justify-between rounded-xl border border-red-200 bg-white p-3 shadow-sm hover:border-red-300 hover:shadow-md"
+                        className="ui-motion-lift flex items-center justify-between rounded-xl border border-[#e5d2c4] bg-white p-3 shadow-sm hover:border-[#ccac8c] hover:shadow-md"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f9ebe3] text-[#99513b]">
                             {getActivityIcon(assignment.activityType)}
                           </div>
                           <div>
@@ -266,7 +268,7 @@ export default async function StudentDashboardPage() {
                         <div className="text-right">
                           <p
                             className={`text-xs font-medium ${
-                              assignment.status === "in_progress" ? "text-amber-600" : "text-red-600"
+                              assignment.status === "in_progress" ? "text-[#956745]" : "text-[#95503a]"
                             }`}
                           >
                             {assignment.status === "in_progress"
@@ -282,7 +284,7 @@ export default async function StudentDashboardPage() {
 
               {upcoming.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-blue-600">
+                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#656055]">
                     Upcoming
                   </h3>
                   <div className="space-y-2">
@@ -290,10 +292,10 @@ export default async function StudentDashboardPage() {
                       <Link
                         key={assignment.id}
                         href={`/classes/${assignment.classId}/assignments/${assignment.id}/${assignment.activityType}`}
-                        className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:border-slate-300 hover:shadow-md"
+                        className="ui-motion-lift flex items-center justify-between rounded-xl border border-[#e4ddcf] bg-white p-3 shadow-sm hover:border-[#d0c5b2] hover:shadow-md"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f2eee5] text-[#686154]">
                             {getActivityIcon(assignment.activityType)}
                           </div>
                           <div>
@@ -301,7 +303,7 @@ export default async function StudentDashboardPage() {
                             <p className="text-xs text-slate-500">{assignment.classTitle}</p>
                           </div>
                         </div>
-                        <p className="text-xs font-medium text-blue-600">{formatDueDate(assignment.dueAt)}</p>
+                        <p className="text-xs font-medium text-[#6a6458]">{formatDueDate(assignment.dueAt)}</p>
                       </Link>
                     ))}
                   </div>
@@ -323,9 +325,9 @@ export default async function StudentDashboardPage() {
                   return (
                     <div
                       key={classItem.id}
-                      className="ui-motion-lift group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                      className="ui-motion-lift group rounded-2xl border border-[#e6dece] bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#cfab8a] hover:shadow-md"
                     >
-                      <p className="text-xs font-medium text-slate-500">Student</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">Student</p>
                       <Link href={`/classes/${classItem.id}`} className="mt-2 block">
                         <h3 className="text-xl font-semibold text-slate-900">{classItem.title}</h3>
                       </Link>
@@ -335,13 +337,13 @@ export default async function StudentDashboardPage() {
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link
                           href={`/classes/${classItem.id}`}
-                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 hover:border-cyan-300 hover:text-cyan-700"
+                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
                         >
                           Open class
                         </Link>
                         <Link
                           href={`/classes/${classItem.id}?view=chat`}
-                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 hover:border-cyan-300 hover:text-cyan-700"
+                          className="ui-motion-color rounded-full border border-[#ddd3c2] bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
                         >
                           Open AI chat
                         </Link>
@@ -350,7 +352,7 @@ export default async function StudentDashboardPage() {
                   );
                 })
               ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                <div className="rounded-2xl border border-dashed border-[#dfd5c4] bg-[#f7f2e8] p-6 text-sm text-slate-500">
                   No classes joined yet. Use a join code from your teacher.
                 </div>
               )}

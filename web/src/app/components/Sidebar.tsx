@@ -109,17 +109,17 @@ function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.7}
       aria-hidden="true"
     >
       <path
-        d="M8 5.5V18.5"
+        d="M7.5 5.5V18.5"
         strokeLinecap="round"
       />
       {collapsed ? (
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11 12H18M15 9L18 12L15 15" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 12H17.5M14.5 9L17.5 12L14.5 15" />
       ) : (
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H11M14 9L11 12L14 15" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.5 12H10.5M13.5 9L10.5 12L13.5 15" />
       )}
     </svg>
   );
@@ -190,16 +190,16 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
 
   return (
     <aside
-      className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-slate-200 bg-white transition-all duration-300"
+      className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-[#e5dece] bg-[#fdfbf7] transition-all duration-300"
       style={{ width: "var(--sidebar-width)" }}
     >
-      <div className="flex h-16 items-center justify-between border-b border-slate-200 px-4">
+      <div className="flex h-16 items-center justify-between border-b border-[#e5dece] px-4">
         {!isCompact && (
           <Link
             href={accountType === "teacher" ? "/teacher/dashboard" : "/student/dashboard"}
             className="flex items-center gap-2"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1d1d1b] text-[#f8f2ea]">
               <BrandMark className="h-4 w-4" />
             </div>
             <span className="text-sm font-semibold text-slate-900">Learning Platform</span>
@@ -207,7 +207,7 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
         )}
         <button
           onClick={() => setIsCollapsed((value) => !value)}
-          className="ui-motion-color flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-cyan-300 hover:text-cyan-700"
+          className="ui-motion-color flex h-10 w-10 items-center justify-center rounded-full border border-[#d9cfbe] bg-[#fffaf2] text-slate-500 hover:border-[#cfa884] hover:text-[#8f4934]"
           aria-label={isCompact ? "Expand sidebar" : "Collapse sidebar"}
           type="button"
         >
@@ -222,8 +222,8 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
             href={item.href}
             className={`ui-motion-color flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${
               isActive(item.href)
-                ? "bg-cyan-50 text-cyan-700"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "border border-[#d7b79a] bg-[#fdf1eb] text-[#8d4833]"
+                : "text-slate-600 hover:bg-[#f4efe4] hover:text-slate-900"
             }`}
             title={isCompact ? item.label : undefined}
           >
@@ -234,11 +234,11 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
       </nav>
 
       {classId && !isCompact && (
-        <div className="border-t border-slate-200 px-4 py-4">
+        <div className="border-t border-[#e5dece] px-4 py-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Current Class</p>
           <Link
             href={`/classes/${classId}`}
-            className="ui-motion-color flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            className="ui-motion-color flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-[#f4efe4] hover:text-slate-900"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path
@@ -252,11 +252,11 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
         </div>
       )}
 
-      <div className="border-t border-slate-200 p-4">
+      <div className="border-t border-[#e5dece] p-4">
         {!isCompact ? (
           <div className="flex items-center justify-between">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-medium text-slate-600">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ebe4d8] text-sm font-medium text-slate-600">
                 {userEmail?.charAt(0).toUpperCase() || "U"}
               </div>
               <div className="min-w-0">
@@ -274,7 +274,7 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
           </div>
         ) : (
           <div className="flex justify-center">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-medium text-slate-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ebe4d8] text-sm font-medium text-slate-600">
               {userEmail?.charAt(0).toUpperCase() || "U"}
             </div>
           </div>

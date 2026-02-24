@@ -311,10 +311,10 @@ export default async function ClassOverviewPage({
         breadcrumbs={[{ label: "Dashboard", href: "/teacher/dashboard" }, { label: classRow.title }]}
       />
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
-        <header className="mb-10 space-y-2">
-          <p className="text-sm font-medium text-slate-500">Class Overview</p>
-          <h1 className="text-3xl font-semibold">{classRow.title}</h1>
-          <p className="text-sm text-slate-500">
+        <header className="mb-10 rounded-[2rem] border border-[#e7dece] bg-white px-7 py-7 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8e8577]">Class Overview</p>
+          <h1 className="editorial-title mt-2 text-4xl text-slate-900">{classRow.title}</h1>
+          <p className="mt-2 text-sm text-slate-500">
             {classRow.subject || "General"} · {classRow.level || "Mixed level"}
           </p>
         </header>
@@ -326,28 +326,28 @@ export default async function ClassOverviewPage({
         ) : null}
 
         {uploadNotice ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
+          <div className="notice-warm mb-6 rounded-xl px-4 py-3 text-sm">
             {uploadNotice}
           </div>
         ) : null}
 
         <section className="mb-8 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <div className="rounded-2xl border border-[#e6dece] bg-white p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8e8577]">
               Blueprint
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-900">
               {publishedBlueprint ? "Published and active" : "Draft / pending publication"}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <div className="rounded-2xl border border-[#e6dece] bg-white p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8e8577]">
               Assignments
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-900">{totalAssignments} recent assignments</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <div className="rounded-2xl border border-[#e6dece] bg-white p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8e8577]">
               Materials
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -357,7 +357,7 @@ export default async function ClassOverviewPage({
         </section>
 
         <section className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold">Course blueprint</h2>
             <p className="mt-2 text-sm text-slate-600">
               {isTeacher
@@ -369,27 +369,27 @@ export default async function ClassOverviewPage({
             {isTeacher ? (
               <Link
                 href={`/classes/${classRow.id}/blueprint`}
-                className="ui-motion-lift mt-6 inline-flex rounded-xl bg-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 hover:-translate-y-0.5"
+                className="btn-warm ui-motion-lift mt-6 inline-flex rounded-xl px-4 py-2 text-sm font-semibold hover:-translate-y-0.5"
               >
                 Open blueprint studio
               </Link>
             ) : publishedBlueprint ? (
               <Link
                 href={`/classes/${classRow.id}/blueprint/published`}
-                className="ui-motion-lift mt-6 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-sm font-semibold text-cyan-600 hover:-translate-y-0.5"
+                className="ui-motion-lift mt-6 inline-flex rounded-xl border border-[#d3b092] px-4 py-2 text-sm font-semibold text-[#874934] hover:-translate-y-0.5 hover:bg-[#fbefe7]"
               >
                 View published blueprint
               </Link>
             ) : (
-              <span className="mt-6 inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-500">
+              <span className="mt-6 inline-flex rounded-xl border border-[#ddd3c2] px-4 py-2 text-sm text-slate-500">
                 Awaiting publication
               </span>
             )}
           </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold">Enrollment</h2>
             {isTeacher ? (
-              <div className="mt-3 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-600">
+              <div className="mt-3 rounded-2xl border border-[#d3b092] bg-[#fdf1eb] px-4 py-3 text-sm text-[#8c4b35]">
                 Join code: <span className="font-semibold">{classRow.join_code}</span>
               </div>
             ) : (
@@ -401,7 +401,7 @@ export default async function ClassOverviewPage({
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="mt-10 rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">AI Chat</h2>
@@ -414,13 +414,13 @@ export default async function ClassOverviewPage({
             <div className="flex flex-wrap gap-2">
               <Link
                 href="#teacher-chat-monitor"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-cyan-300 hover:bg-cyan-50"
+                className="ui-motion-color rounded-xl border border-[#ddd3c2] px-4 py-2 text-xs font-semibold text-slate-600 hover:border-[#c8a786] hover:bg-[#f9f3e8] hover:text-[#844633]"
               >
                 Open chat monitor
               </Link>
               <Link
                 href={`/classes/${classRow.id}/activities/chat/new`}
-                className="rounded-xl bg-cyan-400/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+                className="btn-warm rounded-xl px-4 py-2 text-xs font-semibold"
               >
                 Create chat assignment
               </Link>
@@ -443,7 +443,7 @@ export default async function ClassOverviewPage({
                   </div>
                   <Link
                     href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/review`}
-                    className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-600 hover:bg-cyan-400/10"
+                    className="ui-motion-color rounded-lg border border-[#d3b092] px-3 py-1.5 text-xs font-semibold text-[#8a4934] hover:bg-[#fbefe6]"
                   >
                     Review
                   </Link>
@@ -467,7 +467,7 @@ export default async function ClassOverviewPage({
           )}
         </section>
 
-        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="mt-10 rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">Quizzes</h2>
@@ -480,7 +480,7 @@ export default async function ClassOverviewPage({
             {isTeacher ? (
               <Link
                 href={`/classes/${classRow.id}/activities/quiz/new`}
-                className="rounded-xl bg-cyan-400/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+                className="btn-warm rounded-xl px-4 py-2 text-xs font-semibold"
               >
                 Generate quiz draft
               </Link>
@@ -504,7 +504,7 @@ export default async function ClassOverviewPage({
                     </div>
                     <Link
                       href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/review`}
-                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-600 hover:bg-cyan-400/10"
+                      className="ui-motion-color rounded-lg border border-[#d3b092] px-3 py-1.5 text-xs font-semibold text-[#8a4934] hover:bg-[#fbefe6]"
                     >
                       Review
                     </Link>
@@ -536,7 +536,7 @@ export default async function ClassOverviewPage({
                     </div>
                     <Link
                       href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/quiz`}
-                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-600 hover:bg-cyan-400/10"
+                      className="ui-motion-color rounded-lg border border-[#d3b092] px-3 py-1.5 text-xs font-semibold text-[#8a4934] hover:bg-[#fbefe6]"
                     >
                       Open
                     </Link>
@@ -551,7 +551,7 @@ export default async function ClassOverviewPage({
           )}
         </section>
 
-        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="mt-10 rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">Flashcards</h2>
@@ -564,7 +564,7 @@ export default async function ClassOverviewPage({
             {isTeacher ? (
               <Link
                 href={`/classes/${classRow.id}/activities/flashcards/new`}
-                className="rounded-xl bg-cyan-400/90 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+                className="btn-warm rounded-xl px-4 py-2 text-xs font-semibold"
               >
                 Generate flashcards draft
               </Link>
@@ -588,7 +588,7 @@ export default async function ClassOverviewPage({
                     </div>
                     <Link
                       href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/review`}
-                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-600 hover:bg-cyan-400/10"
+                      className="ui-motion-color rounded-lg border border-[#d3b092] px-3 py-1.5 text-xs font-semibold text-[#8a4934] hover:bg-[#fbefe6]"
                     >
                       Review
                     </Link>
@@ -620,7 +620,7 @@ export default async function ClassOverviewPage({
                     </div>
                     <Link
                       href={`/classes/${classRow.id}/assignments/${assignment.assignmentId}/flashcards`}
-                      className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-600 hover:bg-cyan-400/10"
+                      className="ui-motion-color rounded-lg border border-[#d3b092] px-3 py-1.5 text-xs font-semibold text-[#8a4934] hover:bg-[#fbefe6]"
                     >
                       Open
                     </Link>
@@ -637,14 +637,14 @@ export default async function ClassOverviewPage({
 
         {isTeacher ? (
           <section className="mt-10 grid gap-6 lg:grid-cols-3">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-1">
+            <div className="rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm lg:col-span-1">
               <h2 className="text-lg font-semibold">Upload materials</h2>
               <p className="mt-2 text-sm text-slate-600">
                 Supported formats: PDF, DOCX, PPTX.
               </p>
               <MaterialUploadForm action={uploadMaterial.bind(null, classRow.id)} />
             </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+            <div className="rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm lg:col-span-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Materials library</h2>
                 <span className="text-xs font-medium tracking-wide text-slate-500">
@@ -664,7 +664,7 @@ export default async function ClassOverviewPage({
                           <span
                             className={`rounded-full border px-3 py-1 text-xs ${
                               material.status === "processing"
-                                ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-600"
+                                ? "border-[#d3b092] bg-[#fdf1eb] text-[#8a4934]"
                                 : material.status === "failed"
                                   ? "border-rose-500/40 bg-rose-500/10 text-rose-700"
                                   : "border-slate-200 text-slate-500"
@@ -677,7 +677,7 @@ export default async function ClassOverviewPage({
                                 : material.status || "Pending"}
                           </span>
                           {material.status === "processing" ? (
-                            <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-300" />
+                            <span className="h-2 w-2 animate-pulse rounded-full bg-[#cb9f82]" />
                           ) : null}
                         </div>
                       </div>
@@ -697,13 +697,13 @@ export default async function ClassOverviewPage({
                       ) : null}
                       {material.status === "processing" ? (
                         <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-200">
-                          <div className="h-full w-2/3 animate-pulse rounded-full bg-cyan-400/60" />
+                          <div className="h-full w-2/3 animate-pulse rounded-full bg-[#cfad94]" />
                         </div>
                       ) : null}
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                  <div className="rounded-2xl border border-dashed border-[#dfd5c4] bg-[#f7f2e8] p-4 text-sm text-slate-500">
                     No materials yet. Upload materials to begin blueprint generation.
                   </div>
                 )}
@@ -712,19 +712,19 @@ export default async function ClassOverviewPage({
           </section>
         ) : (
           <section className="mt-10 grid gap-6 md:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold">Student hub</h2>
               <p className="mt-2 text-sm text-slate-600">
                 Use open practice chat, then complete chat assignments as they are published.
               </p>
               <Link
                 href={`/classes/${classRow.id}/chat`}
-                className="mt-4 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-xs font-semibold text-cyan-600 hover:bg-cyan-400/10"
+                className="ui-motion-color mt-4 inline-flex rounded-xl border border-[#d3b092] px-4 py-2 text-xs font-semibold text-[#8a4934] hover:bg-[#fbefe6]"
               >
                 Open practice chat
               </Link>
             </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-3xl border border-[#e6dece] bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold">Blueprint status</h2>
               {publishedBlueprint ? (
                 <>
@@ -733,7 +733,7 @@ export default async function ClassOverviewPage({
                   </p>
                   <Link
                     href={`/classes/${classRow.id}/blueprint/published`}
-                    className="ui-motion-color mt-4 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-xs font-semibold text-cyan-600 hover:bg-cyan-400/10"
+                    className="ui-motion-color mt-4 inline-flex rounded-xl border border-[#d3b092] px-4 py-2 text-xs font-semibold text-[#8a4934] hover:bg-[#fbefe6]"
                   >
                     View published blueprint
                   </Link>

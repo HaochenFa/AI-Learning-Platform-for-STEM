@@ -7,13 +7,16 @@
   --surface-muted: #f5f4ed;
   --border-default: #e8e5dc;
   --text-muted: #64635e;
+  --text-subtle: #7c786f;
   --sidebar-width: 16rem;
   --sidebar-collapsed-width: 5rem;
   --motion-fast: 160ms;
   --motion-standard: 220ms;
   --motion-slow: 320ms;
-  --accent-primary: #d97757;
-  --accent-secondary: #3266ad;
+  --accent-primary: #c06a4f;
+  --accent-primary-strong: #a95339;
+  --accent-soft: #fdf1ec;
+  --accent-secondary: #4a5f84;
 }
 
 @theme inline {
@@ -61,6 +64,10 @@ h3 {
   color: var(--text-muted);
 }
 
+.text-subtle {
+  color: var(--text-subtle);
+}
+
 .border-default {
   border-color: var(--border-default);
 }
@@ -88,6 +95,64 @@ h3 {
 .btn-secondary:hover {
   border-color: #d2c9b7;
   background: #f9f6ef;
+}
+
+.btn-warm {
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 35%, #ffffff);
+  background: linear-gradient(140deg, var(--accent-primary) 0%, var(--accent-primary-strong) 100%);
+  color: #fff8f3;
+}
+
+.btn-warm:hover {
+  filter: brightness(1.03);
+}
+
+.btn-ghost {
+  border: 1px solid var(--border-default);
+  background: #ffffff;
+  color: #2f2b24;
+}
+
+.btn-ghost:hover {
+  border-color: #d6ccb8;
+  background: #faf5ec;
+}
+
+.link-warm {
+  color: #9d5038;
+}
+
+.link-warm:hover {
+  color: #81412d;
+}
+
+.chip-warm {
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 35%, #ffffff);
+  background: var(--accent-soft);
+  color: #944a33;
+}
+
+.chip-neutral {
+  border: 1px solid var(--border-default);
+  background: #ffffff;
+  color: #5e5a51;
+}
+
+.input-shell {
+  border: 1px solid var(--border-default);
+  background: #ffffff;
+  color: #171512;
+}
+
+.input-shell:focus {
+  border-color: color-mix(in srgb, var(--accent-primary) 45%, #ffffff);
+  box-shadow: 0 0 0 3px rgba(192, 106, 79, 0.16);
+}
+
+.notice-warm {
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 34%, #ffffff);
+  background: color-mix(in srgb, var(--accent-soft) 76%, #ffffff);
+  color: #8b4631;
 }
 
 .ui-motion-color {
@@ -132,7 +197,7 @@ h3 {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 80% -20%, rgba(50, 102, 173, 0.16), transparent 45%);
+  background: radial-gradient(circle at 82% -20%, rgba(74, 95, 132, 0.14), transparent 46%);
 }
 
 .ambient-bg::after {
@@ -144,12 +209,12 @@ h3 {
 
 .hero-shell {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.92)),
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.14), transparent 42%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 247, 241, 0.94)),
+    radial-gradient(circle at top right, rgba(74, 95, 132, 0.12), transparent 42%);
 }
 
 .hero-card {
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  border: 1px solid rgba(200, 190, 171, 0.45);
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(4px);
 }
