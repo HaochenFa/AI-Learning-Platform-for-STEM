@@ -605,7 +605,7 @@ export async function generateBlueprint(classId: string) {
       system: prompt.system,
       user: prompt.user,
       temperature: 0.2,
-      maxTokens: 1600,
+      maxTokens: 8000,
     });
     usedProvider = result.provider;
 
