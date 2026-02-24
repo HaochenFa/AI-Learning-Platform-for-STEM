@@ -33,18 +33,18 @@ export default function TeacherChatMonitorPanel({ classId }: TeacherChatMonitorP
 
   return (
     <div className="space-y-4" id="teacher-chat-monitor">
-      <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+      <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
         Student always-on chats are visible here for coaching and support. This view is read-only.
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
       ) : null}
 
       <div className="space-y-2">
-        <label className="text-sm text-slate-300" htmlFor="chat-monitor-student">
+        <label className="text-sm text-slate-600" htmlFor="chat-monitor-student">
           Student
         </label>
         <select
@@ -52,7 +52,7 @@ export default function TeacherChatMonitorPanel({ classId }: TeacherChatMonitorP
           value={selectedUserId}
           onChange={(event) => setSelectedUserId(event.target.value)}
           disabled={isPending || participants.length === 0}
-          className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {participants.length === 0 ? (
             <option value="">No students yet</option>
@@ -74,7 +74,7 @@ export default function TeacherChatMonitorPanel({ classId }: TeacherChatMonitorP
           heading="Student chat history"
         />
       ) : (
-        <p className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-6 text-sm text-slate-400">
+        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
           Select a student to view chat history.
         </p>
       )}

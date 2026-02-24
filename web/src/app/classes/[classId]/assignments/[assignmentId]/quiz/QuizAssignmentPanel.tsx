@@ -64,7 +64,7 @@ export default function QuizAssignmentPanel({
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
         <p>Attempts used: {attemptsUsed}</p>
         <p>Attempts remaining: {attemptsRemaining}</p>
         <p>{dueLocked ? "Due date passed. New attempts are locked." : "Due date is still open."}</p>
@@ -77,9 +77,9 @@ export default function QuizAssignmentPanel({
         {questions.map((question, questionIndex) => (
           <section
             key={question.id}
-            className="rounded-2xl border border-white/10 bg-slate-900/60 p-4"
+            className="rounded-2xl border border-slate-200 bg-white p-4"
           >
-            <p className="text-sm font-semibold text-slate-100">
+            <p className="text-sm font-semibold text-slate-900">
               {questionIndex + 1}. {question.question}
             </p>
 
@@ -87,7 +87,7 @@ export default function QuizAssignmentPanel({
               {question.choices.map((choice) => (
                 <label
                   key={`${question.id}-${choice}`}
-                  className="flex cursor-pointer items-start gap-2 rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-sm text-slate-200"
+                  className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
                 >
                   <input
                     type="radio"
@@ -107,7 +107,7 @@ export default function QuizAssignmentPanel({
             </div>
 
             {revealAnswers ? (
-              <div className="mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm text-cyan-100">
+              <div className="mt-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm text-cyan-700">
                 <p className="font-medium">Correct answer: {question.answer ?? "Unavailable"}</p>
                 {question.explanation ? (
                   <p className="mt-1 text-cyan-50/90">{question.explanation}</p>

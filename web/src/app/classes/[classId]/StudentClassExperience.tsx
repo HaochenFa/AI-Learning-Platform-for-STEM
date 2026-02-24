@@ -130,17 +130,17 @@ export default function StudentClassExperience({
         {assignments.slice(0, 8).map((assignment) => (
           <div
             key={assignment.assignmentId}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
           >
             <div>
-              <p className="text-sm font-semibold text-slate-100">{assignment.title}</p>
+              <p className="text-sm font-semibold text-slate-900">{assignment.title}</p>
               <p className="text-xs text-slate-500">
                 {formatDueDate(assignment.dueAt)} · Status: {formatAssignmentStatus(assignment.status)}
               </p>
             </div>
             <Link
               href={pathFor(assignment.assignmentId)}
-              className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/10"
+              className="rounded-lg border border-cyan-300 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50"
             >
               Open
             </Link>
@@ -148,7 +148,7 @@ export default function StudentClassExperience({
         ))}
       </div>
     ) : (
-      <p className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">
+      <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
         {emptyMessage}
       </p>
     );
@@ -158,7 +158,7 @@ export default function StudentClassExperience({
       return publishedBlueprint ? (
         <ClassChatWorkspace classId={classId} />
       ) : (
-        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-4 text-sm text-amber-100">
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-4 text-sm text-amber-800">
           AI Chat unlocks after your teacher publishes the class blueprint.
         </div>
       );
@@ -167,7 +167,7 @@ export default function StudentClassExperience({
     if (activeWidget === "chat_assignments") {
       return (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-slate-100">Your chat assignments</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Your chat assignments</h3>
           {renderAssignmentList(
             chatAssignments,
             "No chat assignments yet. Use AI Chat while you wait.",
@@ -180,7 +180,7 @@ export default function StudentClassExperience({
     if (activeWidget === "quizzes") {
       return (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-slate-100">Your quizzes</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Your quizzes</h3>
           {renderAssignmentList(
             quizAssignments,
             "No quiz assignments yet. Your teacher will publish them here.",
@@ -193,7 +193,7 @@ export default function StudentClassExperience({
     if (activeWidget === "flashcards") {
       return (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-slate-100">Your flashcards</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Your flashcards</h3>
           {renderAssignmentList(
             flashcardsAssignments,
             "No flashcard assignments yet. Your teacher will publish them here.",
@@ -205,21 +205,21 @@ export default function StudentClassExperience({
 
     return (
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-slate-100">Published blueprint</h3>
+        <h3 className="text-lg font-semibold text-slate-900">Published blueprint</h3>
         {publishedBlueprint ? (
-          <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-4 text-sm text-cyan-100">
+          <div className="rounded-2xl border border-cyan-300 bg-cyan-50 px-4 py-4 text-sm text-cyan-800">
             Use the blueprint to align your questions, quizzes, and revision plan.
             <div className="mt-4">
               <Link
                 href={`/classes/${classId}/blueprint/published`}
-                className="rounded-xl border border-cyan-400/40 px-4 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/10"
+                className="rounded-xl border border-cyan-300 px-4 py-2 text-xs font-semibold text-cyan-700 hover:bg-cyan-100"
               >
                 View published blueprint
               </Link>
             </div>
           </div>
         ) : (
-          <p className="rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">
+          <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
             Blueprint publication is pending. Ask your teacher when it will be available.
           </p>
         )}
@@ -228,30 +228,30 @@ export default function StudentClassExperience({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="surface-page min-h-screen">
       <AuthHeader
         activeNav="dashboard"
         classContext={{ classId, isTeacher: false }}
-        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: classTitle }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/student/dashboard" }, { label: classTitle }]}
       />
 
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-400">Student Hub</p>
-          <h1 className="text-3xl font-semibold">{classTitle}</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm font-medium text-slate-500">Student Hub</p>
+          <h1 className="text-3xl font-semibold text-slate-900">{classTitle}</h1>
+          <p className="text-sm text-slate-500">
             {subject || "STEM"} · {level || "Mixed level"}
           </p>
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {errorMessage}
           </div>
         ) : null}
 
         {uploadNotice ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-6 rounded-xl border border-cyan-300 bg-cyan-50 px-4 py-3 text-sm text-cyan-700">
             {uploadNotice}
           </div>
         ) : null}
@@ -263,12 +263,12 @@ export default function StudentClassExperience({
                 key={widget.key}
                 type="button"
                 onClick={() => setActiveWidget(widget.key)}
-                className="ui-motion-lift rounded-3xl border border-white/10 bg-slate-900/70 p-6 text-left hover:-translate-y-0.5 hover:border-cyan-400/40"
+                className="ui-motion-lift rounded-3xl border border-slate-200 bg-white p-6 text-left hover:-translate-y-0.5 hover:border-cyan-300"
               >
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Widget</p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-100">{widget.title}</h2>
-                <p className="mt-3 text-sm text-slate-400">{widget.description}</p>
-                <span className="mt-5 inline-flex rounded-xl border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-200">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Widget</p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">{widget.title}</h2>
+                <p className="mt-3 text-sm text-slate-600">{widget.description}</p>
+                <span className="mt-5 inline-flex rounded-xl border border-cyan-300 px-3 py-1.5 text-xs font-semibold text-cyan-700">
                   Open workspace
                 </span>
               </button>
@@ -292,12 +292,12 @@ export default function StudentClassExperience({
                     onClick={() => setActiveWidget(widget.key)}
                     className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
                       widget.key === activeWidget
-                        ? "border-cyan-400/50 bg-cyan-400/10 text-cyan-100"
-                        : "border-white/10 bg-slate-950/40 text-slate-300 hover:border-white/30 hover:bg-white/5"
+                        ? "border-cyan-300 bg-cyan-50 text-cyan-800"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-cyan-300 hover:bg-cyan-50"
                     }`}
                   >
                     <p className="font-semibold">{widget.title}</p>
-                    <p className="mt-1 text-xs text-slate-400">{widget.description}</p>
+                    <p className="mt-1 text-xs text-slate-500">{widget.description}</p>
                   </button>
                 ))}
               </div>

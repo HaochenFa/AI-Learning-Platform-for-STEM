@@ -3,8 +3,6 @@ import AuthHeader from "@/app/components/AuthHeader";
 import QuizDraftEditor from "@/app/classes/[classId]/activities/quiz/[activityId]/edit/QuizDraftEditor";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
-export const dynamic = "force-dynamic";
-
 type SearchParams = {
   created?: string;
   saved?: string;
@@ -105,7 +103,7 @@ export default async function EditQuizDraftPage({
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen surface-page text-slate-900">
       <AuthHeader
         activeNav="dashboard"
         accountType="teacher"
@@ -119,15 +117,15 @@ export default async function EditQuizDraftPage({
 
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-400">Teacher Studio</p>
+          <p className="text-sm font-medium text-slate-500">Teacher Studio</p>
           <h1 className="text-3xl font-semibold">{activity.title}</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             Status: {activity.status === "published" ? "Published" : "Draft"}
           </p>
         </header>
 
         {createdMessage ? (
-          <div className="mb-4 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-4 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
             {createdMessage}
           </div>
         ) : null}
@@ -142,7 +140,7 @@ export default async function EditQuizDraftPage({
           </div>
         ) : null}
         {errorMessage ? (
-          <div className="mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
             {errorMessage}
           </div>
         ) : null}

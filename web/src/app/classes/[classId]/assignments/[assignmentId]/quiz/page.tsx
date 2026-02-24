@@ -4,8 +4,6 @@ import { isDueDateLocked } from "@/lib/activities/submissions";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import QuizAssignmentPanel from "@/app/classes/[classId]/assignments/[assignmentId]/quiz/QuizAssignmentPanel";
 
-export const dynamic = "force-dynamic";
-
 type SearchParams = {
   error?: string;
   submitted?: string;
@@ -173,7 +171,7 @@ export default async function QuizAssignmentPage({
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen surface-page text-slate-900">
       <AuthHeader
         activeNav="dashboard"
         classContext={{ classId: classRow.id, isTeacher }}
@@ -186,9 +184,9 @@ export default async function QuizAssignmentPage({
 
       <div className="mx-auto w-full max-w-5xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-400">Assignment Workspace</p>
+          <p className="text-sm font-medium text-slate-500">Assignment Workspace</p>
           <h1 className="text-3xl font-semibold">{activity.title}</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             {assignment.due_at
               ? `Due ${new Date(assignment.due_at).toLocaleString()}`
               : "No due date"}
@@ -196,7 +194,7 @@ export default async function QuizAssignmentPage({
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
             {errorMessage}
           </div>
         ) : null}

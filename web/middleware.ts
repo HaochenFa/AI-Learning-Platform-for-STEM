@@ -2,9 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({
-    request,
-  });
+  const response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey =
@@ -32,16 +30,16 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isAuthRoute = pathname === "/login" || pathname === "/register";
-  const isApiRoute = pathname.startsWith("/api/");
   const isProtectedRoute =
     pathname === "/dashboard" ||
     pathname === "/join" ||
+    pathname === "/settings" ||
+    pathname === "/help" ||
     pathname.startsWith("/classes") ||
     pathname.startsWith("/teacher") ||
     pathname.startsWith("/student");
 
-  if (user && !user.email_confirmed_at && isProtectedRoute && !isAuthRoute && !isApiRoute) {
+  if (user && !user.email_confirmed_at && isProtectedRoute) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("error", "Please verify your email before continuing.");
@@ -52,5 +50,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/dashboard",
+    "/join",
+    "/settings",
+    "/help",
+    "/classes/:path*",
+    "/teacher/:path*",
+    "/student/:path*",
+  ],
 };

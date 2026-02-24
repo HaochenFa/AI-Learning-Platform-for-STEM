@@ -18,37 +18,40 @@ export default async function JoinClassPage({
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="surface-page min-h-screen">
       <AuthHeader
         activeNav="join-class"
         accountType="student"
-        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Join class" }]}
+        breadcrumbs={[
+          { label: "Dashboard", href: "/student/dashboard" },
+          { label: "Join class" },
+        ]}
       />
       <div className="mx-auto w-full max-w-lg px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-sm font-medium text-slate-400">Student Hub</p>
-          <h1 className="text-3xl font-semibold">Join a class</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm font-medium text-slate-500">Student Hub</p>
+          <h1 className="text-3xl font-semibold text-slate-900">Join a class</h1>
+          <p className="text-sm text-slate-600">
             Enter the join code from your teacher to access assignments.
           </p>
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {errorMessage}
           </div>
         ) : null}
 
         <form className="space-y-6" action={joinClass}>
           <div className="space-y-2">
-            <label className="text-sm text-slate-300" htmlFor="join_code">
+            <label className="text-sm text-slate-600" htmlFor="join_code">
               Join code
             </label>
             <input
               id="join_code"
               name="join_code"
               required
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm tracking-[0.25em] text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm tracking-[0.25em] text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
               placeholder="AB12CD"
             />
           </div>
@@ -57,7 +60,7 @@ export default async function JoinClassPage({
             <PendingSubmitButton
               label="Join class"
               pendingLabel="Joining class..."
-              className="rounded-xl bg-cyan-400/90 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-cyan-400/50"
+              className="btn-primary rounded-xl px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
         </form>

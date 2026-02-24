@@ -8,8 +8,6 @@ import { reviewFlashcardsSubmission } from "@/app/classes/[classId]/flashcards/a
 import type { ChatTurn } from "@/lib/chat/types";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
-export const dynamic = "force-dynamic";
-
 type SearchParams = {
   created?: string;
   saved?: string;
@@ -333,7 +331,7 @@ export default async function AssignmentReviewPage({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen surface-page text-slate-900">
       <AuthHeader
         activeNav="dashboard"
         accountType="teacher"
@@ -354,9 +352,9 @@ export default async function AssignmentReviewPage({
 
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-400">Teacher Review</p>
+          <p className="text-sm font-medium text-slate-500">Teacher Review</p>
           <h1 className="text-3xl font-semibold">{activity.title}</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             {assignment.due_at
               ? `Due ${new Date(assignment.due_at).toLocaleString()}`
               : "No due date"}
@@ -364,7 +362,7 @@ export default async function AssignmentReviewPage({
         </header>
 
         {createdMessage ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
             {createdMessage}
           </div>
         ) : null}
@@ -374,13 +372,13 @@ export default async function AssignmentReviewPage({
           </div>
         ) : null}
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
             {errorMessage}
           </div>
         ) : null}
 
         {totalRecipients > 0 ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-900/50 px-4 py-3 text-sm text-slate-300">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
             <p>
               Showing {rangeStart + 1}-
               {Math.min(rangeStart + (recipients?.length ?? 0), totalRecipients)} of{" "}
@@ -391,27 +389,27 @@ export default async function AssignmentReviewPage({
                 {currentPage > 1 ? (
                   <Link
                     href={buildPageHref(currentPage - 1)}
-                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/10"
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white/10"
                   >
                     Previous
                   </Link>
                 ) : (
-                  <span className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-500">
+                  <span className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-500">
                     Previous
                   </span>
                 )}
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-500">
                   Page {currentPage} of {totalPages}
                 </span>
                 {currentPage < totalPages ? (
                   <Link
                     href={buildPageHref(currentPage + 1)}
-                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/10"
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white/10"
                   >
                     Next
                   </Link>
                 ) : (
-                  <span className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-500">
+                  <span className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-500">
                     Next
                   </span>
                 )}
@@ -422,7 +420,7 @@ export default async function AssignmentReviewPage({
 
         <div className="space-y-6">
           {(recipients ?? []).length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-white/10 bg-slate-900/40 p-6 text-sm text-slate-400">
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
               No students are currently assigned to this activity.
             </div>
           ) : (
@@ -445,42 +443,42 @@ export default async function AssignmentReviewPage({
               return (
                 <section
                   key={`${recipient.student_id}-${recipient.assigned_at}`}
-                  className="rounded-3xl border border-white/10 bg-slate-900/70 p-6"
+                  className="rounded-3xl border border-slate-200 bg-white p-6"
                 >
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Student</p>
-                      <p className="text-sm font-semibold text-slate-200">{recipient.student_id}</p>
+                      <p className="text-sm font-semibold text-slate-700">{recipient.student_id}</p>
                     </div>
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600">
                       {recipient.status}
                     </span>
                   </div>
 
                   {activity.type === "chat" ? (
                     !latestSubmission ? (
-                      <p className="text-sm text-slate-400">No submission yet.</p>
+                      <p className="text-sm text-slate-500">No submission yet.</p>
                     ) : (
                       <div className="space-y-4">
-                        <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                             Transcript
                           </p>
                           {parseChatSubmissionContent(latestSubmission.content).transcript
                             .length === 0 ? (
-                            <p className="mt-2 text-sm text-slate-400">No transcript saved.</p>
+                            <p className="mt-2 text-sm text-slate-500">No transcript saved.</p>
                           ) : (
                             <div className="mt-3 space-y-3">
                               {parseChatSubmissionContent(latestSubmission.content).transcript.map(
                                 (turn, index) => (
                                   <div
                                     key={`${latestSubmission.id}-${turn.role}-${turn.createdAt}-${index}`}
-                                    className="rounded-xl border border-white/10 bg-slate-900/70 p-3"
+                                    className="rounded-xl border border-slate-200 bg-white p-3"
                                   >
-                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                       {turn.role === "student" ? "Student" : "AI Tutor"}
                                     </p>
-                                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-100">
+                                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-900">
                                       {turn.message}
                                     </p>
                                   </div>
@@ -490,11 +488,11 @@ export default async function AssignmentReviewPage({
                           )}
                         </div>
 
-                        <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                             Reflection
                           </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-100">
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-900">
                             {parseChatSubmissionContent(latestSubmission.content).reflection ||
                               "No reflection submitted."}
                           </p>
@@ -502,13 +500,13 @@ export default async function AssignmentReviewPage({
 
                         <form
                           action={reviewChatSubmission.bind(null, classId, latestSubmission.id)}
-                          className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4"
+                          className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
                         >
                           <input type="hidden" name="assignment_id" value={assignmentId} />
 
                           <div className="space-y-2">
                             <label
-                              className="text-sm text-slate-300"
+                              className="text-sm text-slate-600"
                               htmlFor={`score-${latestSubmission.id}`}
                             >
                               Score (0-100)
@@ -520,13 +518,13 @@ export default async function AssignmentReviewPage({
                               min={0}
                               max={100}
                               defaultValue={latestSubmission.score?.toString() ?? ""}
-                              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                             />
                           </div>
 
                           <div className="space-y-2">
                             <label
-                              className="text-sm text-slate-300"
+                              className="text-sm text-slate-600"
                               htmlFor={`comment-${latestSubmission.id}`}
                             >
                               Comment
@@ -538,13 +536,13 @@ export default async function AssignmentReviewPage({
                               defaultValue={
                                 latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""
                               }
-                              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                             />
                           </div>
 
                           <div className="space-y-2">
                             <label
-                              className="text-sm text-slate-300"
+                              className="text-sm text-slate-600"
                               htmlFor={`highlights-${latestSubmission.id}`}
                             >
                               Highlights (one per line)
@@ -557,7 +555,7 @@ export default async function AssignmentReviewPage({
                                 latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ??
                                 []
                               ).join("\n")}
-                              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                             />
                           </div>
 
@@ -570,10 +568,10 @@ export default async function AssignmentReviewPage({
                       </div>
                     )
                   ) : attempts.length === 0 ? (
-                    <p className="text-sm text-slate-400">No submission yet.</p>
+                    <p className="text-sm text-slate-500">No submission yet.</p>
                   ) : activity.type === "quiz" ? (
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-300">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                         <p>Attempts submitted: {attempts.length}</p>
                         <p>Best score: {bestScore === null ? "N/A" : `${bestScore}%`}</p>
                       </div>
@@ -585,9 +583,9 @@ export default async function AssignmentReviewPage({
                         return (
                           <div
                             key={attempt.id}
-                            className="rounded-2xl border border-white/10 bg-slate-950/50 p-4"
+                            className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
                           >
-                            <p className="text-sm font-semibold text-slate-100">
+                            <p className="text-sm font-semibold text-slate-900">
                               Attempt {parsed.attemptNumber} · Score:{" "}
                               {attempt.score ?? parsed.scorePercent}%
                             </p>
@@ -604,24 +602,24 @@ export default async function AssignmentReviewPage({
                                 return (
                                   <div
                                     key={`${attempt.id}-${answer.questionId}-${answerIndex}`}
-                                    className="rounded-xl border border-white/10 bg-slate-900/70 p-3"
+                                    className="rounded-xl border border-slate-200 bg-white p-3"
                                   >
                                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                                       Question {answerIndex + 1}
                                     </p>
-                                    <p className="mt-1 text-sm text-slate-200">
+                                    <p className="mt-1 text-sm text-slate-700">
                                       {question?.question ?? "Unknown question"}
                                     </p>
-                                    <p className="mt-2 text-sm text-slate-300">
+                                    <p className="mt-2 text-sm text-slate-600">
                                       Selected: {answer.selectedChoice}
                                     </p>
                                     <p
-                                      className={`text-sm ${isCorrect ? "text-emerald-300" : "text-rose-300"}`}
+                                      className={`text-sm ${isCorrect ? "text-emerald-300" : "text-rose-700"}`}
                                     >
                                       Correct answer: {question?.answer ?? "Unavailable"}
                                     </p>
                                     {question?.explanation ? (
-                                      <p className="mt-1 text-xs text-slate-400">
+                                      <p className="mt-1 text-xs text-slate-500">
                                         {question.explanation}
                                       </p>
                                     ) : null}
@@ -632,13 +630,13 @@ export default async function AssignmentReviewPage({
 
                             <form
                               action={reviewQuizSubmission.bind(null, classId, attempt.id)}
-                              className="mt-4 space-y-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4"
+                              className="mt-4 space-y-4 rounded-2xl border border-slate-200 bg-white p-4"
                             >
                               <input type="hidden" name="assignment_id" value={assignmentId} />
 
                               <div className="space-y-2">
                                 <label
-                                  className="text-sm text-slate-300"
+                                  className="text-sm text-slate-600"
                                   htmlFor={`quiz-score-${attempt.id}`}
                                 >
                                   Override score (0-100)
@@ -650,13 +648,13 @@ export default async function AssignmentReviewPage({
                                   min={0}
                                   max={100}
                                   defaultValue={attempt.score?.toString() ?? ""}
-                                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                                 />
                               </div>
 
                               <div className="space-y-2">
                                 <label
-                                  className="text-sm text-slate-300"
+                                  className="text-sm text-slate-600"
                                   htmlFor={`quiz-comment-${attempt.id}`}
                                 >
                                   Comment
@@ -666,13 +664,13 @@ export default async function AssignmentReviewPage({
                                   name="comment"
                                   rows={3}
                                   defaultValue={feedback?.comment ?? ""}
-                                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                                 />
                               </div>
 
                               <div className="space-y-2">
                                 <label
-                                  className="text-sm text-slate-300"
+                                  className="text-sm text-slate-600"
                                   htmlFor={`quiz-highlights-${attempt.id}`}
                                 >
                                   Highlights (one per line)
@@ -682,7 +680,7 @@ export default async function AssignmentReviewPage({
                                   name="highlights"
                                   rows={3}
                                   defaultValue={(feedback?.highlights ?? []).join("\n")}
-                                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                                 />
                               </div>
 
@@ -697,14 +695,14 @@ export default async function AssignmentReviewPage({
                       })}
                     </div>
                   ) : !latestSubmission ? (
-                    <p className="text-sm text-slate-400">No submission yet.</p>
+                    <p className="text-sm text-slate-500">No submission yet.</p>
                   ) : (
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                           Session Summary
                         </p>
-                        <div className="mt-3 space-y-2 text-sm text-slate-200">
+                        <div className="mt-3 space-y-2 text-sm text-slate-700">
                           <p>Session {parsedFlashcardsSubmission?.sessionNumber ?? 1}</p>
                           <p>Cards reviewed: {parsedFlashcardsSubmission?.cardsReviewed ?? 0}</p>
                           <p>
@@ -717,11 +715,11 @@ export default async function AssignmentReviewPage({
 
                       <form
                         action={reviewFlashcardsSubmission.bind(null, classId, latestSubmission.id)}
-                        className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4"
+                        className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
                       >
                         <div className="space-y-2">
                           <label
-                            className="text-sm text-slate-300"
+                            className="text-sm text-slate-600"
                             htmlFor={`score-${latestSubmission.id}`}
                           >
                             Score (0-100)
@@ -733,13 +731,13 @@ export default async function AssignmentReviewPage({
                             min={0}
                             max={100}
                             defaultValue={latestSubmission.score?.toString() ?? ""}
-                            className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                           />
                         </div>
 
                         <div className="space-y-2">
                           <label
-                            className="text-sm text-slate-300"
+                            className="text-sm text-slate-600"
                             htmlFor={`comment-${latestSubmission.id}`}
                           >
                             Comment
@@ -751,13 +749,13 @@ export default async function AssignmentReviewPage({
                             defaultValue={
                               latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""
                             }
-                            className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                           />
                         </div>
 
                         <div className="space-y-2">
                           <label
-                            className="text-sm text-slate-300"
+                            className="text-sm text-slate-600"
                             htmlFor={`highlights-${latestSubmission.id}`}
                           >
                             Highlights (one per line)
@@ -769,7 +767,7 @@ export default async function AssignmentReviewPage({
                             defaultValue={(
                               latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ?? []
                             ).join("\n")}
-                            className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                           />
                         </div>
 

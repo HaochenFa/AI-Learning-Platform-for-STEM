@@ -4,8 +4,6 @@ import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { createChatAssignment } from "@/app/classes/[classId]/chat/actions";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
-export const dynamic = "force-dynamic";
-
 type SearchParams = {
   error?: string;
 };
@@ -55,7 +53,7 @@ export default async function NewChatAssignmentPage({
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen surface-page text-slate-900">
       <AuthHeader
         activeNav="dashboard"
         accountType="teacher"
@@ -69,21 +67,21 @@ export default async function NewChatAssignmentPage({
 
       <div className="mx-auto w-full max-w-3xl px-6 py-16">
         <header className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-slate-400">Teacher Studio</p>
+          <p className="text-sm font-medium text-slate-500">Teacher Studio</p>
           <h1 className="text-3xl font-semibold">Create Chat Assignment</h1>
-          <p className="text-sm text-slate-400">Assigns to all enrolled students in this class.</p>
+          <p className="text-sm text-slate-500">Assigns to all enrolled students in this class.</p>
           <p className="text-xs text-slate-500">Target students: {studentCount ?? 0}</p>
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
             {errorMessage}
           </div>
         ) : null}
 
         <form action={createChatAssignment.bind(null, classId)} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm text-slate-300" htmlFor="title">
+            <label className="text-sm text-slate-600" htmlFor="title">
               Assignment Title
             </label>
             <input
@@ -91,12 +89,12 @@ export default async function NewChatAssignmentPage({
               name="title"
               required
               placeholder="Week 2 Guided Chat: Limits"
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-slate-300" htmlFor="instructions">
+            <label className="text-sm text-slate-600" htmlFor="instructions">
               Instructions
             </label>
             <textarea
@@ -105,19 +103,19 @@ export default async function NewChatAssignmentPage({
               required
               rows={5}
               placeholder="Ask at least three questions about formal limit definitions, then summarize what changed in your understanding."
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-slate-300" htmlFor="due_at">
+            <label className="text-sm text-slate-600" htmlFor="due_at">
               Due Date (Optional)
             </label>
             <input
               id="due_at"
               name="due_at"
               type="datetime-local"
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
             />
           </div>
 

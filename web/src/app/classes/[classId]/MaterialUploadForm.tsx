@@ -16,7 +16,7 @@ function SubmitButton({ fileCount }: { fileCount: number }) {
     <button
       type="submit"
       disabled={pending || fileCount === 0}
-      className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+      className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
     >
       {pending ? "Uploading..." : `Upload ${fileCount > 1 ? `${fileCount} files` : "material"}`}
     </button>
@@ -32,12 +32,12 @@ function UploadProgress() {
 
   return (
     <div className="space-y-2" aria-live="polite">
-      <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200/40 border-t-slate-600 dark:border-slate-700/40 dark:border-t-slate-300" />
+      <div className="flex items-center gap-3 text-xs text-slate-600">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200/40 border-t-slate-600" />
         Uploading your materials. Large files can take a minute.
       </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-        <div className="h-full w-2/3 animate-pulse rounded-full bg-slate-600 dark:bg-slate-400" />
+      <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200">
+        <div className="h-full w-2/3 animate-pulse rounded-full bg-slate-600" />
       </div>
     </div>
   );
@@ -86,7 +86,7 @@ export default function MaterialUploadForm({ action }: MaterialUploadFormProps) 
   return (
     <form className="space-y-4" action={handleSubmit}>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="title">
+        <label className="text-sm font-medium text-slate-700" htmlFor="title">
           Title
         </label>
         <input
@@ -94,7 +94,7 @@ export default function MaterialUploadForm({ action }: MaterialUploadFormProps) 
           name="title"
           placeholder="Lecture 3: Limits and Continuity"
           disabled={files.length > 1}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/50 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700/50 disabled:dark:bg-slate-900"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/50 disabled:bg-slate-100 disabled:text-slate-500"
         />
         {files.length > 1 && (
           <p className="text-xs text-slate-500">
@@ -103,7 +103,7 @@ export default function MaterialUploadForm({ action }: MaterialUploadFormProps) 
         )}
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+        <label className="text-sm font-medium text-slate-700">
           Files
         </label>
         <FileUploadZone

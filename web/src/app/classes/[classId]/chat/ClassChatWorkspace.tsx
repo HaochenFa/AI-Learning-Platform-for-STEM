@@ -271,14 +271,14 @@ export default function ClassChatWorkspace({
 
   return (
     <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <aside className="rounded-3xl border border-white/10 bg-slate-900/70 p-4">
+      <aside className="rounded-3xl border border-slate-200 bg-white p-4">
         <div className="mb-4 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">Chats</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-600">Chats</h3>
           {!readOnly ? (
             <button
               type="button"
               onClick={handleNewChat}
-              className="rounded-lg border border-cyan-400/40 px-2.5 py-1 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/10"
+              className="rounded-lg border border-cyan-400/40 px-2.5 py-1 text-xs font-semibold text-cyan-700 hover:bg-cyan-400/10"
             >
               New
             </button>
@@ -295,7 +295,7 @@ export default function ClassChatWorkspace({
                   className={`rounded-xl border px-3 py-2 ${
                     isSelected
                       ? "border-cyan-400/50 bg-cyan-400/10"
-                      : "border-white/10 bg-slate-950/50"
+                      : "border-slate-200 bg-slate-50"
                   }`}
                 >
                   <button
@@ -303,14 +303,14 @@ export default function ClassChatWorkspace({
                     onClick={() => setSelectedSessionId(session.id)}
                     className="w-full text-left"
                   >
-                    <p className="truncate text-sm font-medium text-slate-100">{session.title}</p>
+                    <p className="truncate text-sm font-medium text-slate-900">{session.title}</p>
                     <p className="mt-1 text-xs text-slate-500">{formatDateTime(session.lastMessageAt)}</p>
                   </button>
                   {!readOnly ? (
                     <button
                       type="button"
                       onClick={() => handleArchiveSession(session.id)}
-                      className="mt-2 text-xs text-rose-300 hover:text-rose-200"
+                      className="mt-2 text-xs text-rose-700 hover:text-rose-700"
                     >
                       Archive
                     </button>
@@ -319,26 +319,26 @@ export default function ClassChatWorkspace({
               );
             })
           ) : (
-            <p className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-3 text-xs text-slate-500">
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
               {isSessionPending ? "Loading chats..." : "No chat sessions yet."}
             </p>
           )}
         </div>
       </aside>
 
-      <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-4">
-        <header className="mb-4 border-b border-white/10 pb-4">
+      <section className="rounded-3xl border border-slate-200 bg-white p-4">
+        <header className="mb-4 border-b border-slate-200 pb-4">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Always-on AI Chat</p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-100">
+          <h2 className="mt-1 text-xl font-semibold text-slate-900">
             {heading || selectedSession?.title || "Class conversation"}
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-slate-500">
             Chat responses are grounded in your published blueprint and class materials.
           </p>
         </header>
 
         {error ? (
-          <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         ) : null}
@@ -349,14 +349,14 @@ export default function ClassChatWorkspace({
           </div>
         ) : null}
 
-        <div className="max-h-[32rem] space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+        <div className="max-h-[32rem] space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-4">
           {pageInfo.hasMore ? (
             <div className="flex justify-center">
               <button
                 type="button"
                 onClick={handleLoadOlder}
                 disabled={isLoadingMore}
-                className="rounded-full border border-white/20 px-4 py-1 text-xs text-slate-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full border border-white/20 px-4 py-1 text-xs text-slate-600 hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoadingMore ? "Loading older messages..." : "Load older messages"}
               </button>
@@ -364,21 +364,21 @@ export default function ClassChatWorkspace({
           ) : null}
 
           {messages.length === 0 ? (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               {isSessionPending ? "Loading conversation..." : "Start the conversation with a focused question."}
             </p>
           ) : (
             messages.map((turn) => (
               <div key={turn.id} className={turn.authorKind === "assistant" ? "flex justify-center" : "flex justify-end"}>
                 {turn.authorKind === "assistant" ? (
-                  <article className="w-full max-w-3xl text-slate-100">
-                    <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
+                  <article className="w-full max-w-3xl text-slate-900">
+                    <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-500">
                       <span>AI Tutor</span>
                       <span>{formatTime(turn.createdAt)}</span>
                     </div>
-                    <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-100">{turn.content}</p>
+                    <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-900">{turn.content}</p>
                     {turn.citations.length > 0 ? (
-                      <ul className="mt-3 space-y-1 text-xs text-slate-400">
+                      <ul className="mt-3 space-y-1 text-xs text-slate-500">
                         {turn.citations.map((citation) => (
                           <li key={`${turn.id}-${citation.sourceLabel}-${citation.snippet ?? ""}`}>
                             {citation.sourceLabel}
@@ -389,10 +389,10 @@ export default function ClassChatWorkspace({
                     ) : null}
                   </article>
                 ) : (
-                  <article className="max-w-[85%] rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-cyan-100">
-                    <div className="mb-2 flex items-center justify-between gap-4 text-xs uppercase tracking-[0.2em] text-cyan-100/80">
+                  <article className="max-w-[85%] rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-cyan-700">
+                    <div className="mb-2 flex items-center justify-between gap-4 text-xs uppercase tracking-[0.2em] text-cyan-700">
                       <span>{turn.authorKind === "teacher" ? "Teacher" : "You"}</span>
-                      <span className="text-cyan-100/70">{formatTime(turn.createdAt)}</span>
+                      <span className="text-cyan-600">{formatTime(turn.createdAt)}</span>
                     </div>
                     <p className="whitespace-pre-wrap text-sm">{turn.content}</p>
                   </article>
@@ -428,7 +428,7 @@ export default function ClassChatWorkspace({
 
         {!readOnly ? (
           <form className="mt-4 space-y-3" onSubmit={handleSend}>
-            <label className="text-sm text-slate-300" htmlFor="always-on-chat-message">
+            <label className="text-sm text-slate-600" htmlFor="always-on-chat-message">
               Message
             </label>
             <textarea
@@ -438,7 +438,7 @@ export default function ClassChatWorkspace({
               maxLength={MAX_CHAT_MESSAGE_CHARS}
               rows={4}
               placeholder="Ask a question to learn, review, or consolidate your understanding..."
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
             />
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-slate-500">
@@ -454,7 +454,7 @@ export default function ClassChatWorkspace({
             </div>
           </form>
         ) : (
-          <p className="mt-4 rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
+          <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
             Read-only monitor mode. Students can continue chatting in their own workspace.
           </p>
         )}

@@ -1,13 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface-card: #ffffff;
+  --surface-muted: #f1f5f9;
+  --border-default: #e2e8f0;
+  --text-muted: #475569;
+  --sidebar-width: 16rem;
+  --sidebar-collapsed-width: 5rem;
   --motion-fast: 160ms;
   --motion-standard: 220ms;
   --motion-slow: 320ms;
   --accent-primary: #0ea5e9;
-  --accent-secondary: #64748b;
+  --accent-secondary: #2563eb;
 }
 
 @theme inline {
@@ -20,19 +26,64 @@
   --font-mono: var(--font-code);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --accent-primary: #38bdf8;
-    --accent-secondary: #94a3b8;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+}
+
+.surface-page {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.surface-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+}
+
+.surface-subtle {
+  background: var(--surface-muted);
+  border: 1px solid var(--border-default);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.border-default {
+  border-color: var(--border-default);
+}
+
+.sidebar-content {
+  padding-left: var(--sidebar-width);
+  transition: padding-left var(--motion-standard) ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+  color: #082f49;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #22d3ee 0%, #0284c7 100%);
+}
+
+.btn-secondary {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+}
+
+.btn-secondary:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
 }
 
 .ui-motion-color {
@@ -52,12 +103,6 @@ body {
     box-shadow var(--motion-standard) ease;
 }
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-heading);
-}
-
 :where(a, button, input, select, textarea, [role="button"]):focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
@@ -67,9 +112,9 @@ h3 {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(14, 165, 233, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.08) 1px, transparent 1px);
+  background-size: 36px 36px;
   pointer-events: none;
 }
 
@@ -83,17 +128,14 @@ h3 {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.03) 100%);
+  background: radial-gradient(circle at 80% -20%, rgba(56, 189, 248, 0.22), transparent 45%);
 }
 
 .ambient-bg::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background: radial-gradient(circle at -10% 10%, rgba(59, 130, 246, 0.16), transparent 35%);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -104,5 +146,11 @@ h3 {
 
   .ui-motion-lift:hover {
     transform: none !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: var(--sidebar-collapsed-width);
   }
 }

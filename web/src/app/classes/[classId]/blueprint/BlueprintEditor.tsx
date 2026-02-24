@@ -673,7 +673,7 @@ export function BlueprintEditor({
 
   if (!blueprint || !initialDraft) {
     return (
-      <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/40 p-6 text-sm text-slate-400">
+      <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
         No blueprint yet. Generate one to start editing.
       </div>
     );
@@ -683,16 +683,16 @@ export function BlueprintEditor({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
+          <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
             Version {blueprint.version}
           </p>
-          <p className="text-sm text-slate-300">Status: {blueprint.status}</p>
+          <p className="text-sm text-slate-600">Status: {blueprint.status}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {canViewOverview ? (
             <Link
               href={`/classes/${classId}/blueprint/overview`}
-              className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/30"
+              className="rounded-full border border-slate-200 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 transition hover:border-cyan-300"
             >
               View overview
             </Link>
@@ -711,7 +711,7 @@ export function BlueprintEditor({
             <button
               type="button"
               onClick={() => setIsEditing((prev) => !prev)}
-              className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-200 transition hover:border-white/30"
+              className="rounded-full border border-slate-200 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 transition hover:border-cyan-300"
             >
               {isEditing ? "Close editor" : "Edit draft"}
             </button>
@@ -726,7 +726,7 @@ export function BlueprintEditor({
       ) : null}
 
       {recoverableDraft ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-xs text-cyan-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-xs text-cyan-700">
           <p>Unsaved local changes were found for this blueprint.</p>
           <div className="flex items-center gap-2">
             <button
@@ -739,7 +739,7 @@ export function BlueprintEditor({
             <button
               type="button"
               onClick={handleDismissLocalDraft}
-              className="rounded-full border border-cyan-200/40 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-cyan-100"
+              className="rounded-full border border-cyan-200/40 px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-cyan-700"
             >
               Dismiss
             </button>
@@ -752,7 +752,7 @@ export function BlueprintEditor({
           <form action={saveDraft.bind(null, classId, blueprint.id)} className="space-y-6">
             <input type="hidden" name="draft" value={serializedDraft} />
 
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6">
               <label className="text-sm font-semibold" htmlFor="summary">
                 Blueprint summary
               </label>
@@ -761,7 +761,7 @@ export function BlueprintEditor({
                 value={draft.summary}
                 onChange={(event) => handleSummaryChange(event.target.value)}
                 rows={4}
-                className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
               />
             </div>
 
@@ -777,7 +777,7 @@ export function BlueprintEditor({
                 return (
                   <div
                     key={topic.clientId}
-                    className="rounded-3xl border border-white/10 bg-slate-900/70 p-6"
+                    className="rounded-3xl border border-slate-200 bg-white p-6"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-sm font-semibold">Topic {index + 1}</p>
@@ -785,7 +785,7 @@ export function BlueprintEditor({
                         type="button"
                         onClick={() => handleRemoveTopic(topic.clientId)}
                         disabled={draft.topics.length <= 1}
-                        className="text-xs uppercase tracking-[0.2em] text-rose-200 disabled:opacity-40"
+                        className="text-xs uppercase tracking-[0.2em] text-rose-700 disabled:opacity-40"
                       >
                         Remove topic
                       </button>
@@ -793,7 +793,7 @@ export function BlueprintEditor({
                     <div className="mt-4 grid gap-4 md:grid-cols-3">
                       <div className="md:col-span-2">
                         <label
-                          className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                          className="text-xs uppercase tracking-[0.2em] text-slate-500"
                           htmlFor={`topic-${topic.clientId}-title`}
                         >
                           Title
@@ -806,12 +806,12 @@ export function BlueprintEditor({
                               title: event.target.value,
                             })
                           }
-                          className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                         />
                       </div>
                       <div>
                         <label
-                          className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                          className="text-xs uppercase tracking-[0.2em] text-slate-500"
                           htmlFor={`topic-${topic.clientId}-sequence`}
                         >
                           Sequence
@@ -828,13 +828,13 @@ export function BlueprintEditor({
                               sequence: Number(event.target.value),
                             })
                           }
-                          className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                         />
                       </div>
                     </div>
                     <div className="mt-4">
                       <label
-                        className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                        className="text-xs uppercase tracking-[0.2em] text-slate-500"
                         htmlFor={`topic-${topic.clientId}-description`}
                       >
                         Description
@@ -848,12 +848,12 @@ export function BlueprintEditor({
                           })
                         }
                         rows={3}
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                       />
                     </div>
                     <div className="mt-4">
                       <label
-                        className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                        className="text-xs uppercase tracking-[0.2em] text-slate-500"
                         htmlFor={`topic-${topic.clientId}-section`}
                       >
                         Section
@@ -866,12 +866,12 @@ export function BlueprintEditor({
                             section: event.target.value,
                           })
                         }
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                       />
                     </div>
 
                     <div className="mt-4">
-                      <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                      <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
                         Prerequisites
                       </label>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -879,14 +879,14 @@ export function BlueprintEditor({
                           selectedPrereqs.map((prereqId, prereqIndex) => (
                             <div
                               key={`${topic.clientId}-prereq-${prereqId}`}
-                              className="flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-xs text-slate-200"
+                              className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700"
                             >
                               <span>{topicTitleById.get(prereqId) ?? "Untitled"}</span>
                               <button
                                 type="button"
                                 onClick={() => handleMovePrerequisite(topic.clientId, prereqId, -1)}
                                 disabled={prereqIndex === 0}
-                                className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] disabled:opacity-40"
+                                className="rounded-full border border-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] disabled:opacity-40"
                               >
                                 Up
                               </button>
@@ -894,14 +894,14 @@ export function BlueprintEditor({
                                 type="button"
                                 onClick={() => handleMovePrerequisite(topic.clientId, prereqId, 1)}
                                 disabled={prereqIndex === selectedPrereqs.length - 1}
-                                className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] disabled:opacity-40"
+                                className="rounded-full border border-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] disabled:opacity-40"
                               >
                                 Down
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleRemovePrerequisite(topic.clientId, prereqId)}
-                                className="rounded-full border border-rose-400/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-rose-200"
+                                className="rounded-full border border-rose-400/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-rose-700"
                               >
                                 Remove
                               </button>
@@ -921,7 +921,7 @@ export function BlueprintEditor({
                           handleAddPrerequisite(topic.clientId, value);
                           event.currentTarget.value = "";
                         }}
-                        className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                        className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                       >
                         <option value="">Add prerequisite</option>
                         {availablePrereqs.map((option) => (
@@ -934,7 +934,7 @@ export function BlueprintEditor({
 
                     <div className="mt-4 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                           Objectives
                         </p>
                         <button
@@ -948,7 +948,7 @@ export function BlueprintEditor({
                       {topic.objectives.map((objective) => (
                         <div
                           key={objective.clientId}
-                          className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
+                          className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -960,13 +960,13 @@ export function BlueprintEditor({
                                 handleRemoveObjective(topic.clientId, objective.clientId)
                               }
                               disabled={topic.objectives.length <= 1}
-                              className="text-xs uppercase tracking-[0.2em] text-rose-200 disabled:opacity-40"
+                              className="text-xs uppercase tracking-[0.2em] text-rose-700 disabled:opacity-40"
                             >
                               Remove
                             </button>
                           </div>
                           <label
-                            className="mt-3 block text-xs uppercase tracking-[0.2em] text-slate-400"
+                            className="mt-3 block text-xs uppercase tracking-[0.2em] text-slate-500"
                             htmlFor={`objective-${objective.clientId}-statement`}
                           >
                             Statement
@@ -980,11 +980,11 @@ export function BlueprintEditor({
                               })
                             }
                             rows={2}
-                            className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                           />
                           <div className="mt-3">
                             <label
-                              className="text-xs uppercase tracking-[0.2em] text-slate-400"
+                              className="text-xs uppercase tracking-[0.2em] text-slate-500"
                               htmlFor={`objective-${objective.clientId}-level`}
                             >
                               Bloom level
@@ -997,7 +997,7 @@ export function BlueprintEditor({
                                   level: event.target.value,
                                 })
                               }
-                              className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
                             >
                               <option value="">Select level</option>
                               {BLOOM_LEVELS.map((level) => (
@@ -1018,7 +1018,7 @@ export function BlueprintEditor({
             <button
               type="button"
               onClick={handleAddTopic}
-              className="w-full rounded-2xl border border-dashed border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100"
+              className="w-full rounded-2xl border border-dashed border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700"
             >
               Add topic
             </button>
@@ -1029,7 +1029,7 @@ export function BlueprintEditor({
                   type="button"
                   onClick={() => dispatch({ type: "undo" })}
                   disabled={!canUndo}
-                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-200 disabled:opacity-40"
+                  className="rounded-full border border-slate-200 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 disabled:opacity-40"
                 >
                   Undo
                 </button>
@@ -1037,7 +1037,7 @@ export function BlueprintEditor({
                   type="button"
                   onClick={() => dispatch({ type: "redo" })}
                   disabled={!canRedo}
-                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-200 disabled:opacity-40"
+                  className="rounded-full border border-slate-200 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 disabled:opacity-40"
                 >
                   Redo
                 </button>
@@ -1045,14 +1045,14 @@ export function BlueprintEditor({
                   type="button"
                   onClick={handleReset}
                   disabled={!hasChanges}
-                  className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-200 disabled:opacity-40"
+                  className="rounded-full border border-slate-200 px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-700 disabled:opacity-40"
                 >
                   Discard changes
                 </button>
               </div>
               <div className="flex flex-col items-end gap-2">
                 {draftByteSize > MAX_DRAFT_BYTES ? (
-                  <p className="text-xs text-amber-200">
+                  <p className="text-xs text-amber-700">
                     Draft size is {Math.round(draftByteSize / 1024)}KB. Saving might fail for very
                     large drafts.
                   </p>
@@ -1063,22 +1063,22 @@ export function BlueprintEditor({
           </form>
 
           <aside className="space-y-4">
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6">
               <h2 className="text-lg font-semibold">Topic map</h2>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-slate-500">
                 A quick dependency view based on sequences and prerequisites.
               </p>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6">
               {draft.topics.length === 0 ? (
-                <p className="text-sm text-slate-400">Add topics to see the map.</p>
+                <p className="text-sm text-slate-500">Add topics to see the map.</p>
               ) : topicMap.errorMessage ? (
-                <div className="space-y-2 text-sm text-amber-200">
+                <div className="space-y-2 text-sm text-amber-700">
                   <p>{topicMap.errorMessage}</p>
                   <p className="text-xs text-amber-100">{dependencySummary}</p>
                 </div>
               ) : topicMap.hasCycle ? (
-                <div className="space-y-3 text-sm text-amber-200">
+                <div className="space-y-3 text-sm text-amber-700">
                   <p>Cycle detected in prerequisites. Fix the loop to view the map.</p>
                   <ul className="list-disc pl-5 text-xs text-amber-100">
                     {draft.topics.map((topic) => (
@@ -1179,15 +1179,15 @@ export function BlueprintEditor({
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <h2 className="text-lg font-semibold">Blueprint summary</h2>
-            <p className="mt-2 text-sm text-slate-400">{draft.summary}</p>
+            <p className="mt-2 text-sm text-slate-500">{draft.summary}</p>
           </div>
           <div className="space-y-4">
             {draft.topics.map((topic) => (
               <div
                 key={topic.clientId}
-                className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -1198,12 +1198,12 @@ export function BlueprintEditor({
                       </p>
                     ) : null}
                   </div>
-                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400">
+                  <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-500">
                     Sequence {topic.sequence}
                   </span>
                 </div>
                 {topic.description ? (
-                  <p className="mt-2 text-sm text-slate-400">{topic.description}</p>
+                  <p className="mt-2 text-sm text-slate-500">{topic.description}</p>
                 ) : null}
                 {topic.prerequisiteClientIds?.length ? (
                   <p className="mt-3 text-xs text-slate-500">
@@ -1213,7 +1213,7 @@ export function BlueprintEditor({
                       .join(", ")}
                   </p>
                 ) : null}
-                <ul className="mt-3 space-y-1 text-sm text-slate-400">
+                <ul className="mt-3 space-y-1 text-sm text-slate-500">
                   {topic.objectives.map((objective) => (
                     <li key={objective.clientId}>
                       - {objective.statement}

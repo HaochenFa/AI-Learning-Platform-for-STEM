@@ -6,8 +6,6 @@ import { BlueprintEditor } from "@/app/classes/[classId]/blueprint/BlueprintEdit
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 
-export const dynamic = "force-dynamic";
-
 type SearchParams = {
   error?: string;
   generated?: string;
@@ -157,7 +155,7 @@ export default async function BlueprintPage({
     : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen surface-page text-slate-900">
       <AuthHeader
         activeNav="dashboard"
         classContext={{ classId: classRow.id, isTeacher }}
@@ -169,55 +167,55 @@ export default async function BlueprintPage({
       />
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 space-y-2">
-          <p className="text-sm font-medium text-slate-400">Course Blueprint</p>
+          <p className="text-sm font-medium text-slate-500">Course Blueprint</p>
           <h1 className="text-3xl font-semibold">{classRow.title}</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
           </p>
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
             {errorMessage}
           </div>
         ) : null}
 
         {generatedMessage ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
             {generatedMessage}
           </div>
         ) : null}
         {savedMessage ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
             {savedMessage}
           </div>
         ) : null}
         {approvedMessage ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
             {approvedMessage}
           </div>
         ) : null}
         {publishedMessage ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
             {publishedMessage}
           </div>
         ) : null}
         {draftedMessage ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
             {draftedMessage}
           </div>
         ) : null}
 
         <section className="grid gap-6 lg:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 lg:col-span-2">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 lg:col-span-2">
             <h2 className="text-lg font-semibold">Blueprint workspace</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-sm text-slate-500">
               Edit the draft, approve for overview, and publish when ready.
             </p>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <h2 className="text-lg font-semibold">Materials check</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="mt-2 text-sm text-slate-500">
               {materialCount === 0
                 ? "Upload materials before generating the blueprint."
                 : readyMaterialCount > 0
@@ -250,12 +248,12 @@ export default async function BlueprintPage({
           </div>
         </section>
 
-        <section className="mt-10 rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Draft editor</h2>
             <Link
               href={`/classes/${classRow.id}`}
-              className="ui-motion-color text-xs font-medium text-slate-400 hover:text-slate-200"
+              className="ui-motion-color text-xs font-medium text-slate-500 hover:text-slate-700"
             >
               Back to class
             </Link>

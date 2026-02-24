@@ -79,7 +79,7 @@ export default function FlashcardsDraftEditor({
         <input type="hidden" name="flashcards_payload" value={payload} readOnly />
 
         <div className="space-y-2">
-          <label className="text-sm text-slate-300" htmlFor="flashcards-title">
+          <label className="text-sm text-slate-600" htmlFor="flashcards-title">
             Flashcards Title
           </label>
           <input
@@ -87,12 +87,12 @@ export default function FlashcardsDraftEditor({
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             disabled={isPublished}
-            className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-70"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm text-slate-300" htmlFor="flashcards-instructions">
+          <label className="text-sm text-slate-600" htmlFor="flashcards-instructions">
             Instructions
           </label>
           <textarea
@@ -101,7 +101,7 @@ export default function FlashcardsDraftEditor({
             onChange={(event) => setInstructions(event.target.value)}
             rows={3}
             disabled={isPublished}
-            className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-70"
           />
         </div>
 
@@ -109,15 +109,15 @@ export default function FlashcardsDraftEditor({
           {cards.map((card, cardIndex) => (
             <section
               key={`card-${cardIndex}`}
-              className="rounded-2xl border border-white/10 bg-slate-950/40 p-4"
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
             >
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-200">Card {cardIndex + 1}</p>
+                <p className="text-sm font-semibold text-slate-700">Card {cardIndex + 1}</p>
                 <button
                   type="button"
                   onClick={() => removeCard(cardIndex)}
                   disabled={isPublished || cards.length === 1}
-                  className="rounded-lg border border-rose-500/40 px-3 py-1 text-xs text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-rose-500/40 px-3 py-1 text-xs text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Remove
                 </button>
@@ -137,7 +137,7 @@ export default function FlashcardsDraftEditor({
                     onChange={(event) => updateCard(cardIndex, { front: event.target.value })}
                     rows={2}
                     disabled={isPublished}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </div>
 
@@ -154,7 +154,7 @@ export default function FlashcardsDraftEditor({
                     onChange={(event) => updateCard(cardIndex, { back: event.target.value })}
                     rows={3}
                     disabled={isPublished}
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </div>
               </div>
@@ -167,7 +167,7 @@ export default function FlashcardsDraftEditor({
             <button
               type="button"
               onClick={addCard}
-              className="rounded-xl border border-white/20 px-4 py-2 text-sm text-slate-200 hover:border-white/40"
+              className="rounded-xl border border-white/20 px-4 py-2 text-sm text-slate-700 hover:border-white/40"
             >
               Add Card
             </button>
@@ -180,9 +180,9 @@ export default function FlashcardsDraftEditor({
         ) : null}
       </form>
 
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <h2 className="text-lg font-semibold">Publish and Assign</h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-slate-500">
           Publish to lock card content, then create a whole-class assignment.
         </p>
 
@@ -208,7 +208,7 @@ export default function FlashcardsDraftEditor({
             <input
               name="due_at"
               type="datetime-local"
-              className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
             />
             <PendingSubmitButton
               label="Create Assignment"

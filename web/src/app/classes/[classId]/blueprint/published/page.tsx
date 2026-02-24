@@ -3,8 +3,6 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import AuthHeader from "@/app/components/AuthHeader";
 
-export const dynamic = "force-dynamic";
-
 export default async function BlueprintPublishedPage({
   params,
 }: {
@@ -85,7 +83,7 @@ export default async function BlueprintPublishedPage({
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen surface-page text-slate-900">
       <AuthHeader
         activeNav="dashboard"
         classContext={{ classId: classRow.id, isTeacher }}
@@ -99,27 +97,27 @@ export default async function BlueprintPublishedPage({
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-400">Published Blueprint</p>
+            <p className="text-sm font-medium text-slate-500">Published Blueprint</p>
             <h1 className="text-3xl font-semibold">{classRow.title}</h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
             </p>
           </div>
           <Link
             href={`/classes/${classRow.id}`}
-            className="ui-motion-color text-xs font-medium text-slate-400 hover:text-slate-200"
+            className="ui-motion-color text-xs font-medium text-slate-500 hover:text-slate-700"
           >
             Back to class
           </Link>
         </header>
 
-        <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
                 Version {blueprint.version}
               </p>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-slate-600">
                 Published{" "}
                 {blueprint.published_at
                   ? new Date(blueprint.published_at).toLocaleDateString()
@@ -132,7 +130,7 @@ export default async function BlueprintPublishedPage({
           </div>
         </div>
 
-        <section className="mt-10 rounded-4xl border border-white/10 bg-white text-slate-900 shadow-2xl">
+        <section className="mt-10 rounded-4xl border border-slate-200 bg-white text-slate-900 shadow-2xl">
           <div className="border-b border-slate-200 px-10 py-8">
             <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Compiled Blueprint</p>
             <h2 className="mt-3 text-3xl font-semibold text-slate-900">{classRow.title}</h2>

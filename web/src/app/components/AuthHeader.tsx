@@ -13,6 +13,7 @@ type AuthHeaderProps = {
   breadcrumbs?: Breadcrumb[];
   activeNav?: NavKey;
   accountType?: AccountType;
+  tone?: "default" | "subtle";
   classContext?: {
     classId: string;
     isTeacher: boolean;
@@ -20,11 +21,12 @@ type AuthHeaderProps = {
 };
 
 function getNavClass(isActive: boolean) {
-  const base = "ui-motion-color rounded-full border px-4 py-2 text-xs font-medium";
+  const base =
+    "ui-motion-color rounded-full border px-4 py-2 text-xs font-semibold tracking-wide";
   if (isActive) {
-    return `${base} border-cyan-400/50 bg-cyan-400/10 text-cyan-100`;
+    return `${base} border-cyan-300 bg-cyan-50 text-cyan-700`;
   }
-  return `${base} border-white/10 text-slate-200 hover:border-white/30 hover:bg-white/5`;
+  return `${base} border-slate-200 bg-white text-slate-600 hover:border-cyan-300 hover:text-cyan-700`;
 }
 
 export default function AuthHeader({
@@ -32,6 +34,7 @@ export default function AuthHeader({
   activeNav,
   accountType,
   classContext,
+  tone = "default",
 }: AuthHeaderProps) {
   const resolvedAccountType =
     accountType ??
@@ -47,13 +50,17 @@ export default function AuthHeader({
         ? "/student/dashboard"
         : "/dashboard";
   const showTeacherNav = resolvedAccountType === "teacher" || classContext?.isTeacher;
+  const shellClass =
+    tone === "subtle"
+      ? "sticky top-0 z-40 border-b border-slate-200/80 bg-slate-50/95 backdrop-blur"
+      : "sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur";
 
   return (
-    <div className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/80 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
+    <div className={shellClass}>
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
         <Link
           href={dashboardHref}
-          className="ui-motion-color text-sm font-medium tracking-wide text-slate-300 hover:text-slate-100"
+          className="ui-motion-color text-sm font-semibold tracking-wide text-slate-700 hover:text-cyan-700"
         >
           STEM Learning Platform
         </Link>
@@ -90,14 +97,14 @@ export default function AuthHeader({
                     ? `/classes/${classContext.classId}#teacher-chat-monitor`
                     : `/classes/${classContext.classId}?view=chat`
                 }
-                className="ui-motion-color rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-slate-200 hover:border-white/30 hover:bg-white/5"
+                className="ui-motion-color rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-cyan-300 hover:text-cyan-700"
               >
                 {classContext.isTeacher ? "Chat Monitor" : "Open AI Chat"}
               </Link>
               {classContext.isTeacher ? (
                 <Link
                   href={`/classes/${classContext.classId}/activities/chat/new`}
-                  className="ui-motion-color rounded-full border border-cyan-400/40 bg-cyan-400/10 px-4 py-2 text-xs font-medium text-cyan-100 hover:border-cyan-300/60 hover:bg-cyan-400/20"
+                  className="ui-motion-color rounded-full border border-cyan-300 bg-cyan-50 px-4 py-2 text-xs font-semibold text-cyan-700 hover:border-cyan-400 hover:bg-cyan-100"
                 >
                   New Chat Assignment
                 </Link>
@@ -107,7 +114,7 @@ export default function AuthHeader({
           <form action={signOut}>
             <button
               type="submit"
-              className="ui-motion-color rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-slate-200 hover:border-white/30 hover:bg-white/5"
+              className="ui-motion-color rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:border-rose-300 hover:text-rose-700"
             >
               Sign Out
             </button>
@@ -115,22 +122,22 @@ export default function AuthHeader({
         </div>
       </div>
       {breadcrumbs && breadcrumbs.length > 0 ? (
-        <div className="mx-auto w-full max-w-6xl px-6 pb-6">
+        <div className="mx-auto w-full max-w-6xl px-6 pb-5">
           <nav className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
             {breadcrumbs.map((crumb, index) => {
               const isLast = index === breadcrumbs.length - 1;
               if (crumb.href && !isLast) {
                 return (
                   <span key={`${crumb.label}-${index}`} className="flex items-center gap-2">
-                    <Link href={crumb.href} className="ui-motion-color hover:text-slate-300">
+                    <Link href={crumb.href} className="ui-motion-color hover:text-cyan-700">
                       {crumb.label}
                     </Link>
-                    <span className="text-slate-600">/</span>
+                    <span className="text-slate-300">/</span>
                   </span>
                 );
               }
               return (
-                <span key={`${crumb.label}-${index}`} className="text-slate-300">
+                <span key={`${crumb.label}-${index}`} className="text-slate-700">
                   {crumb.label}
                 </span>
               );

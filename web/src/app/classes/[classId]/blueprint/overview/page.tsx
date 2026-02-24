@@ -5,8 +5,6 @@ import { publishBlueprint } from "@/app/classes/[classId]/blueprint/actions";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 
-export const dynamic = "force-dynamic";
-
 type SearchParams = {
   approved?: string;
 };
@@ -100,7 +98,7 @@ export default async function BlueprintOverviewPage({
       : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen surface-page text-slate-900">
       <AuthHeader
         activeNav="dashboard"
         classContext={{ classId: classRow.id, isTeacher }}
@@ -114,33 +112,33 @@ export default async function BlueprintOverviewPage({
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-400">Blueprint Overview</p>
+            <p className="text-sm font-medium text-slate-500">Blueprint Overview</p>
             <h1 className="text-3xl font-semibold">{classRow.title}</h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               {classRow.subject || "STEM"} · {classRow.level || "Mixed level"}
             </p>
           </div>
           <Link
             href={`/classes/${classRow.id}/blueprint`}
-            className="ui-motion-color text-xs font-medium text-slate-400 hover:text-slate-200"
+            className="ui-motion-color text-xs font-medium text-slate-500 hover:text-slate-700"
           >
             Back to editor
           </Link>
         </header>
 
         {approvedMessage ? (
-          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+          <div className="mb-6 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-700">
             {approvedMessage}
           </div>
         ) : null}
 
-        <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
                 Version {blueprint.version}
               </p>
-              <p className="text-sm text-slate-300">Status: {blueprint.status}</p>
+              <p className="text-sm text-slate-600">Status: {blueprint.status}</p>
             </div>
             {blueprint.status === "approved" ? (
               <form action={publishBlueprint.bind(null, classRow.id, blueprint.id)}>
@@ -158,7 +156,7 @@ export default async function BlueprintOverviewPage({
           </div>
         </div>
 
-        <section className="mt-10 rounded-4xl border border-white/10 bg-white text-slate-900 shadow-2xl">
+        <section className="mt-10 rounded-4xl border border-slate-200 bg-white text-slate-900 shadow-2xl">
           <div className="border-b border-slate-200 px-10 py-8">
             <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Compiled Blueprint</p>
             <h2 className="mt-3 text-3xl font-semibold text-slate-900">{classRow.title}</h2>
