@@ -163,7 +163,7 @@ export default async function AssignmentChatPage({
         ) : null}
 
         {submittedMessage ? (
-          <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
             {submittedMessage}
           </div>
         ) : null}

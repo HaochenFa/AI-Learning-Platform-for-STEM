@@ -56,7 +56,7 @@ export default function FlashcardsAssignmentPanel({
   return (
     <div className="space-y-6">
       {isSubmittedNotice ? (
-        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
           Session submitted successfully.
         </div>
       ) : null}
