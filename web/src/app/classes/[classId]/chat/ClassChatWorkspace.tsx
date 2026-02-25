@@ -344,7 +344,7 @@ export default function ClassChatWorkspace({
         ) : null}
 
         {statusNotice ? (
-          <div className="mb-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+          <div className="status-warning mb-3 rounded-xl px-4 py-3 text-xs">
             {statusNotice}
           </div>
         ) : null}
@@ -356,7 +356,7 @@ export default function ClassChatWorkspace({
                 type="button"
                 onClick={handleLoadOlder}
                 disabled={isLoadingMore}
-                className="rounded-full border border-white/20 px-4 py-1 text-xs text-ui-muted hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full border border-default px-4 py-1 text-xs text-ui-muted hover:border-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoadingMore ? "Loading older messages..." : "Load older messages"}
               </button>
@@ -404,7 +404,7 @@ export default function ClassChatWorkspace({
           {showCompactionStatus ? (
             <div className="flex justify-center">
               <div
-                className="w-full max-w-3xl rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-amber-100"
+                className="status-warning w-full max-w-3xl rounded-2xl px-4 py-3"
                 role="status"
                 aria-live="polite"
                 aria-atomic="true"

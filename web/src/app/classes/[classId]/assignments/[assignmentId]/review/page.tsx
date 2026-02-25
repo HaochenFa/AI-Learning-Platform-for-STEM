@@ -389,7 +389,7 @@ export default async function AssignmentReviewPage({
                 {currentPage > 1 ? (
                   <Link
                     href={buildPageHref(currentPage - 1)}
-                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-ui-subtle hover:bg-white/10"
+                    className="rounded-lg border border-default px-3 py-1.5 text-xs font-semibold text-ui-subtle hover:border-accent hover:bg-accent-soft"
                   >
                     Previous
                   </Link>
@@ -404,7 +404,7 @@ export default async function AssignmentReviewPage({
                 {currentPage < totalPages ? (
                   <Link
                     href={buildPageHref(currentPage + 1)}
-                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-ui-subtle hover:bg-white/10"
+                    className="rounded-lg border border-default px-3 py-1.5 text-xs font-semibold text-ui-subtle hover:border-accent hover:bg-accent-soft"
                   >
                     Next
                   </Link>
@@ -614,7 +614,7 @@ export default async function AssignmentReviewPage({
                                       Selected: {answer.selectedChoice}
                                     </p>
                                     <p
-                                      className={`text-sm ${isCorrect ? "text-emerald-300" : "text-rose-700"}`}
+                                      className={`text-sm ${isCorrect ? "text-emerald-700" : "text-rose-700"}`}
                                     >
                                       Correct answer: {question?.answer ?? "Unavailable"}
                                     </p>

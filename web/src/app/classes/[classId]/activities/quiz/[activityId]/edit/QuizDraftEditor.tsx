@@ -237,7 +237,7 @@ export default function QuizDraftEditor({
             <button
               type="button"
               onClick={addQuestion}
-              className="rounded-xl border border-white/20 px-4 py-2 text-sm text-ui-subtle hover:border-white/40"
+              className="rounded-xl border border-default px-4 py-2 text-sm text-ui-subtle hover:border-accent hover:bg-accent-soft"
             >
               Add Question
             </button>

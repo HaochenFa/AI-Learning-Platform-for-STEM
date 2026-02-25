@@ -42,6 +42,18 @@ const eslintConfig = defineConfig([
           message:
             "Use warm design token utilities (`border-default`, `border-accent`, `bg-accent-soft`, `text-accent`, `hover:*`) instead of hardcoded warm hex colors.",
         },
+        {
+          selector:
+            "Literal[value=/\\b(?:text-white\\/90|text-amber-100|text-emerald-300|border-white\\/15|border-white\\/20)\\b/]",
+          message:
+            "Avoid low-contrast utility classes (`text-white/90`, `text-amber-100`, `text-emerald-300`, `border-white/15`, `border-white/20`). Use semantic tokens (`text-accent-strong`, `status-warning`, `border-default`, `hover:border-accent`) instead.",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/\\b(?:text-white\\/90|text-amber-100|text-emerald-300|border-white\\/15|border-white\\/20)\\b/]",
+          message:
+            "Avoid low-contrast utility classes (`text-white/90`, `text-amber-100`, `text-emerald-300`, `border-white/15`, `border-white/20`). Use semantic tokens (`text-accent-strong`, `status-warning`, `border-default`, `hover:border-accent`) instead.",
+        },
       ],
     },
   },

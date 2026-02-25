@@ -67,7 +67,7 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+      <div className="status-warning rounded-xl px-4 py-3 text-xs">
         Open practice chat is not saved. Use chat assignments when you need a graded submission.
       </div>
 

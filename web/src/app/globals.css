@@ -216,6 +216,24 @@ h3 {
   color: #8b4631;
 }
 
+.status-warning {
+  border: 1px solid rgba(217, 119, 6, 0.34);
+  background: rgba(245, 158, 11, 0.12);
+  color: #8a4a16;
+}
+
+.status-success {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+  color: #0f5c47;
+}
+
+.status-error {
+  border: 1px solid rgba(244, 63, 94, 0.34);
+  background: rgba(244, 63, 94, 0.11);
+  color: #9f1239;
+}
+
 .ui-motion-color {
   transition:
     color var(--motion-fast) ease,

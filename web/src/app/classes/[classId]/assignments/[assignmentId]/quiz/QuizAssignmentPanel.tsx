@@ -110,7 +110,7 @@ export default function QuizAssignmentPanel({
               <div className="mt-3 rounded-xl border border-accent bg-accent-soft px-3 py-2 text-sm text-accent">
                 <p className="font-medium">Correct answer: {question.answer ?? "Unavailable"}</p>
                 {question.explanation ? (
-                  <p className="mt-1 text-white/90">{question.explanation}</p>
+                  <p className="mt-1 text-accent-strong">{question.explanation}</p>
                 ) : null}
               </div>
             ) : null}
