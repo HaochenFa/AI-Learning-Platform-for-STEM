@@ -1,4 +1,12 @@
 import Sidebar from "@/app/components/Sidebar";
+import { AppIcons } from "@/components/icons";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Card } from "@/components/ui/card";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { getHelpContent } from "@/lib/content/help";
 
@@ -24,20 +32,20 @@ export default async function HelpPage() {
           </header>
 
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-3xl border border-default bg-white p-6 shadow-sm">
+            <Card className="p-6">
               <h2 className="text-lg font-semibold text-ui-primary">Frequently Asked Questions</h2>
-              <div className="mt-6 space-y-6">
-                {content.faq.map((item) => (
-                  <div key={item.question}>
-                    <h3 className="text-sm font-semibold text-ui-primary">{item.question}</h3>
-                    <p className="mt-2 text-sm text-ui-muted">{item.answer}</p>
-                  </div>
+              <Accordion type="single" collapsible className="mt-6">
+                {content.faq.map((item, index) => (
+                  <AccordionItem key={item.question} value={`faq-${index}`}>
+                    <AccordionTrigger>{item.question}</AccordionTrigger>
+                    <AccordionContent>{item.answer}</AccordionContent>
+                  </AccordionItem>
                 ))}
-              </div>
-            </div>
+              </Accordion>
+            </Card>
 
             <div className="space-y-6">
-              <div className="rounded-3xl border border-default bg-white p-6 shadow-sm">
+              <Card className="p-6">
                 <h2 className="text-lg font-semibold text-ui-primary">What To Do Now</h2>
                 <p className="mt-2 text-sm text-ui-muted">
                   Recommended next steps for your {accountType} workflow.
@@ -45,20 +53,20 @@ export default async function HelpPage() {
                 <ul className="mt-4 space-y-3 text-sm text-ui-subtle">
                   {content.checklist.map((item) => (
                     <li key={item} className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent-strong" />
+                      <AppIcons.check className="mt-0.5 h-4 w-4 text-accent-strong" />
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Card>
 
-              <div className="rounded-3xl border border-default bg-[var(--surface-muted)] p-6">
+              <Card className="bg-[var(--surface-muted)] p-6">
                 <h2 className="text-lg font-semibold text-ui-primary">Support Scope</h2>
                 <p className="mt-2 text-sm text-ui-muted">
                   Account profile rename and password change are available in Settings. For
                   organization-level actions such as account removal, contact your administrator.
                 </p>
-              </div>
+              </Card>
             </div>
           </section>
         </main>

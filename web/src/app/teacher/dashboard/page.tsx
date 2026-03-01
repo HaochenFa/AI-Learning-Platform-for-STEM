@@ -1,6 +1,9 @@
 import Link from "next/link";
 import DashboardHashRedirect from "@/app/components/DashboardHashRedirect";
 import Sidebar from "@/app/components/Sidebar";
+import { AppIcons } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { startServerTimer } from "@/lib/perf";
 
@@ -82,30 +85,30 @@ export default async function TeacherDashboardPage() {
                 Manage classes, materials, and assignment workflows.
               </p>
             </div>
-            <Link
-              href="/classes/new"
-              className="btn-warm ui-motion-lift rounded-xl px-4 py-2 text-sm font-semibold"
-            >
-              Create class
-            </Link>
+            <Button asChild variant="warm">
+              <Link href="/classes/new">
+                <AppIcons.add className="h-4 w-4" />
+                Create class
+              </Link>
+            </Button>
           </header>
 
           <section className="mt-8 grid gap-4 sm:grid-cols-3">
-            <article className="rounded-2xl border border-default bg-white p-5 shadow-sm">
+            <Card className="p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Total classes</p>
               <p className="mt-3 text-3xl font-semibold text-ui-primary">{classes.length}</p>
               <p className="mt-2 text-sm text-ui-muted">Across all classes where you teach.</p>
-            </article>
-            <article className="rounded-2xl border border-default bg-white p-5 shadow-sm">
+            </Card>
+            <Card className="p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Owner classes</p>
               <p className="mt-3 text-3xl font-semibold text-ui-primary">{ownedClassCount}</p>
               <p className="mt-2 text-sm text-ui-muted">Classes you created and manage.</p>
-            </article>
-            <article className="rounded-2xl border border-default bg-white p-5 shadow-sm">
+            </Card>
+            <Card className="p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Assistant roles</p>
               <p className="mt-3 text-3xl font-semibold text-ui-primary">{assistantClassCount}</p>
               <p className="mt-2 text-sm text-ui-muted">Classes where you support as teacher or TA.</p>
-            </article>
+            </Card>
           </section>
 
           <section className="mt-8">
@@ -133,9 +136,9 @@ export default async function TeacherDashboardPage() {
                   </Link>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-ui-muted md:col-span-3">
+                <Card className="rounded-2xl border-dashed bg-[var(--surface-muted)] p-6 text-sm text-ui-muted md:col-span-3">
                   No classes yet. Create one to get started.
-                </div>
+                </Card>
               )}
             </div>
           </section>

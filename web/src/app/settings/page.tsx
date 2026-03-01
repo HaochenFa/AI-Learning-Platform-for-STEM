@@ -1,6 +1,10 @@
 import Sidebar from "@/app/components/Sidebar";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { changePassword, updateDisplayName } from "@/app/settings/actions";
+import { Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SettingsSearchParams = {
@@ -43,7 +47,7 @@ export default async function SettingsPage({
 
           <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-6">
-              <div className="rounded-3xl border border-default bg-white p-6 shadow-sm">
+              <Card className="p-6">
                 <h2 className="text-lg font-semibold text-ui-primary">Account Information</h2>
                 <p className="mt-2 text-sm text-ui-muted">Core identity and role details.</p>
 
@@ -67,133 +71,92 @@ export default async function SettingsPage({
                     <span className="truncate text-xs font-mono text-ui-muted">{user.id}</span>
                   </div>
                 </div>
-              </div>
+              </Card>
 
-              <div className="rounded-3xl border border-default bg-white p-6 shadow-sm">
+              <Card className="p-6">
                 <h2 className="text-lg font-semibold text-ui-primary">Profile Name</h2>
                 <p className="mt-2 text-sm text-ui-muted">
                   This name appears in shared class experiences and chat surfaces.
                 </p>
 
                 {profileMessage ? (
-                  <div
-                    className={`mt-4 rounded-xl px-4 py-3 text-sm ${
-                      profileMessage.status === "success"
-                        ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : "border border-rose-200 bg-rose-50 text-rose-700"
-                    }`}
-                  >
+                  <Alert variant={profileMessage.status === "success" ? "success" : "error"} className="mt-4">
                     {profileMessage.message || "Profile update completed."}
-                  </div>
+                  </Alert>
                 ) : null}
 
                 <form className="mt-5 space-y-4" action={updateDisplayName}>
                   <div className="space-y-2">
-                    <label className="text-sm text-ui-muted" htmlFor="display_name">
-                      Display name
-                    </label>
-                    <input
+                    <Label htmlFor="display_name">Display name</Label>
+                    <Input
                       id="display_name"
                       name="display_name"
                       required
                       minLength={2}
                       maxLength={60}
                       defaultValue={profile.display_name ?? ""}
-                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none transition focus-ring-warm"
                       placeholder="e.g., Dr. Fa"
                     />
                   </div>
                   <PendingSubmitButton
                     label="Save display name"
                     pendingLabel="Saving..."
-                    className="btn-secondary rounded-xl px-5 py-2.5 text-sm font-semibold"
+                    variant="outline"
                   />
                 </form>
-              </div>
+              </Card>
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-3xl border border-default bg-white p-6 shadow-sm">
+              <Card className="p-6">
                 <h2 className="text-lg font-semibold text-ui-primary">Change Password</h2>
                 <p className="mt-2 text-sm text-ui-muted">
                   Confirm your current password before setting a new one.
                 </p>
 
                 {passwordMessage ? (
-                  <div
-                    className={`mt-4 rounded-xl px-4 py-3 text-sm ${
-                      passwordMessage.status === "success"
-                        ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : "border border-rose-200 bg-rose-50 text-rose-700"
-                    }`}
-                  >
+                  <Alert variant={passwordMessage.status === "success" ? "success" : "error"} className="mt-4">
                     {passwordMessage.message || "Password update completed."}
-                  </div>
+                  </Alert>
                 ) : null}
 
                 <form className="mt-5 space-y-4" action={changePassword}>
                   <div className="space-y-2">
-                    <label className="text-sm text-ui-muted" htmlFor="current_password">
-                      Current password
-                    </label>
-                    <input
-                      id="current_password"
-                      name="current_password"
-                      type="password"
-                      required
-                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none transition focus-ring-warm"
-                    />
+                    <Label htmlFor="current_password">Current password</Label>
+                    <Input id="current_password" name="current_password" type="password" required />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-ui-muted" htmlFor="new_password">
-                      New password
-                    </label>
-                    <input
-                      id="new_password"
-                      name="new_password"
-                      type="password"
-                      required
-                      minLength={8}
-                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none transition focus-ring-warm"
-                    />
+                    <Label htmlFor="new_password">New password</Label>
+                    <Input id="new_password" name="new_password" type="password" required minLength={8} />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm text-ui-muted" htmlFor="confirm_password">
-                      Confirm new password
-                    </label>
-                    <input
-                      id="confirm_password"
-                      name="confirm_password"
-                      type="password"
-                      required
-                      minLength={8}
-                      className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-primary outline-none transition focus-ring-warm"
-                    />
+                    <Label htmlFor="confirm_password">Confirm new password</Label>
+                    <Input id="confirm_password" name="confirm_password" type="password" required minLength={8} />
                   </div>
                   <PendingSubmitButton
                     label="Update password"
                     pendingLabel="Updating..."
-                    className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                    variant="warm"
                   />
                 </form>
-              </div>
+              </Card>
 
-              <div className="rounded-3xl border border-default bg-[var(--surface-muted)] p-6">
+              <Card className="bg-[var(--surface-muted)] p-6">
                 <h2 className="text-lg font-semibold text-ui-primary">Security Notes</h2>
                 <ul className="mt-3 space-y-2 text-sm text-ui-muted">
                   <li>Your role and class permissions are enforced by secure server checks.</li>
                   <li>Only classes where you are enrolled are accessible from your dashboard.</li>
                   <li>Use Sign Out from the sidebar on shared devices.</li>
                 </ul>
-              </div>
+              </Card>
 
-              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
+              <Card className="border-amber-200 bg-amber-50 p-6">
                 <h2 className="text-lg font-semibold text-amber-800">Data Actions</h2>
                 <p className="mt-2 text-sm text-amber-700">
                   Account deletion is not available in this interface yet. Contact your organization
                   owner if formal account removal is required.
                 </p>
-              </div>
+              </Card>
             </div>
           </section>
         </main>

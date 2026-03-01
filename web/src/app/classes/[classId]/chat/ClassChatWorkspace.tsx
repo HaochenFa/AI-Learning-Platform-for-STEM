@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   archiveClassChatSession,
   createClassChatSession,
@@ -368,37 +369,47 @@ export default function ClassChatWorkspace({
               {isSessionPending ? "Loading conversation..." : "Start the conversation with a focused question."}
             </p>
           ) : (
-            messages.map((turn) => (
-              <div key={turn.id} className={turn.authorKind === "assistant" ? "flex justify-center" : "flex justify-end"}>
-                {turn.authorKind === "assistant" ? (
-                  <article className="w-full max-w-3xl text-ui-primary">
-                    <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-ui-muted">
-                      <span>AI Tutor</span>
-                      <span>{formatTime(turn.createdAt)}</span>
-                    </div>
-                    <p className="whitespace-pre-wrap text-[15px] leading-7 text-ui-primary">{turn.content}</p>
-                    {turn.citations.length > 0 ? (
-                      <ul className="mt-3 space-y-1 text-xs text-ui-muted">
-                        {turn.citations.map((citation) => (
-                          <li key={`${turn.id}-${citation.sourceLabel}-${citation.snippet ?? ""}`}>
-                            {citation.sourceLabel}
-                            {citation.snippet ? `: ${citation.snippet}` : ""}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </article>
-                ) : (
-                  <article className="max-w-[85%] rounded-2xl border border-accent bg-accent-soft p-4 text-accent">
-                    <div className="mb-2 flex items-center justify-between gap-4 text-xs uppercase tracking-[0.2em] text-accent">
-                      <span>{turn.authorKind === "teacher" ? "Teacher" : "You"}</span>
-                      <span className="text-accent">{formatTime(turn.createdAt)}</span>
-                    </div>
-                    <p className="whitespace-pre-wrap text-sm">{turn.content}</p>
-                  </article>
-                )}
-              </div>
-            ))
+            <AnimatePresence initial={false}>
+              {messages.map((turn) => (
+                <motion.div
+                  key={turn.id}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
+                  className={turn.authorKind === "assistant" ? "flex justify-center" : "flex justify-end"}
+                >
+                  {turn.authorKind === "assistant" ? (
+                    <article className="w-full max-w-3xl text-ui-primary">
+                      <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-ui-muted">
+                        <span>AI Tutor</span>
+                        <span>{formatTime(turn.createdAt)}</span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-[15px] leading-7 text-ui-primary">{turn.content}</p>
+                      {turn.citations.length > 0 ? (
+                        <ul className="mt-3 space-y-1 text-xs text-ui-muted">
+                          {turn.citations.map((citation) => (
+                            <li key={`${turn.id}-${citation.sourceLabel}-${citation.snippet ?? ""}`}>
+                              {citation.sourceLabel}
+                              {citation.snippet ? `: ${citation.snippet}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </article>
+                  ) : (
+                    <article className="max-w-[85%] rounded-2xl border border-accent bg-accent-soft p-4 text-accent">
+                      <div className="mb-2 flex items-center justify-between gap-4 text-xs uppercase tracking-[0.2em] text-accent">
+                        <span>{turn.authorKind === "teacher" ? "Teacher" : "You"}</span>
+                        <span className="text-accent">{formatTime(turn.createdAt)}</span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm">{turn.content}</p>
+                    </article>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           )}
 
           {showCompactionStatus ? (

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { uploadMaterial } from "@/app/classes/actions";
+import { uploadMaterialMutation } from "@/app/classes/actions";
 import MaterialUploadForm from "./MaterialUploadForm";
 import AuthHeader from "@/app/components/AuthHeader";
 import StudentClassExperience from "@/app/classes/[classId]/StudentClassExperience";
 import TeacherChatMonitorPanel from "@/app/classes/[classId]/chat/TeacherChatMonitorPanel";
+import { Button } from "@/components/ui/button";
 import { startServerTimer } from "@/lib/perf";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
@@ -367,12 +368,9 @@ export default async function ClassOverviewPage({
                   : "The blueprint is being prepared by your teacher."}
             </p>
             {isTeacher ? (
-              <Link
-                href={`/classes/${classRow.id}/blueprint`}
-                className="btn-warm ui-motion-lift mt-6 inline-flex rounded-xl px-4 py-2 text-sm font-semibold hover:-translate-y-0.5"
-              >
-                Open blueprint studio
-              </Link>
+              <Button asChild variant="warm" className="ui-motion-lift mt-6">
+                <Link href={`/classes/${classRow.id}/blueprint`}>Open blueprint studio</Link>
+              </Button>
             ) : publishedBlueprint ? (
               <Link
                 href={`/classes/${classRow.id}/blueprint/published`}
@@ -420,7 +418,7 @@ export default async function ClassOverviewPage({
               </Link>
               <Link
                 href={`/classes/${classRow.id}/activities/chat/new`}
-                className="btn-warm rounded-xl px-4 py-2 text-xs font-semibold"
+                className="rounded-xl border border-accent bg-accent px-4 py-2 text-xs font-semibold text-ui-primary hover:bg-accent-strong"
               >
                 Create chat assignment
               </Link>
@@ -480,7 +478,7 @@ export default async function ClassOverviewPage({
             {isTeacher ? (
               <Link
                 href={`/classes/${classRow.id}/activities/quiz/new`}
-                className="btn-warm rounded-xl px-4 py-2 text-xs font-semibold"
+                className="rounded-xl border border-accent bg-accent px-4 py-2 text-xs font-semibold text-ui-primary hover:bg-accent-strong"
               >
                 Generate quiz draft
               </Link>
@@ -564,7 +562,7 @@ export default async function ClassOverviewPage({
             {isTeacher ? (
               <Link
                 href={`/classes/${classRow.id}/activities/flashcards/new`}
-                className="btn-warm rounded-xl px-4 py-2 text-xs font-semibold"
+                className="rounded-xl border border-accent bg-accent px-4 py-2 text-xs font-semibold text-ui-primary hover:bg-accent-strong"
               >
                 Generate flashcards draft
               </Link>
@@ -642,7 +640,7 @@ export default async function ClassOverviewPage({
               <p className="mt-2 text-sm text-ui-muted">
                 Supported formats: PDF, DOCX, PPTX.
               </p>
-              <MaterialUploadForm action={uploadMaterial.bind(null, classRow.id)} />
+              <MaterialUploadForm action={uploadMaterialMutation.bind(null, classRow.id)} />
             </div>
             <div className="rounded-3xl border border-default bg-white p-6 shadow-sm lg:col-span-2">
               <div className="flex items-center justify-between">

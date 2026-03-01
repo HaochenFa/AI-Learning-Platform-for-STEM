@@ -1,6 +1,10 @@
 import Link from "next/link";
 import AmbientBackground from "@/app/components/AmbientBackground";
 import BrandMark from "@/app/components/BrandMark";
+import { AppIcons } from "@/components/icons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { getAuthContext } from "@/lib/auth/session";
 
 export default async function HomePage() {
@@ -9,12 +13,14 @@ export default async function HomePage() {
   const isAuthed = Boolean(
     user && isEmailVerified && (accountType === "teacher" || accountType === "student"),
   );
+
   const dashboardHref =
     accountType === "teacher"
       ? "/teacher/dashboard"
       : accountType === "student"
         ? "/student/dashboard"
         : "/dashboard";
+
   const primaryHref = !isAuthed ? "/register" : accountType === "teacher" ? "/classes/new" : "/join";
   const primaryLabel = !isAuthed
     ? "Create account"
@@ -30,7 +36,7 @@ export default async function HomePage() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-12 px-6 pb-16 pt-10">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-ui-subtle">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--foreground)] text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-white">
               <BrandMark className="h-4 w-4" />
             </span>
             Learning Platform
@@ -39,21 +45,18 @@ export default async function HomePage() {
             <Link className="ui-motion-color text-ui-muted hover:text-accent" href={secondaryHref}>
               {secondaryLabel}
             </Link>
-            <Link
-              className="ui-motion-color rounded-full border border-default bg-white px-4 py-2 font-semibold text-ui-muted hover:border-accent hover:text-accent"
-              href={primaryHref}
-            >
-              {primaryLabel}
-            </Link>
+            <Button asChild variant="outline" size="sm">
+              <Link href={primaryHref}>{primaryLabel}</Link>
+            </Button>
           </div>
         </header>
 
         <main className="hero-shell grid gap-8 rounded-[2rem] border border-default px-7 pb-10 pt-10 shadow-sm lg:grid-cols-[minmax(0,1.08fr),minmax(0,0.92fr)] lg:px-10">
           <div className="space-y-7">
-            <div className="inline-flex items-center gap-2 rounded-full border border-default bg-accent-soft px-4 py-2 text-xs font-semibold tracking-wide text-accent">
-              <span className="h-2 w-2 rounded-full bg-accent" />
+            <Badge className="inline-flex gap-2 px-4 py-2 text-xs" variant="default">
+              <AppIcons.sparkles className="h-3.5 w-3.5" />
               Trustworthy AI for real classrooms
-            </div>
+            </Badge>
             <div className="space-y-5">
               <p className="text-sm font-medium text-ui-muted">For teachers and students</p>
               <h1 className="editorial-title text-4xl leading-tight text-ui-primary sm:text-[3.35rem]">
@@ -68,18 +71,12 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-4">
-              <Link
-                className="btn-primary ui-motion-lift rounded-xl px-5 py-3 text-sm font-semibold hover:-translate-y-0.5"
-                href={primaryHref}
-              >
-                {primaryLabel}
-              </Link>
-              <Link
-                className="btn-secondary ui-motion-lift rounded-xl px-5 py-3 text-sm font-semibold hover:-translate-y-0.5"
-                href={secondaryHref}
-              >
-                {secondaryLabel}
-              </Link>
+              <Button asChild variant="warm" className="ui-motion-lift">
+                <Link href={primaryHref}>{primaryLabel}</Link>
+              </Button>
+              <Button asChild variant="outline" className="ui-motion-lift">
+                <Link href={secondaryHref}>{secondaryLabel}</Link>
+              </Button>
             </div>
             <div className="grid gap-2.5 sm:grid-cols-3">
               {[
@@ -96,16 +93,16 @@ export default async function HomePage() {
                   detail: "Students receive guidance grounded in materials.",
                 },
               ].map((item) => (
-                <div key={item.label} className="hero-card rounded-2xl p-4">
+                <Card key={item.label} className="hero-card rounded-2xl p-4">
                   <p className="text-xs font-semibold tracking-wide text-ui-subtle">{item.label}</p>
                   <p className="mt-1 text-xs text-ui-muted">{item.detail}</p>
-                </div>
+                </Card>
               ))}
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="hero-card rounded-3xl p-6 shadow-sm">
+            <Card className="hero-card rounded-3xl p-6">
               <p className="text-xs font-semibold tracking-wide text-ui-muted">Blueprint Studio</p>
               <h2 className="mt-3 text-2xl font-semibold text-ui-primary">
                 One class blueprint powers every activity.
@@ -126,8 +123,8 @@ export default async function HomePage() {
                   </li>
                 ))}
               </ul>
-            </div>
-            <div className="hero-card grid gap-4 rounded-3xl p-6 sm:grid-cols-2">
+            </Card>
+            <Card className="hero-card grid gap-4 rounded-3xl p-6 sm:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ui-muted">Teacher</p>
                 <p className="mt-2 text-sm text-ui-subtle">
@@ -140,7 +137,7 @@ export default async function HomePage() {
                   Access guided AI chat and assignments grounded in your class context.
                 </p>
               </div>
-            </div>
+            </Card>
           </div>
         </main>
       </div>

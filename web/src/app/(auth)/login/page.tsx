@@ -1,6 +1,9 @@
 import { signIn } from "@/app/actions";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import AuthShell from "@/app/(auth)/AuthShell";
+import { Alert } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type SearchParams = {
   error?: string;
@@ -27,47 +30,31 @@ export default async function LoginPage({
       footerHref="/register"
     >
       {verify ? (
-        <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+        <Alert variant="success" className="mb-6">
           Check your email to verify your account, then log in.
-        </div>
+        </Alert>
       ) : null}
 
       {errorMessage ? (
-        <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
+        <Alert variant="error" className="mb-6">
           {errorMessage}
-        </div>
+        </Alert>
       ) : null}
 
       <form className="space-y-4" action={signIn}>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-ui-muted" htmlFor="email">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            className="input-shell w-full rounded-xl px-4 py-3 text-sm outline-none transition"
-          />
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" required />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-ui-muted" htmlFor="password">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            minLength={6}
-            className="input-shell w-full rounded-xl px-4 py-3 text-sm outline-none transition"
-          />
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" name="password" type="password" required minLength={6} />
         </div>
         <PendingSubmitButton
           label="Sign in"
           pendingLabel="Signing in..."
-          className="btn-warm w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+          variant="warm"
+          className="w-full"
         />
       </form>
     </AuthShell>

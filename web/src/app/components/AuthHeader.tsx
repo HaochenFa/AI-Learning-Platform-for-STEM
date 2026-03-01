@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { signOut } from "@/app/actions";
 import BrandMark from "@/app/components/BrandMark";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { AppIcons } from "@/components/icons";
+import { cn } from "@/lib/utils";
 import type { AccountType } from "@/lib/auth/session";
 
 type Breadcrumb = {
@@ -21,13 +25,8 @@ type AuthHeaderProps = {
   };
 };
 
-function getNavClass(isActive: boolean) {
-  const base =
-    "ui-motion-color rounded-full border px-4 py-2 text-xs font-semibold tracking-wide";
-  if (isActive) {
-    return `${base} chip-warm`;
-  }
-  return `${base} chip-neutral hover:border-accent hover:bg-accent-soft hover:text-accent`;
+function getNavVariant(isActive: boolean) {
+  return isActive ? "default" : "outline";
 }
 
 function renderBreadcrumbs(breadcrumbs: Breadcrumb[], clickable = true) {
@@ -69,6 +68,7 @@ export default function AuthHeader({
         ? "teacher"
         : "student"
       : null);
+
   const dashboardHref =
     resolvedAccountType === "teacher"
       ? "/teacher/dashboard"
@@ -81,11 +81,13 @@ export default function AuthHeader({
       : resolvedAccountType === "student"
         ? "/student/classes"
         : "/dashboard";
+
   const showTeacherNav = resolvedAccountType === "teacher" || classContext?.isTeacher;
   const classTitle =
     breadcrumbs && breadcrumbs.length > 0
       ? breadcrumbs[breadcrumbs.length - 1]?.label ?? "Class"
       : "Class";
+
   const shellClass =
     tone === "subtle"
       ? "sticky top-0 z-40 border-b border-default bg-[var(--surface-muted)]/95 backdrop-blur"
@@ -97,34 +99,22 @@ export default function AuthHeader({
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6">
           <h1 className="editorial-title truncate text-2xl text-ui-primary">{classTitle}</h1>
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={classesHref}
-              className="ui-motion-color rounded-full border border-default bg-white px-4 py-2 text-xs font-semibold text-ui-muted hover:border-accent hover:text-accent"
-            >
-              My Classes
-            </Link>
+            <Button asChild variant="outline" size="sm">
+              <Link href={classesHref}>My Classes</Link>
+            </Button>
             {classContext.isTeacher ? (
               <>
-                <Link
-                  href={`/classes/${classContext.classId}#teacher-chat-monitor`}
-                  className="ui-motion-color rounded-full border border-default bg-white px-4 py-2 text-xs font-semibold text-ui-muted hover:border-accent hover:text-accent"
-                >
-                  Chat Monitor
-                </Link>
-                <Link
-                  href={`/classes/${classContext.classId}/activities/quiz/new`}
-                  className="ui-motion-color chip-warm rounded-full px-4 py-2 text-xs font-semibold hover:bg-accent-soft"
-                >
-                  New Quiz
-                </Link>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/classes/${classContext.classId}#teacher-chat-monitor`}>Chat Monitor</Link>
+                </Button>
+                <Button asChild variant="default" size="sm">
+                  <Link href={`/classes/${classContext.classId}/activities/quiz/new`}>New Quiz</Link>
+                </Button>
               </>
             ) : (
-              <Link
-                href={`/classes/${classContext.classId}?view=chat`}
-                className="ui-motion-color rounded-full border border-default bg-white px-4 py-2 text-xs font-semibold text-ui-muted hover:border-accent hover:text-accent"
-              >
-                Open AI Chat
-              </Link>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/classes/${classContext.classId}?view=chat`}>Open AI Chat</Link>
+              </Button>
             )}
           </div>
         </div>
@@ -139,49 +129,48 @@ export default function AuthHeader({
           href={dashboardHref}
           className="ui-motion-color flex items-center gap-2 text-sm font-semibold tracking-wide text-ui-subtle hover:text-accent"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--foreground)] text-white">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground text-white">
             <BrandMark className="h-4 w-4" />
           </span>
           Learning Platform
         </Link>
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <Link
-            href={dashboardHref}
-            className={getNavClass(activeNav === "dashboard")}
-            aria-current={activeNav === "dashboard" ? "page" : undefined}
-          >
-            Dashboard
-          </Link>
+          <Button asChild variant={getNavVariant(activeNav === "dashboard")} size="sm">
+            <Link href={dashboardHref} aria-current={activeNav === "dashboard" ? "page" : undefined}>
+              Dashboard
+            </Link>
+          </Button>
           {showTeacherNav ? (
-            <Link
-              href="/classes/new"
-              className={getNavClass(activeNav === "new-class")}
-              aria-current={activeNav === "new-class" ? "page" : undefined}
-            >
-              New Class
-            </Link>
+            <Button asChild variant={getNavVariant(activeNav === "new-class")} size="sm">
+              <Link href="/classes/new" aria-current={activeNav === "new-class" ? "page" : undefined}>
+                New Class
+              </Link>
+            </Button>
           ) : (
-            <Link
-              href="/join"
-              className={getNavClass(activeNav === "join-class")}
-              aria-current={activeNav === "join-class" ? "page" : undefined}
-            >
-              Join Class
-            </Link>
+            <Button asChild variant={getNavVariant(activeNav === "join-class")} size="sm">
+              <Link href="/join" aria-current={activeNav === "join-class" ? "page" : undefined}>
+                Join Class
+              </Link>
+            </Button>
           )}
           <form action={signOut}>
-            <button
-              type="submit"
-              className="ui-motion-color rounded-full border border-default bg-white px-4 py-2 text-xs font-semibold text-ui-muted hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
-            >
+            <Button type="submit" variant="ghost" size="sm" className="hover:bg-rose-50 hover:text-rose-700">
+              <AppIcons.logout className="h-4 w-4" />
               Sign Out
-            </button>
+            </Button>
           </form>
         </div>
       </div>
       {breadcrumbs && breadcrumbs.length > 0 ? (
-        <div className="mx-auto w-full max-w-6xl px-6 pb-5">
-          {renderBreadcrumbs(breadcrumbs)}
+        <div className={cn("mx-auto w-full max-w-6xl px-6 pb-5", tone === "subtle" ? "pb-4" : "pb-5")}>
+          <div className="flex items-center gap-3">
+            {renderBreadcrumbs(breadcrumbs)}
+            {resolvedAccountType ? (
+              <Badge variant="secondary" className="capitalize">
+                {resolvedAccountType}
+              </Badge>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

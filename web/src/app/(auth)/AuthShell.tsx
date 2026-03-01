@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import AmbientBackground from "@/app/components/AmbientBackground";
+import { AppIcons } from "@/components/icons";
+import { Card } from "@/components/ui/card";
 
 type AuthShellProps = {
   eyebrow: string;
@@ -30,23 +32,12 @@ export default function AuthShell({
           href="/"
           aria-label="Back to home"
         >
-          <svg
-            className="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
+          <AppIcons.arrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Home
         </Link>
 
         <div className="grid flex-1 items-center gap-8 lg:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
-          <section className="hero-card rounded-[2rem] border-default bg-white/90 p-8 shadow-sm">
+          <Card className="hero-card rounded-[2rem] border-default bg-white/90 p-8">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">{eyebrow}</p>
             <h1 className="editorial-title mt-4 text-4xl leading-tight text-ui-primary">{title}</h1>
             <p className="mt-4 text-sm text-ui-muted">{description}</p>
@@ -64,9 +55,9 @@ export default function AuthShell({
                 Secure roles for teachers and students.
               </p>
             </div>
-          </section>
+          </Card>
 
-          <section className="surface-card rounded-[2rem] p-8 shadow-sm">
+          <Card className="rounded-[2rem] p-8">
             {children}
             <div className="mt-7 flex items-center justify-between text-sm text-ui-muted">
               <span>{footerLabel}</span>
@@ -74,7 +65,7 @@ export default function AuthShell({
                 {footerLinkLabel}
               </Link>
             </div>
-          </section>
+          </Card>
         </div>
       </div>
     </div>

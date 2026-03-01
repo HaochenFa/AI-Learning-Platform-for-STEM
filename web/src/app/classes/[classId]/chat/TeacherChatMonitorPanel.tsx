@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { listClassChatParticipants } from "@/app/classes/[classId]/chat/workspace-actions";
 import ClassChatWorkspace from "@/app/classes/[classId]/chat/ClassChatWorkspace";
+import { Alert } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 import type { ClassChatParticipant } from "@/lib/chat/types";
 
 type TeacherChatMonitorPanelProps = {
@@ -38,21 +40,19 @@ export default function TeacherChatMonitorPanel({ classId }: TeacherChatMonitorP
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
+        <Alert variant="error">
           {error}
-        </div>
+        </Alert>
       ) : null}
 
       <div className="space-y-2">
-        <label className="text-sm text-ui-muted" htmlFor="chat-monitor-student">
-          Student
-        </label>
+        <Label htmlFor="chat-monitor-student">Student</Label>
         <select
           id="chat-monitor-student"
           value={selectedUserId}
           onChange={(event) => setSelectedUserId(event.target.value)}
           disabled={isPending || participants.length === 0}
-          className="input-shell w-full rounded-xl px-4 py-2 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-10 w-full rounded-xl border border-default bg-white px-3 py-2 text-sm text-ui-primary outline-none focus-ring-warm disabled:cursor-not-allowed disabled:opacity-60"
         >
           {participants.length === 0 ? (
             <option value="">No students yet</option>
