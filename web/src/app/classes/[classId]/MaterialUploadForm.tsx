@@ -2,24 +2,36 @@
 
 import { useFormStatus } from "react-dom";
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import FileUploadZone, { type UploadFile } from "@/app/components/FileUploadZone";
+import { AppIcons } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { MAX_MATERIAL_BYTES } from "@/lib/materials/constants";
 
+type UploadMaterialMutationResult =
+  | {
+      ok: true;
+      uploadNotice: "processing" | "failed";
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
 type MaterialUploadFormProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (formData: FormData) => Promise<UploadMaterialMutationResult>;
 };
 
 function SubmitButton({ fileCount }: { fileCount: number }) {
   const { pending } = useFormStatus();
 
   return (
-    <button
-      type="submit"
-      disabled={pending || fileCount === 0}
-      className="btn-primary w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-    >
+    <Button type="submit" disabled={pending || fileCount === 0} className="w-full" variant="warm">
       {pending ? "Uploading..." : `Upload ${fileCount > 1 ? `${fileCount} files` : "material"}`}
-    </button>
+    </Button>
   );
 }
 
@@ -33,12 +45,10 @@ function UploadProgress() {
   return (
     <div className="space-y-2" aria-live="polite">
       <div className="flex items-center gap-3 text-xs text-ui-muted">
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-default border-t-slate-600" />
+        <AppIcons.loading className="h-4 w-4 animate-spin" />
         Uploading your materials. Large files can take a minute.
       </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--border-default)]">
-        <div className="h-full w-2/3 animate-pulse rounded-full bg-[var(--text-muted)]" />
-      </div>
+      <Progress value={65} />
     </div>
   );
 }
@@ -46,66 +56,104 @@ function UploadProgress() {
 export default function MaterialUploadForm({ action }: MaterialUploadFormProps) {
   const maxSizeMb = Math.round(MAX_MATERIAL_BYTES / (1024 * 1024));
   const [files, setFiles] = useState<UploadFile[]>([]);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const handleSubmit = async (formData: FormData) => {
-    const pendingFiles = files.filter((f) => f.status !== "error");
-    if (pendingFiles.length === 0) return;
-
-    for (let i = 0; i < pendingFiles.length; i++) {
-      const uploadFile = pendingFiles[i];
-      formData.append("file", uploadFile.file);
-      if (pendingFiles.length > 1) {
-        const title = uploadFile.file.name.replace(/\.[^/.]+$/, "");
-        formData.append("title", title);
-      }
+    const pendingFiles = files.filter((file) => file.status === "pending");
+    if (pendingFiles.length === 0) {
+      return;
     }
+    const titleValue = String(formData.get("title") ?? "").trim();
 
-    if (pendingFiles.length === 1 && !formData.get("title")) {
-      const title = pendingFiles[0].file.name.replace(/\.[^/.]+$/, "");
-      formData.set("title", title);
-    }
-
-    setFiles((prev) =>
-      prev.map((f) => (f.status !== "error" ? { ...f, status: "uploading" as const } : f)),
-    );
-
+    let succeeded = 0;
+    let hasJobFailure = false;
     try {
-      await action(formData);
-      setFiles([]);
-    } catch {
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.status === "uploading"
-            ? { ...f, status: "error" as const, error: "Upload failed. Please try again." }
-            : f,
-        ),
-      );
+      for (const uploadFile of pendingFiles) {
+        setFiles((prev) =>
+          prev.map((file) =>
+            file.id === uploadFile.id
+              ? { ...file, status: "uploading" as const, progress: 25, error: undefined }
+              : file.status === "uploading"
+                ? { ...file, status: "pending" as const, progress: 0 }
+                : file,
+          ),
+        );
+
+        const request = new FormData();
+        request.set("file", uploadFile.file);
+        const fallbackTitle = uploadFile.file.name.replace(/\.[^/.]+$/, "");
+        const perFileTitle = pendingFiles.length === 1 ? titleValue || fallbackTitle : fallbackTitle;
+        request.set("title", perFileTitle);
+
+        try {
+          const result = await action(request);
+          if (!result.ok) {
+            setFiles((prev) =>
+              prev.map((file) =>
+                file.id === uploadFile.id
+                  ? { ...file, status: "error" as const, error: result.error }
+                  : file,
+              ),
+            );
+            continue;
+          }
+
+          succeeded += 1;
+          hasJobFailure = hasJobFailure || result.uploadNotice === "failed";
+          setFiles((prev) =>
+            prev.map((file) =>
+              file.id === uploadFile.id
+                ? { ...file, status: "success" as const, progress: 100, error: undefined }
+                : file,
+            ),
+          );
+        } catch {
+          setFiles((prev) =>
+            prev.map((file) =>
+              file.id === uploadFile.id
+                ? {
+                    ...file,
+                    status: "error" as const,
+                    progress: 0,
+                    error: "Upload failed. Please try again.",
+                  }
+                : file,
+            ),
+          );
+        }
+      }
+    } finally {
+      if (succeeded === pendingFiles.length) {
+        const uploadNotice = hasJobFailure ? "failed" : "processing";
+        router.push(`${pathname}?uploaded=${uploadNotice}`);
+        return;
+      }
+      if (succeeded > 0) {
+        router.refresh();
+      }
     }
   };
 
   return (
     <form className="space-y-4" action={handleSubmit}>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-ui-subtle" htmlFor="title">
-          Title
-        </label>
-        <input
+        <Label htmlFor="title">Title</Label>
+        <Input
           id="title"
           name="title"
           placeholder="Lecture 3: Limits and Continuity"
           disabled={files.length > 1}
-          className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none transition focus-ring-warm disabled:bg-[var(--surface-muted)] disabled:text-ui-muted"
+          className="disabled:bg-[var(--surface-muted)] disabled:text-ui-muted"
         />
-        {files.length > 1 && (
+        {files.length > 1 ? (
           <p className="text-xs text-ui-muted">
             Multiple files detected. Each file will be uploaded with its filename as title.
           </p>
-        )}
+        ) : null}
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium text-ui-subtle">
-          Files
-        </label>
+        <Label>Files</Label>
         <FileUploadZone
           accept=".pdf,.docx,.pptx"
           maxSizeMB={maxSizeMb}
@@ -113,8 +161,12 @@ export default function MaterialUploadForm({ action }: MaterialUploadFormProps) 
           onFilesChange={setFiles}
         />
       </div>
-      <SubmitButton fileCount={files.filter((f) => f.status !== "error").length} />
+      <SubmitButton fileCount={pendingFilesCount(files)} />
       <UploadProgress />
     </form>
   );
+}
+
+function pendingFilesCount(files: UploadFile[]) {
+  return files.filter((file) => file.status === "pending").length;
 }

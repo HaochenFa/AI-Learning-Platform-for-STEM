@@ -186,6 +186,73 @@ describe("generateBlueprint", () => {
     expect(redirect).toHaveBeenCalled();
   });
 
+  it("redirects with processing message when materials exist but are not ready", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1", title: "Math" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({
+          data: [{ id: "m1", title: "Lecture", status: "processing" }],
+          error: null,
+        });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => generateBlueprint("class-1"),
+      "/classes/class-1/blueprint?error=Materials%20are%20still%20processing.%20Try%20again%20in%20a%20few%20minutes.",
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
+  it("redirects with indexing message when context is empty and no chunks are indexed", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: {
+            id: "class-1",
+            owner_id: "u1",
+            title: "Math",
+            subject: "Mathematics",
+            level: "College",
+          },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({
+          data: [{ id: "m1", title: "Lecture", status: "ready" }],
+          error: null,
+        });
+      }
+      if (table === "material_chunks") {
+        return makeBuilder({ data: null, count: 0, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    vi.mocked(retrieveMaterialContext).mockResolvedValue("");
+
+    await expectRedirect(
+      () => generateBlueprint("class-1"),
+      "/classes/class-1/blueprint?error=Processed%20materials%20are%20still%20being%20indexed.%20Try%20again%20in%20a%20few%20minutes.",
+    );
+    expect(redirect).toHaveBeenCalled();
+  });
+
   it("redirects with a friendly timeout message when generation exceeds the time budget", async () => {
     supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
     supabaseFromMock.mockImplementation((table: string) => {

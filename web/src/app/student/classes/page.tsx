@@ -1,5 +1,8 @@
 import Link from "next/link";
 import Sidebar from "@/app/components/Sidebar";
+import { AppIcons } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { startServerTimer } from "@/lib/perf";
 
@@ -45,15 +48,18 @@ export default async function StudentClassesPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/student/dashboard"
-                className="ui-motion-color rounded-xl border border-default bg-white px-4 py-2 text-sm font-semibold text-ui-muted hover:border-accent hover:text-accent"
-              >
-                Back to Dashboard
-              </Link>
-              <Link href="/join" className="btn-warm ui-motion-lift rounded-xl px-4 py-2 text-sm font-semibold">
-                Join class
-              </Link>
+              <Button asChild variant="outline">
+                <Link href="/student/dashboard">
+                  <AppIcons.arrowLeft className="h-4 w-4" />
+                  Back to Dashboard
+                </Link>
+              </Button>
+              <Button asChild variant="warm">
+                <Link href="/join">
+                  <AppIcons.add className="h-4 w-4" />
+                  Join class
+                </Link>
+              </Button>
             </div>
           </header>
 
@@ -61,9 +67,9 @@ export default async function StudentClassesPage() {
             <div className="grid gap-4 md:grid-cols-2">
               {classes && classes.length > 0 ? (
                 classes.map((classItem) => (
-                  <div
+                  <Card
                     key={classItem.id}
-                    className="ui-motion-lift group rounded-2xl border border-default bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
+                    className="ui-motion-lift group rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
                   >
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Student</p>
                     <Link href={`/classes/${classItem.id}`} className="mt-2 block">
@@ -73,25 +79,19 @@ export default async function StudentClassesPage() {
                       {classItem.subject || "General"} · {classItem.level || "Mixed"}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Link
-                        href={`/classes/${classItem.id}`}
-                        className="ui-motion-color rounded-full border border-default bg-white px-3 py-1 text-xs font-medium text-ui-muted hover:border-accent hover:bg-accent-soft hover:text-accent"
-                      >
-                        Open class
-                      </Link>
-                      <Link
-                        href={`/classes/${classItem.id}?view=chat`}
-                        className="ui-motion-color rounded-full border border-default bg-white px-3 py-1 text-xs font-medium text-ui-muted hover:border-accent hover:bg-accent-soft hover:text-accent"
-                      >
-                        Open AI chat
-                      </Link>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/classes/${classItem.id}`}>Open class</Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/classes/${classItem.id}?view=chat`}>Open AI chat</Link>
+                      </Button>
                     </div>
-                  </div>
+                  </Card>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-ui-muted md:col-span-2">
+                <Card className="rounded-2xl border-dashed bg-[var(--surface-muted)] p-6 text-sm text-ui-muted md:col-span-2">
                   No classes joined yet. Use a join code from your teacher.
-                </div>
+                </Card>
               )}
             </div>
           </section>

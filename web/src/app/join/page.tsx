@@ -1,6 +1,9 @@
 import { joinClass } from "@/app/classes/actions";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
+import { Alert } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SearchParams = {
@@ -37,21 +40,19 @@ export default async function JoinClassPage({
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <Alert variant="error" className="mb-6">
             {errorMessage}
-          </div>
+          </Alert>
         ) : null}
 
         <form className="space-y-6" action={joinClass}>
           <div className="space-y-2">
-            <label className="text-sm text-ui-muted" htmlFor="join_code">
-              Join code
-            </label>
-            <input
+            <Label htmlFor="join_code">Join code</Label>
+            <Input
               id="join_code"
               name="join_code"
               required
-              className="w-full rounded-xl border border-default bg-white px-4 py-3 text-sm tracking-[0.25em] text-ui-primary outline-none focus-ring-warm"
+              className="tracking-[0.25em]"
               placeholder="AB12CD"
             />
           </div>
@@ -60,7 +61,7 @@ export default async function JoinClassPage({
             <PendingSubmitButton
               label="Join class"
               pendingLabel="Joining class..."
-              className="btn-primary rounded-xl px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+              variant="warm"
             />
           </div>
         </form>

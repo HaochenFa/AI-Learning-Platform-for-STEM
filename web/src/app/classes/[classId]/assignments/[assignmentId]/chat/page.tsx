@@ -3,6 +3,10 @@ import AuthHeader from "@/app/components/AuthHeader";
 import type { ChatTurn } from "@/lib/chat/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import AssignmentChatPanel from "@/app/classes/[classId]/assignments/[assignmentId]/chat/AssignmentChatPanel";
+import { AppIcons } from "@/components/icons";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 type SearchParams = {
   error?: string;
@@ -154,19 +158,34 @@ export default async function AssignmentChatPage({
               ? `Due ${new Date(assignment.due_at).toLocaleString()}`
               : "No due date"}
           </p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Badge variant="secondary">
+              <AppIcons.chat className="h-3.5 w-3.5" />
+              Chat
+            </Badge>
+            {isSubmitted ? <Badge variant="success">Submitted</Badge> : <Badge variant="outline">Open</Badge>}
+          </div>
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
-          </div>
+          <Alert variant="error" className="mb-6">
+            <AlertTitle>Unable to load assignment</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
         ) : null}
 
         {submittedMessage ? (
-          <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
-            {submittedMessage}
-          </div>
+          <Alert variant="success" className="mb-6">
+            <AlertTitle>Assignment submitted</AlertTitle>
+            <AlertDescription>{submittedMessage}</AlertDescription>
+          </Alert>
         ) : null}
+
+        <Card className="mb-6 rounded-2xl bg-[var(--surface-muted)]">
+          <CardContent className="p-4 text-sm text-ui-muted">
+            Continue your guided conversation and then submit a short reflection.
+          </CardContent>
+        </Card>
 
         <AssignmentChatPanel
           classId={classId}

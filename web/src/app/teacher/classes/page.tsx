@@ -1,5 +1,8 @@
 import Link from "next/link";
 import Sidebar from "@/app/components/Sidebar";
+import { AppIcons } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { startServerTimer } from "@/lib/perf";
 
@@ -73,18 +76,18 @@ export default async function TeacherClassesPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/teacher/dashboard"
-                className="ui-motion-color rounded-xl border border-default bg-white px-4 py-2 text-sm font-semibold text-ui-muted hover:border-accent hover:text-accent"
-              >
-                Back to Dashboard
-              </Link>
-              <Link
-                href="/classes/new"
-                className="btn-warm ui-motion-lift rounded-xl px-4 py-2 text-sm font-semibold"
-              >
-                Create class
-              </Link>
+              <Button asChild variant="outline">
+                <Link href="/teacher/dashboard">
+                  <AppIcons.arrowLeft className="h-4 w-4" />
+                  Back to Dashboard
+                </Link>
+              </Button>
+              <Button asChild variant="warm">
+                <Link href="/classes/new">
+                  <AppIcons.add className="h-4 w-4" />
+                  Create class
+                </Link>
+              </Button>
             </div>
           </header>
 
@@ -106,9 +109,9 @@ export default async function TeacherClassesPage() {
                   }
 
                   return (
-                    <div
+                    <Card
                       key={classItem.id}
-                      className="ui-motion-lift group rounded-2xl border border-default bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
+                      className="ui-motion-lift group rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
                     >
                       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">{role}</p>
                       <Link href={`/classes/${classItem.id}`} className="mt-2 block">
@@ -118,38 +121,26 @@ export default async function TeacherClassesPage() {
                         {classItem.subject || "General"} · {classItem.level || "Mixed"}
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <Link
-                          href={`/classes/${classItem.id}`}
-                          className="ui-motion-color rounded-full border border-default bg-white px-3 py-1 text-xs font-medium text-ui-muted hover:border-accent hover:bg-accent-soft hover:text-accent"
-                        >
-                          Open class
-                        </Link>
-                        <Link
-                          href={`/classes/${classItem.id}#teacher-chat-monitor`}
-                          className="ui-motion-color rounded-full border border-default bg-white px-3 py-1 text-xs font-medium text-ui-muted hover:border-accent hover:bg-accent-soft hover:text-accent"
-                        >
-                          Chat monitor
-                        </Link>
-                        <Link
-                          href={`/classes/${classItem.id}/activities/chat/new`}
-                          className="ui-motion-color rounded-full border border-accent bg-accent-soft px-3 py-1 text-xs font-semibold text-accent hover:bg-accent-soft"
-                        >
-                          New chat
-                        </Link>
-                        <Link
-                          href={`/classes/${classItem.id}/activities/quiz/new`}
-                          className="ui-motion-color rounded-full border border-accent bg-accent-soft px-3 py-1 text-xs font-semibold text-accent hover:bg-accent-soft"
-                        >
-                          New quiz
-                        </Link>
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/classes/${classItem.id}`}>Open class</Link>
+                        </Button>
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/classes/${classItem.id}#teacher-chat-monitor`}>Chat monitor</Link>
+                        </Button>
+                        <Button asChild variant="default" size="sm">
+                          <Link href={`/classes/${classItem.id}/activities/chat/new`}>New chat</Link>
+                        </Button>
+                        <Button asChild variant="default" size="sm">
+                          <Link href={`/classes/${classItem.id}/activities/quiz/new`}>New quiz</Link>
+                        </Button>
                       </div>
-                    </div>
+                    </Card>
                   );
                 })
               ) : (
-                <div className="rounded-2xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-ui-muted md:col-span-2">
+                <Card className="rounded-2xl border-dashed bg-[var(--surface-muted)] p-6 text-sm text-ui-muted md:col-span-2">
                   No classes yet. Create one to get started.
-                </div>
+                </Card>
               )}
             </div>
           </section>

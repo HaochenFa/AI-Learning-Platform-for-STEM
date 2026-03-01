@@ -98,6 +98,12 @@ In Vercel project settings:
 
 `web/vercel.json` no longer schedules material processing cron.
 
+Frontend build notes:
+
+- UI stack now includes Radix primitives, Lucide icon registry, and `motion/react`.
+- Editorial typography uses a native serif stack (no runtime fetch dependency for that font).
+- Keep dependency lockfiles committed at repo root to ensure deterministic CI installs.
+
 ## 8. Configure Vercel environment variables
 
 Set these in Vercel for both Preview (staging Supabase) and Production (production Supabase):

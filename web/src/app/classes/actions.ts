@@ -137,33 +137,41 @@ export async function joinClass(formData: FormData) {
   redirect(`/classes/${classId}`);
 }
 
-export async function uploadMaterial(classId: string, formData: FormData) {
+export type UploadMaterialMutationResult =
+  | {
+      ok: true;
+      uploadNotice: "processing" | "failed";
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+async function uploadMaterialMutationInternal(
+  classId: string,
+  formData: FormData,
+): Promise<UploadMaterialMutationResult> {
   const title = getFormValue(formData, "title");
   const file = formData.get("file");
 
   if (!(file instanceof File)) {
-    redirectWithError(`/classes/${classId}`, "Material file is required");
-    return;
+    return { ok: false, error: "Material file is required" };
   }
 
   if (file.size === 0) {
-    redirectWithError(`/classes/${classId}`, "Material file is empty");
+    return { ok: false, error: "Material file is empty" };
   }
 
   if (file.size > MAX_MATERIAL_BYTES) {
-    redirectWithError(
-      `/classes/${classId}`,
-      `File exceeds ${Math.round(MAX_MATERIAL_BYTES / (1024 * 1024))}MB limit`,
-    );
+    return {
+      ok: false,
+      error: `File exceeds ${Math.round(MAX_MATERIAL_BYTES / (1024 * 1024))}MB limit`,
+    };
   }
 
   const kind = detectMaterialKind(file);
   if (!kind) {
-    redirectWithError(
-      `/classes/${classId}`,
-      `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
-    );
-    return;
+    return { ok: false, error: `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}` };
   }
 
   if (
@@ -171,14 +179,14 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     file.type !== "application/octet-stream" &&
     !ALLOWED_MIME_TYPES.includes(file.type)
   ) {
-    redirectWithError(`/classes/${classId}`, "Unsupported MIME type");
+    return { ok: false, error: "Unsupported MIME type" };
   }
 
   const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
-    redirectWithError(`/classes/${classId}`, access.reason);
+    return { ok: false, error: access.reason };
   }
 
   const materialId = crypto.randomUUID();
@@ -202,7 +210,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
     });
 
   if (uploadError) {
-    redirectWithError(`/classes/${classId}`, uploadError.message);
+    return { ok: false, error: uploadError.message };
   }
 
   const { data: materialRow, error: insertError } = await supabase
@@ -224,8 +232,7 @@ export async function uploadMaterial(classId: string, formData: FormData) {
 
   if (insertError || !materialRow) {
     await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
-    redirectWithError(`/classes/${classId}`, insertError.message);
-    return;
+    return { ok: false, error: insertError?.message ?? "Failed to save material record." };
   }
 
   let jobFailed = false;
@@ -250,25 +257,25 @@ export async function uploadMaterial(classId: string, formData: FormData) {
 
     if (jobError) {
       jobFailed = true;
-      const { error: statusError } = await supabase
-        .from("materials")
-        .update({
-          status: "failed",
-          metadata: {
-            ...baseMetadata,
-            warnings: [...baseMetadata.warnings, `Job creation failed: ${jobError.message}`],
-          },
-        })
-        .eq("id", materialRow.id);
-
-      if (statusError) {
-        await supabase.from("materials").delete().eq("id", materialRow.id);
-        await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
-      }
+      await supabase.from("materials").delete().eq("id", materialRow.id);
+      await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
+      return { ok: false, error: `Failed to queue material processing: ${jobError.message}` };
     }
   }
 
-  const uploadNotice = jobFailed ? "uploaded=failed" : "uploaded=processing";
+  return { ok: true, uploadNotice: jobFailed ? "failed" : "processing" };
+}
 
-  redirect(`/classes/${classId}?${uploadNotice}`);
+export async function uploadMaterialMutation(classId: string, formData: FormData) {
+  return uploadMaterialMutationInternal(classId, formData);
+}
+
+export async function uploadMaterial(classId: string, formData: FormData) {
+  const result = await uploadMaterialMutationInternal(classId, formData);
+  if (!result.ok) {
+    redirectWithError(`/classes/${classId}`, result.error);
+    return;
+  }
+
+  redirect(`/classes/${classId}?uploaded=${result.uploadNotice}`);
 }

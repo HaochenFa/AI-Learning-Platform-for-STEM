@@ -42,6 +42,14 @@ This document is the operating guideline for all contributors and agents. It def
 - AI Orchestrator: provider adapters, prompt templates, and safety checks.
 - Data Layer: Supabase with row level security and migrations.
 
+**Frontend UI System Standards**
+
+- UI primitives should be built from the shared `web/src/components/ui` layer.
+- Prefer Radix-based primitives and composition patterns over bespoke interaction logic.
+- Use `web/src/components/icons/index.tsx` for app icons. Avoid page-level inline SVG icons unless there is a documented exception (for example, branded marks or semantic diagrams).
+- Keep motion consistent via the global Motion provider and presets in `web/src/lib/motion/presets.ts`.
+- Preserve warm semantic token usage in `web/src/app/globals.css` and avoid introducing raw one-off colors in component class strings.
+
 **AI Provider Policy**
 
 - Support OpenAI, Google Gemini, and OpenRouter via a provider adapter interface.

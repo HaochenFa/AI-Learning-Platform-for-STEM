@@ -3,16 +3,37 @@
 :root {
   --background: #faf9f5;
   --foreground: #141413;
-  --surface-card: #ffffff;
-  --surface-muted: #f5f4ed;
-  --border-default: #e8e5dc;
+  --card: #ffffff;
+  --card-foreground: #141413;
+  --popover: #ffffff;
+  --popover-foreground: #141413;
+  --primary: #c06a4f;
+  --primary-foreground: #fff8f3;
+  --secondary: #f5f4ed;
+  --secondary-foreground: #2f2b24;
+  --muted: #f5f4ed;
+  --muted-foreground: #64635e;
+  --accent: #fdf1ec;
+  --accent-foreground: #8b4631;
+  --destructive: #be123c;
+  --destructive-foreground: #fff1f2;
+  --border: #e8e5dc;
+  --input: #e8e5dc;
+  --ring: #c06a4f;
+
+  --surface-card: var(--card);
+  --surface-muted: var(--muted);
+  --border-default: var(--border);
   --text-muted: #64635e;
   --text-subtle: #7c786f;
+
   --sidebar-width: 16rem;
   --sidebar-collapsed-width: 5rem;
+
   --motion-fast: 160ms;
   --motion-standard: 220ms;
   --motion-slow: 320ms;
+
   --accent-primary: #c06a4f;
   --accent-primary-strong: #a95339;
   --accent-soft: #fdf1ec;
@@ -22,8 +43,23 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-accent-primary: var(--accent-primary);
-  --color-accent-secondary: var(--accent-secondary);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --font-sans: var(--font-body);
   --font-heading: var(--font-display);
   --font-mono: var(--font-code);
@@ -42,7 +78,7 @@ h3 {
 }
 
 .editorial-title {
-  font-family: var(--font-editorial);
+  font-family: var(--font-editorial), Georgia, "Times New Roman", serif;
 }
 
 .surface-page {
@@ -133,76 +169,12 @@ h3 {
   transition: padding-left var(--motion-standard) ease;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #da886c 0%, #c96e53 100%);
-  color: #fff8f3;
-}
-
-.btn-primary:hover {
-  background: linear-gradient(135deg, #d98266 0%, #bb5f45 100%);
-}
-
-.btn-secondary {
-  border: 1px solid var(--border-default);
-  background: #ffffff;
-  color: #2b2a27;
-}
-
-.btn-secondary:hover {
-  border-color: #d2c9b7;
-  background: #f9f6ef;
-}
-
-.btn-warm {
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 35%, #ffffff);
-  background: linear-gradient(140deg, var(--accent-primary) 0%, var(--accent-primary-strong) 100%);
-  color: #fff8f3;
-}
-
-.btn-warm:hover {
-  filter: brightness(1.03);
-}
-
-.btn-ghost {
-  border: 1px solid var(--border-default);
-  background: #ffffff;
-  color: #2f2b24;
-}
-
-.btn-ghost:hover {
-  border-color: #d6ccb8;
-  background: #faf5ec;
-}
-
 .link-warm {
   color: #9d5038;
 }
 
 .link-warm:hover {
   color: #81412d;
-}
-
-.chip-warm {
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 35%, #ffffff);
-  background: var(--accent-soft);
-  color: #944a33;
-}
-
-.chip-neutral {
-  border: 1px solid var(--border-default);
-  background: #ffffff;
-  color: #5e5a51;
-}
-
-.input-shell {
-  border: 1px solid var(--border-default);
-  background: #ffffff;
-  color: #171512;
-}
-
-.input-shell:focus {
-  border-color: color-mix(in srgb, var(--accent-primary) 45%, #ffffff);
-  box-shadow: 0 0 0 3px rgba(192, 106, 79, 0.16);
 }
 
 .focus-ring-warm:focus {

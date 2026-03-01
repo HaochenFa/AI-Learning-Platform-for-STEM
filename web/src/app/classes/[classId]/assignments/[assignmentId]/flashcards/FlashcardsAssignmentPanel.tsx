@@ -1,8 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion } from "motion/react";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { submitFlashcardsSession } from "@/app/classes/[classId]/flashcards/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { STAGGER_CONTAINER, STAGGER_ITEM } from "@/lib/motion/presets";
 
 type FlashcardView = {
   id: string;
@@ -40,6 +47,7 @@ export default function FlashcardsAssignmentPanel({
   const allReviewed = cards.every((card) => Boolean(cardStatus[card.id]));
   const knownCount = cards.filter((card) => cardStatus[card.id] === "known").length;
   const reviewCount = cards.filter((card) => cardStatus[card.id] === "review").length;
+  const completionPercent = cards.length > 0 ? Math.round((knownCount + reviewCount) / cards.length * 100) : 0;
 
   const sessionPayload = useMemo(
     () =>
@@ -56,84 +64,101 @@ export default function FlashcardsAssignmentPanel({
   return (
     <div className="space-y-6">
       {isSubmittedNotice ? (
-        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
-          Session submitted successfully.
-        </div>
+        <Alert variant="success">
+          <AlertTitle>Session submitted</AlertTitle>
+          <AlertDescription>Session submitted successfully.</AlertDescription>
+        </Alert>
       ) : null}
 
-      <div className="rounded-2xl border border-default bg-white p-4 text-sm text-ui-muted">
-        <p>Attempts used: {attemptsUsed}</p>
-        <p>Attempts remaining: {attemptsRemaining}</p>
-        <p>{dueLocked ? "Due date passed. New attempts are locked." : "Due date is still open."}</p>
-        <p>Best score: {bestScore === null ? "Not available yet" : `${bestScore}%`}</p>
-        <p>
-          Progress: {knownCount} known, {reviewCount} to review
-        </p>
-      </div>
+      <Card className="rounded-2xl">
+        <CardContent className="space-y-3 p-4 text-sm text-ui-muted">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">Attempts used: {attemptsUsed}</Badge>
+            <Badge variant="outline">Remaining: {attemptsRemaining}</Badge>
+            <Badge variant="outline">
+              Best score: {bestScore === null ? "Not available yet" : `${bestScore}%`}
+            </Badge>
+          </div>
+          <p className="text-xs text-ui-muted">
+            {dueLocked ? "Due date passed. New attempts are locked." : "Due date is still open."}
+          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-ui-muted">
+              Progress: {knownCount} known, {reviewCount} to review
+            </p>
+            <Progress value={completionPercent} />
+          </div>
+        </CardContent>
+      </Card>
 
       <form action={submitFlashcardsSession.bind(null, classId, assignmentId)} className="space-y-4">
         <input type="hidden" name="session_payload" value={sessionPayload} readOnly />
 
-        {cards.map((card, index) => (
-          <section
-            key={card.id}
-            className="rounded-2xl border border-default bg-white p-4"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-ui-primary">Card {index + 1}</p>
-              <button
-                type="button"
-                onClick={() =>
-                  setFlipped((current) => ({ ...current, [card.id]: !current[card.id] }))
-                }
-                className="rounded-lg border border-default px-3 py-1 text-xs text-ui-subtle hover:border-accent hover:bg-accent-soft"
-              >
-                {flipped[card.id] ? "Show front" : "Show back"}
-              </button>
-            </div>
+        <motion.div
+          className="space-y-4"
+          initial="initial"
+          animate="enter"
+          variants={STAGGER_CONTAINER}
+        >
+          {cards.map((card, index) => (
+            <motion.section key={card.id} variants={STAGGER_ITEM}>
+              <Card className="rounded-2xl">
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-ui-primary">Card {index + 1}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setFlipped((current) => ({ ...current, [card.id]: !current[card.id] }))
+                      }
+                    >
+                      {flipped[card.id] ? "Show front" : "Show back"}
+                    </Button>
+                  </div>
 
-            <div className="mt-3 rounded-xl border border-default bg-[var(--surface-muted)] px-3 py-3 text-sm text-ui-primary">
-              {flipped[card.id] ? card.back : card.front}
-            </div>
+                  <div className="mt-3 rounded-xl border border-default bg-[var(--surface-muted)] px-3 py-3 text-sm text-ui-primary">
+                    {flipped[card.id] ? card.back : card.front}
+                  </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={dueLocked || attemptsRemaining === 0}
-                onClick={() =>
-                  setCardStatus((current) => ({ ...current, [card.id]: "known" }))
-                }
-                className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
-                  cardStatus[card.id] === "known"
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-default text-ui-subtle hover:border-accent hover:bg-accent-soft"
-                }`}
-              >
-                I know this
-              </button>
-              <button
-                type="button"
-                disabled={dueLocked || attemptsRemaining === 0}
-                onClick={() =>
-                  setCardStatus((current) => ({ ...current, [card.id]: "review" }))
-                }
-                className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
-                  cardStatus[card.id] === "review"
-                    ? "border-accent bg-accent-soft text-accent"
-                    : "border-default text-ui-subtle hover:border-accent hover:bg-accent-soft"
-                }`}
-              >
-                Needs review
-              </button>
-            </div>
-          </section>
-        ))}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={cardStatus[card.id] === "known" ? "secondary" : "outline"}
+                      disabled={dueLocked || attemptsRemaining === 0}
+                      onClick={() =>
+                        setCardStatus((current) => ({ ...current, [card.id]: "known" }))
+                      }
+                      className={cardStatus[card.id] === "known" ? "text-emerald-700" : undefined}
+                    >
+                      I know this
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={cardStatus[card.id] === "review" ? "warm" : "outline"}
+                      disabled={dueLocked || attemptsRemaining === 0}
+                      onClick={() =>
+                        setCardStatus((current) => ({ ...current, [card.id]: "review" }))
+                      }
+                    >
+                      Needs review
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.section>
+          ))}
+        </motion.div>
 
         <PendingSubmitButton
           label="Submit Session"
           pendingLabel="Submitting..."
           disabled={!canSubmit}
-          className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          variant="warm"
+          className="w-full sm:w-auto"
         />
       </form>
     </div>

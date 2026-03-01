@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import AuthHeader from "@/app/components/AuthHeader";
 import ClassWorkspaceShell from "@/app/classes/[classId]/_components/ClassWorkspaceShell";
 import ClassChatWorkspace from "@/app/classes/[classId]/chat/ClassChatWorkspace";
@@ -256,54 +257,71 @@ export default function StudentClassExperience({
           </div>
         ) : null}
 
-        {!activeWidget ? (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {widgetItems.map((widget) => (
-              <button
-                key={widget.key}
-                type="button"
-                onClick={() => setActiveWidget(widget.key)}
-                className="ui-motion-lift rounded-3xl border border-default bg-white p-6 text-left hover:-translate-y-0.5 hover:border-accent"
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ui-muted">Widget</p>
-                <h2 className="mt-2 text-xl font-semibold text-ui-primary">{widget.title}</h2>
-                <p className="mt-3 text-sm text-ui-muted">{widget.description}</p>
-                <span className="mt-5 inline-flex rounded-xl border border-accent px-3 py-1.5 text-xs font-semibold text-accent">
-                  Open workspace
-                </span>
-              </button>
-            ))}
-          </section>
-        ) : (
-          <ClassWorkspaceShell
-            title={widgetItems.find((item) => item.key === activeWidget)?.title ?? "Workspace"}
-            subtitle="Switch tools from the sidebar while keeping your workspace context."
-            onExit={() => setActiveWidget(null)}
-            main={renderFocusedMain()}
-            sidebar={
-              <div className="space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-ui-muted">
-                  Class tools
-                </h3>
-                {widgetItems.map((widget) => (
-                  <button
-                    key={widget.key}
-                    type="button"
-                    onClick={() => setActiveWidget(widget.key)}
-                    className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
-                      widget.key === activeWidget
-                        ? "border-accent bg-accent-soft text-accent-strong"
-                        : "border-default bg-white text-ui-subtle hover:border-accent hover:bg-accent-soft"
-                    }`}
-                  >
-                    <p className="font-semibold">{widget.title}</p>
-                    <p className="mt-1 text-xs text-ui-muted">{widget.description}</p>
-                  </button>
-                ))}
-              </div>
-            }
-          />
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          {!activeWidget ? (
+            <motion.section
+              key="widget-grid"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
+              className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+            >
+              {widgetItems.map((widget) => (
+                <button
+                  key={widget.key}
+                  type="button"
+                  onClick={() => setActiveWidget(widget.key)}
+                  className="ui-motion-lift rounded-3xl border border-default bg-white p-6 text-left hover:-translate-y-0.5 hover:border-accent"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ui-muted">Widget</p>
+                  <h2 className="mt-2 text-xl font-semibold text-ui-primary">{widget.title}</h2>
+                  <p className="mt-3 text-sm text-ui-muted">{widget.description}</p>
+                  <span className="mt-5 inline-flex rounded-xl border border-accent px-3 py-1.5 text-xs font-semibold text-accent">
+                    Open workspace
+                  </span>
+                </button>
+              ))}
+            </motion.section>
+          ) : (
+            <motion.div
+              key="workspace-shell"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
+            >
+              <ClassWorkspaceShell
+                title={widgetItems.find((item) => item.key === activeWidget)?.title ?? "Workspace"}
+                subtitle="Switch tools from the sidebar while keeping your workspace context."
+                onExit={() => setActiveWidget(null)}
+                main={renderFocusedMain()}
+                sidebar={
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-ui-muted">
+                      Class tools
+                    </h3>
+                    {widgetItems.map((widget) => (
+                      <button
+                        key={widget.key}
+                        type="button"
+                        onClick={() => setActiveWidget(widget.key)}
+                        className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
+                          widget.key === activeWidget
+                            ? "border-accent bg-accent-soft text-accent-strong"
+                            : "border-default bg-white text-ui-subtle hover:border-accent hover:bg-accent-soft"
+                        }`}
+                      >
+                        <p className="font-semibold">{widget.title}</p>
+                        <p className="mt-1 text-xs text-ui-muted">{widget.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                }
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

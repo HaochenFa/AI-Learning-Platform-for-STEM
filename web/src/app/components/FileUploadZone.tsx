@@ -1,6 +1,12 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { AppIcons } from "@/components/icons";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 export type UploadFile = {
   id: string;
@@ -98,12 +104,15 @@ export default function FileUploadZone({
     [onFilesChange],
   );
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    if (!disabled) {
-      setIsDragging(true);
-    }
-  }, [disabled]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      if (!disabled) {
+        setIsDragging(true);
+      }
+    },
+    [disabled],
+  );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -144,48 +153,37 @@ export default function FileUploadZone({
 
   const getFileIcon = (type: string) => {
     if (type.includes("pdf")) {
-      return (
-        <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-        </svg>
-      );
+      return <AppIcons.fileText className="h-5 w-5 text-rose-600" />;
     }
     if (type.includes("word") || type.includes("document")) {
-      return (
-        <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-        </svg>
-      );
+      return <AppIcons.fileText className="h-5 w-5 text-blue-600" />;
     }
     if (type.includes("powerpoint") || type.includes("presentation")) {
-      return (
-        <svg className="h-5 w-5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-        </svg>
-      );
+      return <AppIcons.file className="h-5 w-5 text-orange-600" />;
     }
-    return (
-      <svg className="h-5 w-5 text-subtle" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-      </svg>
-    );
+    return <AppIcons.file className="h-5 w-5 text-subtle" />;
   };
 
   return (
     <div className="space-y-4">
-      {/* Drop zone */}
-      <div
+      <Card
+        role="button"
+        tabIndex={0}
         onClick={handleClick}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all ${
-          disabled
-            ? "cursor-not-allowed border-default bg-[var(--surface-muted)]"
-            : isDragging
-              ? "border-default bg-[var(--surface-muted)]"
-              : "border-default bg-white hover:border-default hover:bg-[var(--surface-muted)]"
-        }`}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleClick();
+          }
+        }}
+        className={cn(
+          "cursor-pointer border-2 border-dashed p-8 text-center transition-all",
+          disabled && "cursor-not-allowed bg-[var(--surface-muted)]",
+          isDragging && !disabled && "bg-[var(--surface-muted)]",
+        )}
       >
         <input
           ref={inputRef}
@@ -197,20 +195,8 @@ export default function FileUploadZone({
           className="hidden"
         />
         <div className="flex flex-col items-center gap-3">
-          <div className={`rounded-full p-3 ${isDragging ? "bg-[var(--border-default)]" : ""}`}>
-            <svg
-              className={`h-8 w-8 ${isDragging ? "text-muted" : "text-subtle"}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
-            </svg>
+          <div className={cn("rounded-full p-3", isDragging ? "bg-[var(--border-default)]" : "bg-[var(--surface-muted)]")}>
+            <AppIcons.upload className={cn("h-8 w-8", isDragging ? "text-ui-primary" : "text-ui-muted")} />
           </div>
           <div>
             <p className="text-sm font-medium text-ui-primary">
@@ -222,66 +208,58 @@ export default function FileUploadZone({
           </div>
           <p className="text-xs text-subtle">Accepted: {accept}</p>
         </div>
-      </div>
+      </Card>
 
-      {/* File queue */}
       {files.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-ui-primary">
-              Files ({files.length})
-            </p>
-            <button
+            <p className="text-sm font-medium text-ui-primary">Files ({files.length})</p>
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setFiles([]);
                 onFilesChange?.([]);
               }}
-              className="text-xs text-subtle hover:text-ui-primary"
+              className="text-xs"
             >
               Clear all
-            </button>
+            </Button>
           </div>
           <ul className="space-y-2">
             {files.map((file) => (
-              <li
-                key={file.id}
-                className={`flex items-center gap-3 rounded-lg border p-3 ${
-                  file.status === "error"
-                    ? "border-red-200 bg-red-50"
-                    : "border-default bg-white"
-                }`}
-              >
-                <div className="shrink-0">{getFileIcon(file.file.type)}</div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ui-primary">
-                    {file.file.name}
-                  </p>
-                  <p className="text-xs text-subtle">
-                    {formatFileSize(file.file.size)}
-                  </p>
-                  {file.error && (
-                    <p className="mt-1 text-xs text-red-600">{file.error}</p>
-                  )}
-                  {file.status === "uploading" && (
-                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--border-default)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--text-muted)] transition-all duration-300"
-                        style={{ width: `${file.progress}%` }}
-                      />
+              <li key={file.id}>
+                <Card className={cn("rounded-lg border p-3", file.status === "error" && "border-rose-200 bg-rose-50") }>
+                  <div className="flex items-center gap-3">
+                    <div className="shrink-0">{getFileIcon(file.file.type)}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ui-primary">{file.file.name}</p>
+                      <p className="text-xs text-subtle">{formatFileSize(file.file.size)}</p>
+                      {file.error ? (
+                        <Alert variant="error" className="mt-2 py-2 text-xs">
+                          {file.error}
+                        </Alert>
+                      ) : null}
+                      {file.status === "uploading" ? (
+                        <div className="mt-2">
+                          <Progress value={file.progress} />
+                        </div>
+                      ) : null}
                     </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeFile(file.id)}
-                  disabled={file.status === "uploading"}
-                  className="shrink-0 rounded-lg p-1.5 text-subtle hover:bg-[var(--surface-muted)] hover:text-ui-primary disabled:cursor-not-allowed"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeFile(file.id)}
+                      disabled={file.status === "uploading"}
+                      className="h-8 w-8"
+                    >
+                      <AppIcons.error className="h-4 w-4" />
+                      <span className="sr-only">Remove file</span>
+                    </Button>
+                  </div>
+                </Card>
               </li>
             ))}
           </ul>

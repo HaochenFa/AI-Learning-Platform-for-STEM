@@ -100,6 +100,14 @@ Student Flow
 - AI Orchestrator: provider adapters, prompt templates, safety checks.
 - Supabase: Auth, Postgres, Storage, Row Level Security.
 
+**Frontend Design System (Current)**
+
+- UI primitives are standardized in `web/src/components/ui` using shadcn-style component patterns.
+- Interaction primitives are built on Radix UI packages for accessibility and consistent behavior.
+- Shared animation defaults are centralized through a global Motion provider (`motion/react`) in layout.
+- Icons are standardized via `lucide-react` with an app-level icon registry (`web/src/components/icons/index.tsx`).
+- Theme tokens remain CSS-variable driven and warm/academic in `web/src/app/globals.css`, with semantic token aliases to support gradual migration from legacy utility classes.
+
 **AI Provider Support**
 
 - OpenAI, Google Gemini, OpenRouter via a provider adapter interface.

@@ -1,6 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { motion } from "motion/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FADE_UP_VARIANTS } from "@/lib/motion/presets";
 
 type ClassWorkspaceShellProps = {
   title: string;
@@ -19,30 +23,34 @@ export default function ClassWorkspaceShell({
 }: ClassWorkspaceShellProps) {
   return (
     <section className="space-y-4">
-      <header className="rounded-3xl border border-default bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">Focused Workspace</p>
-            <h2 className="mt-1 text-2xl font-semibold text-ui-primary">{title}</h2>
-            <p className="mt-1 text-sm text-ui-muted">{subtitle}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onExit}
-            className="ui-motion-color rounded-xl border border-default bg-white px-4 py-2 text-xs font-semibold text-ui-muted hover:border-accent hover:text-accent"
-          >
-            Back to overview
-          </button>
-        </div>
-      </header>
+      <motion.div initial="initial" animate="enter" variants={FADE_UP_VARIANTS}>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">Focused Workspace</p>
+                <CardTitle className="mt-1 text-2xl">{title}</CardTitle>
+                <p className="mt-1 text-sm text-ui-muted">{subtitle}</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={onExit}>
+                Back to overview
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+      </motion.div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="ui-motion-lift min-h-[32rem] rounded-3xl border border-default bg-white p-4 shadow-sm">
-          {main}
-        </div>
-        <aside className="ui-motion-lift rounded-3xl border border-default bg-white p-4 shadow-sm">
-          {sidebar}
-        </aside>
+        <motion.div initial="initial" animate="enter" variants={FADE_UP_VARIANTS}>
+          <Card className="min-h-[32rem]">
+            <CardContent className="p-4">{main}</CardContent>
+          </Card>
+        </motion.div>
+        <motion.div initial="initial" animate="enter" variants={FADE_UP_VARIANTS}>
+          <Card>
+            <CardContent className="p-4">{sidebar}</CardContent>
+          </Card>
+        </motion.div>
       </div>
     </section>
   );

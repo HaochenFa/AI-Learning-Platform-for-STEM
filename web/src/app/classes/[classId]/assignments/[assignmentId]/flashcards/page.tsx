@@ -3,6 +3,10 @@ import AuthHeader from "@/app/components/AuthHeader";
 import { isDueDateLocked } from "@/lib/activities/submissions";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import FlashcardsAssignmentPanel from "@/app/classes/[classId]/assignments/[assignmentId]/flashcards/FlashcardsAssignmentPanel";
+import { AppIcons } from "@/components/icons";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 type SearchParams = {
   error?: string;
@@ -157,20 +161,30 @@ export default async function FlashcardsAssignmentPage({
               ? `Due ${new Date(assignment.due_at).toLocaleString()}`
               : "No due date"}
           </p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Badge variant="secondary">
+              <AppIcons.flashcards className="h-3.5 w-3.5" />
+              Flashcards
+            </Badge>
+            {dueLocked ? <Badge variant="warning">Due date locked</Badge> : <Badge variant="outline">Open</Badge>}
+          </div>
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
-          </div>
+          <Alert variant="error" className="mb-6">
+            <AlertTitle>Unable to load assignment</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
         ) : null}
 
         {latestSubmission ? (
-          <div className="mb-6 rounded-xl border border-default bg-white px-4 py-3 text-sm text-ui-muted">
+          <Card className="mb-6 rounded-2xl">
+            <CardContent className="px-4 py-3 text-sm text-ui-muted">
             <p>
               Latest session: {latestCounts.knownCount} known, {latestCounts.reviewCount} to review
             </p>
-          </div>
+            </CardContent>
+          </Card>
         ) : null}
 
         <FlashcardsAssignmentPanel

@@ -53,6 +53,7 @@ This roadmap focuses on production ready delivery with subject agnostic function
 - Observability for AI usage, latency, and errors.
 - Basic analytics for progress and engagement.
 - Accessibility and responsive design.
+- Status update: Frontend foundation migrated to shadcn-style primitives + Radix interaction primitives + Motion global transitions, with shared iconography standardized on Lucide and warm-token compatibility preserved.
 
 **Phase 5 - Final Delivery**
 

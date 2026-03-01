@@ -5,6 +5,13 @@ import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { reviewChatSubmission } from "@/app/classes/[classId]/chat/actions";
 import { reviewQuizSubmission } from "@/app/classes/[classId]/quiz/actions";
 import { reviewFlashcardsSubmission } from "@/app/classes/[classId]/flashcards/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import type { ChatTurn } from "@/lib/chat/types";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
@@ -362,67 +369,68 @@ export default async function AssignmentReviewPage({
         </header>
 
         {createdMessage ? (
-          <div className="mb-6 rounded-xl border border-accent bg-accent-soft px-4 py-3 text-sm text-accent">
-            {createdMessage}
-          </div>
+          <Alert variant="accent" className="mb-6">
+            <AlertTitle>Assignment created</AlertTitle>
+            <AlertDescription>{createdMessage}</AlertDescription>
+          </Alert>
         ) : null}
         {savedMessage ? (
-          <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
-            {savedMessage}
-          </div>
+          <Alert variant="success" className="mb-6">
+            <AlertTitle>Feedback saved</AlertTitle>
+            <AlertDescription>{savedMessage}</AlertDescription>
+          </Alert>
         ) : null}
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
-          </div>
+          <Alert variant="error" className="mb-6">
+            <AlertTitle>Unable to complete action</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
         ) : null}
 
         {totalRecipients > 0 ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-default bg-white px-4 py-3 text-sm text-ui-muted">
-            <p>
-              Showing {rangeStart + 1}-
-              {Math.min(rangeStart + (recipients?.length ?? 0), totalRecipients)} of{" "}
-              {totalRecipients} students
-            </p>
-            {totalPages > 1 ? (
-              <div className="flex items-center gap-2">
-                {currentPage > 1 ? (
-                  <Link
-                    href={buildPageHref(currentPage - 1)}
-                    className="rounded-lg border border-default px-3 py-1.5 text-xs font-semibold text-ui-subtle hover:border-accent hover:bg-accent-soft"
-                  >
-                    Previous
-                  </Link>
-                ) : (
-                  <span className="rounded-lg border border-default px-3 py-1.5 text-xs text-ui-muted">
-                    Previous
+          <Card className="mb-6 rounded-2xl">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm text-ui-muted">
+              <p>
+                Showing {rangeStart + 1}-
+                {Math.min(rangeStart + (recipients?.length ?? 0), totalRecipients)} of{" "}
+                {totalRecipients} students
+              </p>
+              {totalPages > 1 ? (
+                <div className="flex items-center gap-2">
+                  {currentPage > 1 ? (
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={buildPageHref(currentPage - 1)}>Previous</Link>
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled>
+                      Previous
+                    </Button>
+                  )}
+                  <span className="text-xs text-ui-muted">
+                    Page {currentPage} of {totalPages}
                   </span>
-                )}
-                <span className="text-xs text-ui-muted">
-                  Page {currentPage} of {totalPages}
-                </span>
-                {currentPage < totalPages ? (
-                  <Link
-                    href={buildPageHref(currentPage + 1)}
-                    className="rounded-lg border border-default px-3 py-1.5 text-xs font-semibold text-ui-subtle hover:border-accent hover:bg-accent-soft"
-                  >
-                    Next
-                  </Link>
-                ) : (
-                  <span className="rounded-lg border border-default px-3 py-1.5 text-xs text-ui-muted">
-                    Next
-                  </span>
-                )}
-              </div>
-            ) : null}
-          </div>
+                  {currentPage < totalPages ? (
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={buildPageHref(currentPage + 1)}>Next</Link>
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled>
+                      Next
+                    </Button>
+                  )}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
         ) : null}
 
         <div className="space-y-6">
           {(recipients ?? []).length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-default bg-[var(--surface-muted)] p-6 text-sm text-ui-muted">
-              No students are currently assigned to this activity.
-            </div>
+            <Card className="rounded-3xl border-dashed bg-[var(--surface-muted)]">
+              <CardContent className="p-6 text-sm text-ui-muted">
+                No students are currently assigned to this activity.
+              </CardContent>
+            </Card>
           ) : (
             recipients!.map((recipient) => {
               const attempts = submissionByStudentId.get(recipient.student_id) ?? [];
@@ -441,19 +449,19 @@ export default async function AssignmentReviewPage({
                   : null;
 
               return (
-                <section
-                  key={`${recipient.student_id}-${recipient.assigned_at}`}
-                  className="rounded-3xl border border-default bg-white p-6"
-                >
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">Student</p>
-                      <p className="text-sm font-semibold text-ui-subtle">{recipient.student_id}</p>
+                <Card key={`${recipient.student_id}-${recipient.assigned_at}`} className="rounded-3xl">
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">Student</p>
+                        <CardTitle className="text-sm font-semibold text-ui-subtle">
+                          {recipient.student_id}
+                        </CardTitle>
+                      </div>
+                      <Badge variant="outline">{recipient.status}</Badge>
                     </div>
-                    <span className="rounded-full border border-default px-3 py-1 text-xs text-ui-muted">
-                      {recipient.status}
-                    </span>
-                  </div>
+                  </CardHeader>
+                  <CardContent className="pt-2">
 
                   {activity.type === "chat" ? (
                     !latestSubmission ? (
@@ -505,49 +513,34 @@ export default async function AssignmentReviewPage({
                           <input type="hidden" name="assignment_id" value={assignmentId} />
 
                           <div className="space-y-2">
-                            <label
-                              className="text-sm text-ui-muted"
-                              htmlFor={`score-${latestSubmission.id}`}
-                            >
-                              Score (0-100)
-                            </label>
-                            <input
+                            <Label htmlFor={`score-${latestSubmission.id}`}>Score (0-100)</Label>
+                            <Input
                               id={`score-${latestSubmission.id}`}
                               type="number"
                               name="score"
                               min={0}
                               max={100}
                               defaultValue={latestSubmission.score?.toString() ?? ""}
-                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <label
-                              className="text-sm text-ui-muted"
-                              htmlFor={`comment-${latestSubmission.id}`}
-                            >
-                              Comment
-                            </label>
-                            <textarea
+                            <Label htmlFor={`comment-${latestSubmission.id}`}>Comment</Label>
+                            <Textarea
                               id={`comment-${latestSubmission.id}`}
                               name="comment"
                               rows={3}
                               defaultValue={
                                 latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""
                               }
-                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <label
-                              className="text-sm text-ui-muted"
-                              htmlFor={`highlights-${latestSubmission.id}`}
-                            >
+                            <Label htmlFor={`highlights-${latestSubmission.id}`}>
                               Highlights (one per line)
-                            </label>
-                            <textarea
+                            </Label>
+                            <Textarea
                               id={`highlights-${latestSubmission.id}`}
                               name="highlights"
                               rows={3}
@@ -555,14 +548,13 @@ export default async function AssignmentReviewPage({
                                 latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ??
                                 []
                               ).join("\n")}
-                              className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                             />
                           </div>
 
                           <PendingSubmitButton
                             label="Save Review"
                             pendingLabel="Saving..."
-                            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                            variant="warm"
                           />
                         </form>
                       </div>
@@ -635,59 +627,45 @@ export default async function AssignmentReviewPage({
                               <input type="hidden" name="assignment_id" value={assignmentId} />
 
                               <div className="space-y-2">
-                                <label
-                                  className="text-sm text-ui-muted"
-                                  htmlFor={`quiz-score-${attempt.id}`}
-                                >
+                                <Label htmlFor={`quiz-score-${attempt.id}`}>
                                   Override score (0-100)
-                                </label>
-                                <input
+                                </Label>
+                                <Input
                                   id={`quiz-score-${attempt.id}`}
                                   type="number"
                                   name="score"
                                   min={0}
                                   max={100}
                                   defaultValue={attempt.score?.toString() ?? ""}
-                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                                 />
                               </div>
 
                               <div className="space-y-2">
-                                <label
-                                  className="text-sm text-ui-muted"
-                                  htmlFor={`quiz-comment-${attempt.id}`}
-                                >
-                                  Comment
-                                </label>
-                                <textarea
+                                <Label htmlFor={`quiz-comment-${attempt.id}`}>Comment</Label>
+                                <Textarea
                                   id={`quiz-comment-${attempt.id}`}
                                   name="comment"
                                   rows={3}
                                   defaultValue={feedback?.comment ?? ""}
-                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                                 />
                               </div>
 
                               <div className="space-y-2">
-                                <label
-                                  className="text-sm text-ui-muted"
-                                  htmlFor={`quiz-highlights-${attempt.id}`}
-                                >
+                                <Label htmlFor={`quiz-highlights-${attempt.id}`}>
                                   Highlights (one per line)
-                                </label>
-                                <textarea
+                                </Label>
+                                <Textarea
                                   id={`quiz-highlights-${attempt.id}`}
                                   name="highlights"
                                   rows={3}
                                   defaultValue={(feedback?.highlights ?? []).join("\n")}
-                                  className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                                 />
                               </div>
 
                               <PendingSubmitButton
                                 label="Save Review"
                                 pendingLabel="Saving..."
-                                className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                                variant="warm"
                               />
                             </form>
                           </div>
@@ -718,68 +696,53 @@ export default async function AssignmentReviewPage({
                         className="space-y-4 rounded-2xl border border-default bg-[var(--surface-muted)] p-4"
                       >
                         <div className="space-y-2">
-                          <label
-                            className="text-sm text-ui-muted"
-                            htmlFor={`score-${latestSubmission.id}`}
-                          >
-                            Score (0-100)
-                          </label>
-                          <input
+                          <Label htmlFor={`score-${latestSubmission.id}`}>Score (0-100)</Label>
+                          <Input
                             id={`score-${latestSubmission.id}`}
                             type="number"
                             name="score"
                             min={0}
                             max={100}
                             defaultValue={latestSubmission.score?.toString() ?? ""}
-                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label
-                            className="text-sm text-ui-muted"
-                            htmlFor={`comment-${latestSubmission.id}`}
-                          >
-                            Comment
-                          </label>
-                          <textarea
+                          <Label htmlFor={`comment-${latestSubmission.id}`}>Comment</Label>
+                          <Textarea
                             id={`comment-${latestSubmission.id}`}
                             name="comment"
                             rows={3}
                             defaultValue={
                               latestFeedbackBySubmission.get(latestSubmission.id)?.comment ?? ""
                             }
-                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label
-                            className="text-sm text-ui-muted"
-                            htmlFor={`highlights-${latestSubmission.id}`}
-                          >
+                          <Label htmlFor={`highlights-${latestSubmission.id}`}>
                             Highlights (one per line)
-                          </label>
-                          <textarea
+                          </Label>
+                          <Textarea
                             id={`highlights-${latestSubmission.id}`}
                             name="highlights"
                             rows={3}
                             defaultValue={(
                               latestFeedbackBySubmission.get(latestSubmission.id)?.highlights ?? []
                             ).join("\n")}
-                            className="w-full rounded-xl border border-default bg-white px-4 py-2 text-sm text-ui-primary outline-none focus-ring-warm"
                           />
                         </div>
 
                         <PendingSubmitButton
                           label="Save Feedback"
                           pendingLabel="Saving..."
-                          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-ui-primary hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                          variant="warm"
                         />
                       </form>
                     </div>
                   )}
-                </section>
+                  </CardContent>
+                </Card>
               );
             })
           )}

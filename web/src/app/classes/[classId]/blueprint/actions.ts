@@ -610,11 +610,18 @@ export async function generateBlueprint(classId: string) {
   const { data: materials } = await supabase
     .from("materials")
     .select("id,title,status")
-    .eq("class_id", classId)
-    .eq("status", "ready");
+    .eq("class_id", classId);
 
-  if (!materials || materials.length === 0) {
-    redirectWithError(`/classes/${classId}/blueprint`, "Upload at least one processed material");
+  const readyMaterials = (materials ?? []).filter((material) => material.status === "ready");
+  const processingMaterialCount =
+    materials?.filter((material) => material.status === "processing").length ?? 0;
+
+  if (readyMaterials.length === 0) {
+    const message =
+      processingMaterialCount > 0
+        ? "Materials are still processing. Try again in a few minutes."
+        : "Upload at least one processed material";
+    redirectWithError(`/classes/${classId}/blueprint`, message);
     return;
   }
 
@@ -633,9 +640,27 @@ export async function generateBlueprint(classId: string) {
     return;
   }
   if (!materialText) {
+    const { count: chunkCount, error: chunkCountError } = await supabase
+      .from("material_chunks")
+      .select("id", { head: true, count: "exact" })
+      .eq("class_id", classId);
+
+    if (chunkCountError) {
+      redirectWithError(
+        `/classes/${classId}/blueprint`,
+        "Unable to load indexed material context. Please try again.",
+      );
+      return;
+    }
+
+    const message =
+      (chunkCount ?? 0) === 0
+        ? "Processed materials are still being indexed. Try again in a few minutes."
+        : "Unable to build blueprint context from the processed materials. Try uploading a clearer source file and retry.";
+
     redirectWithError(
       `/classes/${classId}/blueprint`,
-      "Materials are still processing. Try again in a few minutes.",
+      message,
     );
     return;
   }
@@ -643,7 +668,7 @@ export async function generateBlueprint(classId: string) {
     classTitle: classRow.title,
     subject: classRow.subject,
     level: classRow.level,
-    materialCount: materials.length,
+    materialCount: readyMaterials.length,
     materialText,
   });
 

@@ -126,6 +126,23 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 
 **Security**: RLS enforced on all tables, input validation on every API route and server action, file uploads are size-limited and content-type checked. AI context restricted to approved materials and blueprint.
 
+## Frontend UI Conventions
+
+- Shared UI primitives live in `web/src/components/ui` and should be preferred over ad-hoc page-local controls.
+- Utility helpers and variant merging:
+  - `web/src/lib/utils.ts` (`cn`)
+  - `class-variance-authority` patterns for variant-driven components
+- Icons should be consumed from `web/src/components/icons/index.tsx` (Lucide registry) rather than inline SVG in pages/components, except approved exceptions (brand mark and semantic diagrams).
+- Motion should use:
+  - global provider: `web/src/components/providers/motion-provider.tsx`
+  - reusable variants/transitions: `web/src/lib/motion/presets.ts`
+- Preserve semantic warm tokens in `web/src/app/globals.css`; avoid introducing hardcoded color classes where token utilities exist.
+
+## Session Handoff
+
+- UI refactor handoff and current progress are tracked in `UI_REFACTOR_SESSION_CATCHUP.md`.
+- High-level phase tracker remains in `UI_REFACTOR_TRACKER.md`.
+
 ## Important Notes
 
 - Email/password auth only; `profiles.account_type` is immutable (teacher or student)

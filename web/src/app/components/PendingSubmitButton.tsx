@@ -2,11 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Button, type buttonVariants } from "@/components/ui/button";
+import type { VariantProps } from "class-variance-authority";
 
 type PendingSubmitButtonProps = {
   label: string;
   pendingLabel?: string;
-  className: string;
+  className?: string;
+  variant?: VariantProps<typeof buttonVariants>["variant"];
+  size?: VariantProps<typeof buttonVariants>["size"];
   disabled?: boolean;
   debounceMs?: number;
   onBeforeSubmit?: () => void;
@@ -16,6 +20,8 @@ export default function PendingSubmitButton({
   label,
   pendingLabel,
   className,
+  variant,
+  size,
   disabled = false,
   debounceMs = 0,
   onBeforeSubmit,
@@ -44,14 +50,16 @@ export default function PendingSubmitButton({
   };
 
   return (
-    <button
+    <Button
       type="submit"
       disabled={isDisabled}
       aria-busy={pending}
       onClick={handleClick}
-      className={`ui-motion-color ${className}`}
+      variant={variant}
+      size={size}
+      className={className}
     >
       {pending ? (pendingLabel ?? `${label}...`) : label}
-    </button>
+    </Button>
   );
 }
