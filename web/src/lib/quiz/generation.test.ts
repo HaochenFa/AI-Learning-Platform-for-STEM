@@ -65,4 +65,60 @@ describe("parseQuizGenerationResponse", () => {
       ),
     ).toThrow("Invalid quiz JSON");
   });
+
+  it("parses wrapped responses with multiple top-level objects", () => {
+    const parsed = parseQuizGenerationResponse(
+      [
+        '{"meta":"debug"}',
+        JSON.stringify({
+          questions: [
+            {
+              question: "What does derivative represent at a point?",
+              choices: [
+                "Area under the curve",
+                "Instantaneous rate of change",
+                "Average height",
+                "Total displacement",
+              ],
+              answer: "Instantaneous rate of change",
+              explanation:
+                "By definition, the derivative at a point gives instantaneous rate of change.",
+            },
+          ],
+        }),
+      ].join("\n"),
+    );
+
+    expect(parsed.questions).toHaveLength(1);
+    expect(parsed.questions[0]?.answer).toBe("Instantaneous rate of change");
+  });
+
+  it("truncates oversized question arrays before validation", () => {
+    const oversized = Array.from({ length: 22 }, (_, index) => ({
+      question: `Question ${index + 1}: identify the derivative meaning variant ${index + 1}.`,
+      choices: [
+        `Incorrect option A ${index + 1}`,
+        `Correct option ${index + 1}`,
+        `Incorrect option C ${index + 1}`,
+        `Incorrect option D ${index + 1}`,
+      ],
+      answer: `Correct option ${index + 1}`,
+      explanation: `This explanation clearly justifies why option ${index + 1} is correct in class context.`,
+    }));
+
+    const parsed = parseQuizGenerationResponse(JSON.stringify({ questions: oversized }));
+    expect(parsed.questions).toHaveLength(20);
+  });
+
+  it("keeps deterministic error when no valid object is present", () => {
+    expect(() => parseQuizGenerationResponse("No structured output.")).toThrow(
+      "No JSON object found in quiz generation response.",
+    );
+  });
+
+  it("returns invalid JSON error for malformed object-only output", () => {
+    expect(() => parseQuizGenerationResponse('{"questions": [}')).toThrow(
+      "Quiz generation response is not valid JSON.",
+    );
+  });
 });

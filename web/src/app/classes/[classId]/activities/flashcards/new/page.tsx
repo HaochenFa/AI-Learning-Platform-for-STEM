@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { generateFlashcardsDraft } from "@/app/classes/[classId]/flashcards/actions";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SearchParams = {
@@ -69,9 +70,7 @@ export default async function NewFlashcardsDraftPage({
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
-          </div>
+          <TransientFeedbackAlert variant="error" message={errorMessage} className="mb-6" />
         ) : null}
 
         <form action={generateFlashcardsDraft.bind(null, classId)} className="space-y-6">

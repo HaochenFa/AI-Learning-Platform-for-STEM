@@ -98,3 +98,25 @@ export function extractSingleJsonObject(
   const range = parsedObjectRanges[0];
   return raw.slice(range.start, range.end + 1);
 }
+
+export function extractJsonObjectCandidates(raw: string): string[] {
+  const ranges = findBalancedObjectRanges(raw);
+  if (ranges.length === 0) {
+    return [];
+  }
+
+  const candidates: string[] = [];
+  ranges.forEach((range) => {
+    const text = raw.slice(range.start, range.end + 1);
+    try {
+      const parsed = JSON.parse(text);
+      if (isRecord(parsed)) {
+        candidates.push(text);
+      }
+    } catch {
+      // Ignore invalid JSON object candidates and continue scanning.
+    }
+  });
+
+  return candidates;
+}

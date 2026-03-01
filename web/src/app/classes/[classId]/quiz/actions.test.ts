@@ -445,6 +445,55 @@ describe("quiz actions", () => {
     );
   });
 
+  it("keeps friendly retry guidance when payload parsing fails", async () => {
+    const supabaseFromMock = vi.fn();
+    requireAuthenticatedUser.mockResolvedValue({
+      supabase: { from: supabaseFromMock },
+      user: { id: "teacher-1" },
+    });
+    getClassAccess.mockResolvedValue({
+      found: true,
+      isTeacher: true,
+      isMember: true,
+      classTitle: "Calculus",
+    });
+    requirePublishedBlueprintId.mockResolvedValue("bp-1");
+    loadPublishedBlueprintContext.mockResolvedValue({
+      blueprintContext: "Limits and derivatives",
+    });
+    retrieveMaterialContext.mockResolvedValue("Material context");
+    buildQuizGenerationPrompt.mockReturnValue({ system: "system", user: "user" });
+    generateTextWithFallback.mockResolvedValue({
+      provider: "openai",
+      model: "gpt-5-mini",
+      content: "{}",
+      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+      latencyMs: 12,
+    });
+    parseQuizGenerationResponse.mockImplementation(() => {
+      throw new Error("Invalid quiz JSON: questions[0].choices must contain exactly 4 options.");
+    });
+
+    const aiRequestsBuilder = makeBuilder({ error: null });
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "ai_requests") {
+        return aiRequestsBuilder;
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Generated Quiz");
+    formData.set("instructions", "Use only class notes.");
+    formData.set("question_count", "1");
+
+    await expectRedirect(
+      () => generateQuizDraft("class-1", formData),
+      "/classes/class-1/activities/quiz/new?error=The%20AI%20response%20was%20incomplete.%20Please%20try%20generating%20the%20quiz%20again.",
+    );
+  });
+
   it("rolls back draft activity when generated questions fail to insert", async () => {
     const supabaseFromMock = vi.fn();
     requireAuthenticatedUser.mockResolvedValue({

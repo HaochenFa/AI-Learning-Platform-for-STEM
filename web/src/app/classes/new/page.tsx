@@ -1,7 +1,7 @@
 import { createClass } from "@/app/classes/actions";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
-import { Alert } from "@/components/ui/alert";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,9 +38,7 @@ export default async function NewClassPage({
         </header>
 
         {errorMessage ? (
-          <Alert variant="error" className="mb-6">
-            {errorMessage}
-          </Alert>
+          <TransientFeedbackAlert variant="error" message={errorMessage} className="mb-6" />
         ) : null}
 
         <form className="space-y-6" action={createClass}>

@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import AuthHeader from "@/app/components/AuthHeader";
 import ClassWorkspaceShell from "@/app/classes/[classId]/_components/ClassWorkspaceShell";
 import ClassChatWorkspace from "@/app/classes/[classId]/chat/ClassChatWorkspace";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 
 type ActivityAssignmentSummary = {
   assignmentId: string;
@@ -246,9 +247,7 @@ export default function StudentClassExperience({
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
-          </div>
+          <TransientFeedbackAlert variant="error" message={errorMessage} className="mb-6" />
         ) : null}
 
         {uploadNotice ? (

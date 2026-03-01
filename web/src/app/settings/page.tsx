@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SettingsSearchParams = {
@@ -80,9 +81,17 @@ export default async function SettingsPage({
                 </p>
 
                 {profileMessage ? (
-                  <Alert variant={profileMessage.status === "success" ? "success" : "error"} className="mt-4">
-                    {profileMessage.message || "Profile update completed."}
-                  </Alert>
+                  profileMessage.status === "success" ? (
+                    <Alert variant="success" className="mt-4">
+                      {profileMessage.message || "Profile update completed."}
+                    </Alert>
+                  ) : (
+                    <TransientFeedbackAlert
+                      variant="error"
+                      message={profileMessage.message || "Profile update failed."}
+                      className="mt-4"
+                    />
+                  )
                 ) : null}
 
                 <form className="mt-5 space-y-4" action={updateDisplayName}>
@@ -115,9 +124,17 @@ export default async function SettingsPage({
                 </p>
 
                 {passwordMessage ? (
-                  <Alert variant={passwordMessage.status === "success" ? "success" : "error"} className="mt-4">
-                    {passwordMessage.message || "Password update completed."}
-                  </Alert>
+                  passwordMessage.status === "success" ? (
+                    <Alert variant="success" className="mt-4">
+                      {passwordMessage.message || "Password update completed."}
+                    </Alert>
+                  ) : (
+                    <TransientFeedbackAlert
+                      variant="error"
+                      message={passwordMessage.message || "Password update failed."}
+                      className="mt-4"
+                    />
+                  )
                 ) : null}
 
                 <form className="mt-5 space-y-4" action={changePassword}>

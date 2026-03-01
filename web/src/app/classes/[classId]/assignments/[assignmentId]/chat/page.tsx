@@ -7,6 +7,7 @@ import { AppIcons } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 
 type SearchParams = {
   error?: string;
@@ -168,10 +169,12 @@ export default async function AssignmentChatPage({
         </header>
 
         {errorMessage ? (
-          <Alert variant="error" className="mb-6">
-            <AlertTitle>Unable to load assignment</AlertTitle>
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
+          <TransientFeedbackAlert
+            variant="error"
+            title="Unable to load assignment"
+            message={errorMessage}
+            className="mb-6"
+          />
         ) : null}
 
         {submittedMessage ? (

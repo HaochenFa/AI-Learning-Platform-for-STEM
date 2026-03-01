@@ -237,7 +237,7 @@ async function callOpenRouter(
   return {
     provider: "openrouter",
     model,
-    content: data?.choices?.[0]?.message?.content ?? "",
+    content: normalizeChatMessageContent(data?.choices?.[0]?.message?.content),
     usage: normalizeUsage(data?.usage),
     latencyMs: Date.now() - start,
   };
@@ -282,7 +282,7 @@ async function callOpenAI(options: AiGenerateOptions, timeoutMs: number): Promis
   return {
     provider: "openai",
     model,
-    content: data?.choices?.[0]?.message?.content ?? "",
+    content: normalizeChatMessageContent(data?.choices?.[0]?.message?.content),
     usage: normalizeUsage(data?.usage),
     latencyMs: Date.now() - start,
   };
@@ -505,6 +505,33 @@ function normalizeGeminiUsage(usage?: {
     completionTokens: usage.candidatesTokenCount,
     totalTokens: usage.totalTokenCount,
   };
+}
+
+function normalizeChatMessageContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (content && typeof content === "object" && typeof (content as { text?: unknown }).text === "string") {
+    return (content as { text: string }).text;
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
+        if (item && typeof item === "object" && typeof (item as { text?: unknown }).text === "string") {
+          return (item as { text: string }).text;
+        }
+        return "";
+      })
+      .join("")
+      .trim();
+  }
+
+  return "";
 }
 
 function parseTimeoutMs(value: string | undefined, fallbackMs: number) {

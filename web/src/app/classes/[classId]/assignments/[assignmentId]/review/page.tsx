@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChatTurn } from "@/lib/chat/types";
 import { requireVerifiedUser } from "@/lib/auth/session";
@@ -381,10 +382,12 @@ export default async function AssignmentReviewPage({
           </Alert>
         ) : null}
         {errorMessage ? (
-          <Alert variant="error" className="mb-6">
-            <AlertTitle>Unable to complete action</AlertTitle>
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
+          <TransientFeedbackAlert
+            variant="error"
+            title="Unable to complete action"
+            message={errorMessage}
+            className="mb-6"
+          />
         ) : null}
 
         {totalRecipients > 0 ? (

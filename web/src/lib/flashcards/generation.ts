@@ -1,6 +1,6 @@
-import { extractSingleJsonObject } from "@/lib/json/extract-object";
+import { extractJsonObjectCandidates } from "@/lib/json/extract-object";
 import type { FlashcardsGenerationPayload } from "@/lib/flashcards/types";
-import { validateFlashcardsGenerationPayload } from "@/lib/flashcards/validation";
+import { MAX_FLASHCARDS, validateFlashcardsGenerationPayload } from "@/lib/flashcards/validation";
 
 const QUALITY_PROFILE = process.env.AI_PROMPT_QUALITY_PROFILE ?? "quality_v1";
 const GROUNDING_MODE = process.env.AI_GROUNDING_MODE ?? "balanced";
@@ -58,21 +58,72 @@ export function buildFlashcardsGenerationPrompt(input: {
 }
 
 export function parseFlashcardsGenerationResponse(raw: string): FlashcardsGenerationPayload {
-  const jsonText = extractSingleJsonObject(raw, {
-    notFoundMessage: "No JSON object found in flashcards generation response.",
-    multipleMessage: "Multiple JSON objects found in flashcards generation response.",
+  const notFoundMessage = "No JSON object found in flashcards generation response.";
+  const normalizedRaw = raw.trim();
+
+  const candidates: unknown[] = [];
+  let directJsonParseFailed = false;
+  if (normalizedRaw.startsWith("{") && normalizedRaw.endsWith("}")) {
+    try {
+      candidates.push(JSON.parse(normalizedRaw));
+    } catch {
+      directJsonParseFailed = true;
+    }
+  }
+
+  const objectCandidates = extractJsonObjectCandidates(raw);
+  objectCandidates.forEach((candidate) => {
+    try {
+      candidates.push(JSON.parse(candidate));
+    } catch {
+      // Candidate extraction already filtered for valid JSON.
+    }
   });
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    throw new Error("Flashcards generation response is not valid JSON.");
+  if (candidates.length === 0) {
+    if (directJsonParseFailed) {
+      throw new Error("Flashcards generation response is not valid JSON.");
+    }
+    throw new Error(notFoundMessage);
   }
 
-  const validation = validateFlashcardsGenerationPayload(parsed);
-  if (!validation.ok) {
-    throw new Error(`Invalid flashcards JSON: ${validation.errors.join("; ")}`);
+  let bestValidPayload: FlashcardsGenerationPayload | null = null;
+  let bestValidationErrors: string[] = [];
+
+  candidates.forEach((candidate) => {
+    const normalizedCandidate =
+      candidate &&
+      typeof candidate === "object" &&
+      Array.isArray((candidate as { cards?: unknown }).cards)
+        ? {
+            ...(candidate as Record<string, unknown>),
+            cards: (candidate as { cards: unknown[] }).cards.slice(0, MAX_FLASHCARDS),
+          }
+        : candidate;
+
+    const validation = validateFlashcardsGenerationPayload(normalizedCandidate);
+    if (validation.ok) {
+      if (!bestValidPayload || validation.value.cards.length > bestValidPayload.cards.length) {
+        bestValidPayload = validation.value;
+      }
+      return;
+    }
+
+    if (
+      bestValidationErrors.length === 0 ||
+      validation.errors.length < bestValidationErrors.length
+    ) {
+      bestValidationErrors = validation.errors;
+    }
+  });
+
+  if (bestValidPayload) {
+    return bestValidPayload;
   }
-  return validation.value;
+
+  throw new Error(
+    `Invalid flashcards JSON: ${
+      bestValidationErrors.join("; ") || "Payload could not be validated."
+    }`,
+  );
 }

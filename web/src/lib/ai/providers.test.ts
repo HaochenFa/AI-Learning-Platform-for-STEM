@@ -74,6 +74,33 @@ describe("generateTextWithFallback", () => {
     expect(result.usage?.totalTokens).toBe(30);
   });
 
+  it("normalizes array-based content from openrouter", async () => {
+    process.env.OPENROUTER_API_KEY = "or-key";
+    process.env.OPENROUTER_MODEL = "or-model";
+
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse({
+        choices: [
+          {
+            message: {
+              content: [
+                { type: "text", text: '{"summary":"wrapped"' },
+                { type: "text", text: ',"topics":[]}' },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+
+    const result = await generateTextWithFallback({
+      system: "sys",
+      user: "user",
+    });
+
+    expect(result.content).toBe('{"summary":"wrapped","topics":[]}');
+  });
+
   it("falls back when the first provider fails", async () => {
     process.env.OPENROUTER_API_KEY = "or-key";
     process.env.OPENROUTER_MODEL = "or-model";
@@ -121,6 +148,33 @@ describe("generateTextWithFallback", () => {
         user: "user",
       }),
     ).rejects.toThrow("Nope");
+  });
+
+  it("normalizes object content from openai fallback responses", async () => {
+    process.env.OPENAI_API_KEY = "oa-key";
+    process.env.OPENAI_MODEL = "oa-model";
+
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse({
+        choices: [
+          {
+            message: {
+              content: {
+                text: '{"summary":"object-content","topics":[]}',
+              },
+            },
+          },
+        ],
+      }),
+    );
+
+    const result = await generateTextWithFallback({
+      system: "sys",
+      user: "user",
+    });
+
+    expect(result.provider).toBe("openai");
+    expect(result.content).toBe('{"summary":"object-content","topics":[]}');
   });
 });
 

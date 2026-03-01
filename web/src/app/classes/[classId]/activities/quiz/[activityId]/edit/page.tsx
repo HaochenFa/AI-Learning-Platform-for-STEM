@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import AuthHeader from "@/app/components/AuthHeader";
 import QuizDraftEditor from "@/app/classes/[classId]/activities/quiz/[activityId]/edit/QuizDraftEditor";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SearchParams = {
@@ -140,9 +141,7 @@ export default async function EditQuizDraftPage({
           </div>
         ) : null}
         {errorMessage ? (
-          <div className="mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
-          </div>
+          <TransientFeedbackAlert variant="error" message={errorMessage} className="mb-4" />
         ) : null}
 
         <QuizDraftEditor

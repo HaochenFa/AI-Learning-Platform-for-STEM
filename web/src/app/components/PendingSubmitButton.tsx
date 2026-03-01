@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Button, type buttonVariants } from "@/components/ui/button";
+import { TRANSIENT_FEEDBACK_RETRY_EVENT } from "@/lib/ui/transient-feedback";
 import type { VariantProps } from "class-variance-authority";
 
 type PendingSubmitButtonProps = {
@@ -45,6 +46,9 @@ export default function PendingSubmitButton({
       timerRef.current = setTimeout(() => {
         setIsDebouncing(false);
       }, debounceMs);
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(TRANSIENT_FEEDBACK_RETRY_EVENT));
     }
     onBeforeSubmit?.();
   };

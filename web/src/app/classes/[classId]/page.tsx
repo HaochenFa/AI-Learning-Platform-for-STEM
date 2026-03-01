@@ -5,6 +5,7 @@ import MaterialUploadForm from "./MaterialUploadForm";
 import AuthHeader from "@/app/components/AuthHeader";
 import StudentClassExperience from "@/app/classes/[classId]/StudentClassExperience";
 import TeacherChatMonitorPanel from "@/app/classes/[classId]/chat/TeacherChatMonitorPanel";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Button } from "@/components/ui/button";
 import { startServerTimer } from "@/lib/perf";
 import { requireVerifiedUser } from "@/lib/auth/session";
@@ -321,9 +322,7 @@ export default async function ClassOverviewPage({
         </header>
 
         {errorMessage ? (
-          <div className="mb-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-            {errorMessage}
-          </div>
+          <TransientFeedbackAlert variant="error" message={errorMessage} className="mb-6" />
         ) : null}
 
         {uploadNotice ? (

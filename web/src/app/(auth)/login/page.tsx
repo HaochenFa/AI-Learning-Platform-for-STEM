@@ -2,6 +2,7 @@ import { signIn } from "@/app/actions";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import AuthShell from "@/app/(auth)/AuthShell";
 import { Alert } from "@/components/ui/alert";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -36,9 +37,7 @@ export default async function LoginPage({
       ) : null}
 
       {errorMessage ? (
-        <Alert variant="error" className="mb-6">
-          {errorMessage}
-        </Alert>
+        <TransientFeedbackAlert variant="error" message={errorMessage} className="mb-6" />
       ) : null}
 
       <form className="space-y-4" action={signIn}>

@@ -10,6 +10,7 @@ import { AppIcons } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 
 type SearchParams = {
   error?: string;
@@ -188,10 +189,12 @@ export default async function BlueprintPage({
             retryAction={retryGenerationAction}
           />
         ) : errorMessage ? (
-          <Alert variant="error" className="mb-6">
-            <AlertTitle>Blueprint generation failed</AlertTitle>
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
+          <TransientFeedbackAlert
+            variant="error"
+            title="Blueprint generation failed"
+            message={errorMessage}
+            className="mb-6"
+          />
         ) : null}
 
         {generatedMessage ? (

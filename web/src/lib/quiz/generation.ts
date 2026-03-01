@@ -1,6 +1,6 @@
-import { extractSingleJsonObject } from "@/lib/json/extract-object";
+import { extractJsonObjectCandidates } from "@/lib/json/extract-object";
 import type { QuizGenerationPayload } from "@/lib/quiz/types";
-import { validateQuizGenerationPayload } from "@/lib/quiz/validation";
+import { MAX_QUIZ_QUESTIONS, validateQuizGenerationPayload } from "@/lib/quiz/validation";
 
 const QUALITY_PROFILE = process.env.AI_PROMPT_QUALITY_PROFILE ?? "quality_v1";
 const GROUNDING_MODE = process.env.AI_GROUNDING_MODE ?? "balanced";
@@ -62,21 +62,74 @@ export function buildQuizGenerationPrompt(input: {
 }
 
 export function parseQuizGenerationResponse(raw: string): QuizGenerationPayload {
-  const jsonText = extractSingleJsonObject(raw, {
-    notFoundMessage: "No JSON object found in quiz generation response.",
-    multipleMessage: "Multiple JSON objects found in quiz generation response.",
+  const notFoundMessage = "No JSON object found in quiz generation response.";
+  const normalizedRaw = raw.trim();
+
+  const candidates: unknown[] = [];
+  let directJsonParseFailed = false;
+
+  if (normalizedRaw.startsWith("{") && normalizedRaw.endsWith("}")) {
+    try {
+      candidates.push(JSON.parse(normalizedRaw));
+    } catch {
+      directJsonParseFailed = true;
+    }
+  }
+
+  const objectCandidates = extractJsonObjectCandidates(raw);
+  objectCandidates.forEach((candidate) => {
+    try {
+      candidates.push(JSON.parse(candidate));
+    } catch {
+      // Candidate extraction already filtered for valid JSON.
+    }
   });
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    throw new Error("Quiz generation response is not valid JSON.");
+  if (candidates.length === 0) {
+    if (directJsonParseFailed) {
+      throw new Error("Quiz generation response is not valid JSON.");
+    }
+    throw new Error(notFoundMessage);
   }
 
-  const validation = validateQuizGenerationPayload(parsed);
-  if (!validation.ok) {
-    throw new Error(`Invalid quiz JSON: ${validation.errors.join("; ")}`);
+  let bestValidPayload: QuizGenerationPayload | null = null;
+  let bestValidationErrors: string[] = [];
+
+  candidates.forEach((candidate) => {
+    const normalizedCandidate =
+      candidate &&
+      typeof candidate === "object" &&
+      Array.isArray((candidate as { questions?: unknown }).questions)
+        ? {
+            ...(candidate as Record<string, unknown>),
+            questions: (candidate as { questions: unknown[] }).questions.slice(0, MAX_QUIZ_QUESTIONS),
+          }
+        : candidate;
+
+    const validation = validateQuizGenerationPayload(normalizedCandidate);
+    if (validation.ok) {
+      if (
+        !bestValidPayload ||
+        validation.value.questions.length > bestValidPayload.questions.length
+      ) {
+        bestValidPayload = validation.value;
+      }
+      return;
+    }
+
+    if (
+      bestValidationErrors.length === 0 ||
+      validation.errors.length < bestValidationErrors.length
+    ) {
+      bestValidationErrors = validation.errors;
+    }
+  });
+
+  if (bestValidPayload) {
+    return bestValidPayload;
   }
-  return validation.value;
+
+  throw new Error(
+    `Invalid quiz JSON: ${bestValidationErrors.join("; ") || "Payload could not be validated."}`,
+  );
 }
