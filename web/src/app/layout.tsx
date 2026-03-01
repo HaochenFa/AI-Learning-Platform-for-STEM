@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import { Geist_Mono, Open_Sans, Poppins } from "next/font/google";
+import type { CSSProperties } from "react";
+import MotionProvider from "@/components/providers/motion-provider";
 import "./globals.css";
 
 const bodyFont = Open_Sans({
@@ -19,17 +20,6 @@ const monoFont = Geist_Mono({
   subsets: ["latin"],
 });
 
-const editorialFont = localFont({
-  src: [
-    {
-      path: "./fonts/SourceSerif4-Variable.ttf",
-      style: "normal",
-      weight: "200 900",
-    },
-  ],
-  variable: "--font-editorial",
-});
-
 export const metadata: Metadata = {
   title: "Learning Platform",
   description: "Teacher-led, student-centered learning with AI-powered course blueprints.",
@@ -43,9 +33,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${bodyFont.variable} ${headingFont.variable} ${editorialFont.variable} ${monoFont.variable} antialiased`}
+        className={`${bodyFont.variable} ${headingFont.variable} ${monoFont.variable} antialiased`}
+        style={
+          {
+            "--font-editorial": "ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif",
+          } as CSSProperties
+        }
       >
-        {children}
+        <MotionProvider>{children}</MotionProvider>
       </body>
     </html>
   );
