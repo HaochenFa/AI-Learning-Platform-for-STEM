@@ -4,6 +4,12 @@ import AuthShell from "@/app/(auth)/AuthShell";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_HINT,
+  PASSWORD_POLICY_PATTERN,
+  PASSWORD_POLICY_TITLE,
+} from "@/lib/auth/password-policy";
 
 type SearchParams = {
   error?: string;
@@ -62,7 +68,16 @@ export default async function RegisterPage({
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" required minLength={6} />
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            required
+            minLength={PASSWORD_MIN_LENGTH}
+            pattern={PASSWORD_POLICY_PATTERN}
+            title={PASSWORD_POLICY_TITLE}
+          />
+          <p className="text-xs text-ui-muted">{PASSWORD_POLICY_HINT}</p>
         </div>
         <PendingSubmitButton
           label="Create account"

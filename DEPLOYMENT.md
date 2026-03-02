@@ -22,6 +22,7 @@ Create two Supabase projects from the dashboard:
 For each project, configure:
 
 - Auth email confirmation: enabled
+- Auth password policy: minimum length `8` and requirement `letters_digits`
 - Phone auth provider: disabled
 - Database extensions required by migrations (`pgcrypto`, `vector`, `pgmq`, `pg_net`, `pg_cron`, `vault`)
 

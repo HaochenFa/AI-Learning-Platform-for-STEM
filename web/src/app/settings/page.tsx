@@ -6,6 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_HINT,
+  PASSWORD_POLICY_PATTERN,
+  PASSWORD_POLICY_TITLE,
+} from "@/lib/auth/password-policy";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SettingsSearchParams = {
@@ -144,12 +150,29 @@ export default async function SettingsPage({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="new_password">New password</Label>
-                    <Input id="new_password" name="new_password" type="password" required minLength={8} />
+                    <Input
+                      id="new_password"
+                      name="new_password"
+                      type="password"
+                      required
+                      minLength={PASSWORD_MIN_LENGTH}
+                      pattern={PASSWORD_POLICY_PATTERN}
+                      title={PASSWORD_POLICY_TITLE}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirm_password">Confirm new password</Label>
-                    <Input id="confirm_password" name="confirm_password" type="password" required minLength={8} />
+                    <Input
+                      id="confirm_password"
+                      name="confirm_password"
+                      type="password"
+                      required
+                      minLength={PASSWORD_MIN_LENGTH}
+                      pattern={PASSWORD_POLICY_PATTERN}
+                      title={PASSWORD_POLICY_TITLE}
+                    />
                   </div>
+                  <p className="text-xs text-ui-muted">{PASSWORD_POLICY_HINT}</p>
                   <PendingSubmitButton
                     label="Update password"
                     pendingLabel="Updating..."

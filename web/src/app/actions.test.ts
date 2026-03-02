@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signIn, signOut, signUp } from "@/app/actions";
+import { PASSWORD_POLICY_ERROR_MESSAGE } from "@/lib/auth/password-policy";
 import { redirect } from "next/navigation";
 
 vi.mock("next/navigation", () => ({
@@ -71,7 +72,7 @@ describe("auth actions", () => {
 
     const formData = new FormData();
     formData.set("email", "test@example.com");
-    formData.set("password", "goodpass");
+    formData.set("password", "goodpass1");
     formData.set("account_type", "teacher");
 
     await expectRedirect(() => signUp(formData), "/register?error=Email%20already%20used");
@@ -83,16 +84,55 @@ describe("auth actions", () => {
 
     const formData = new FormData();
     formData.set("email", "test@example.com");
-    formData.set("password", "goodpass");
+    formData.set("password", "goodpass1");
     formData.set("account_type", "student");
 
     await expectRedirect(() => signUp(formData), "/login?verify=1");
     expect(redirect).toHaveBeenCalled();
     expect(supabaseAuth.signUp).toHaveBeenCalledWith({
       email: "test@example.com",
-      password: "goodpass",
+      password: "goodpass1",
       options: { data: { account_type: "student" } },
     });
+  });
+
+  it("rejects sign up password shorter than 8 characters", async () => {
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("password", "abc123");
+    formData.set("account_type", "teacher");
+
+    await expectRedirect(
+      () => signUp(formData),
+      `/register?error=${encodeURIComponent(PASSWORD_POLICY_ERROR_MESSAGE)}`,
+    );
+    expect(supabaseAuth.signUp).not.toHaveBeenCalled();
+  });
+
+  it("rejects sign up password without digits", async () => {
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("password", "abcdefgh");
+    formData.set("account_type", "teacher");
+
+    await expectRedirect(
+      () => signUp(formData),
+      `/register?error=${encodeURIComponent(PASSWORD_POLICY_ERROR_MESSAGE)}`,
+    );
+    expect(supabaseAuth.signUp).not.toHaveBeenCalled();
+  });
+
+  it("rejects sign up password without letters", async () => {
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("password", "12345678");
+    formData.set("account_type", "teacher");
+
+    await expectRedirect(
+      () => signUp(formData),
+      `/register?error=${encodeURIComponent(PASSWORD_POLICY_ERROR_MESSAGE)}`,
+    );
+    expect(supabaseAuth.signUp).not.toHaveBeenCalled();
   });
 
   it("redirects to register when account type is missing", async () => {

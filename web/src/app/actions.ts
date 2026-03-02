@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { validatePasswordPolicy } from "@/lib/auth/password-policy";
 import { redirect } from "next/navigation";
 
 function getFormValue(formData: FormData, key: string) {
@@ -54,6 +55,11 @@ export async function signUp(formData: FormData) {
 
   if (!accountType) {
     redirect("/register?error=Select%20an%20account%20type");
+  }
+
+  const passwordValidation = validatePasswordPolicy(password);
+  if (!passwordValidation.ok) {
+    redirect(`/register?error=${encodeURIComponent(passwordValidation.message)}`);
   }
 
   const supabase = await createServerSupabaseClient();

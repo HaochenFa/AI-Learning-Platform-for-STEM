@@ -1,11 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { validatePasswordPolicy } from "@/lib/auth/password-policy";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const DISPLAY_NAME_MIN = 2;
 const DISPLAY_NAME_MAX = 60;
-const PASSWORD_MIN = 8;
 
 function getFormValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -66,8 +66,9 @@ export async function changePassword(formData: FormData) {
   if (!currentPassword) {
     redirectSettings("password", "error", "Enter your current password.");
   }
-  if (newPassword.length < PASSWORD_MIN) {
-    redirectSettings("password", "error", "New password must be at least 8 characters.");
+  const passwordValidation = validatePasswordPolicy(newPassword);
+  if (!passwordValidation.ok) {
+    redirectSettings("password", "error", passwordValidation.message);
   }
   if (newPassword !== confirmPassword) {
     redirectSettings("password", "error", "New password confirmation does not match.");

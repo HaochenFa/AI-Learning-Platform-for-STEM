@@ -47,7 +47,7 @@ export default async function LoginPage({
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" required minLength={6} />
+          <Input id="password" name="password" type="password" required />
         </div>
         <PendingSubmitButton
           label="Sign in"
