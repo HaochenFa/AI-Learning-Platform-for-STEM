@@ -26,6 +26,7 @@ type FlashcardsAssignmentPanelProps = {
   bestScore: number | null;
   dueLocked: boolean;
   isSubmittedNotice: boolean;
+  readOnly?: boolean;
 };
 
 type CardStatus = "known" | "review";
@@ -39,6 +40,7 @@ export default function FlashcardsAssignmentPanel({
   bestScore,
   dueLocked,
   isSubmittedNotice,
+  readOnly = false,
 }: FlashcardsAssignmentPanelProps) {
   const [cardStatus, setCardStatus] = useState<Record<string, CardStatus | undefined>>({});
   const [flipped, setFlipped] = useState<Record<string, boolean>>({});
@@ -59,7 +61,7 @@ export default function FlashcardsAssignmentPanel({
     [cards.length, knownCount, reviewCount],
   );
 
-  const canSubmit = !dueLocked && attemptsRemaining > 0 && allReviewed;
+  const canSubmit = !readOnly && !dueLocked && attemptsRemaining > 0 && allReviewed;
 
   return (
     <div className="space-y-6">
@@ -67,6 +69,14 @@ export default function FlashcardsAssignmentPanel({
         <Alert variant="success">
           <AlertTitle>Session submitted</AlertTitle>
           <AlertDescription>Session submitted successfully.</AlertDescription>
+        </Alert>
+      ) : null}
+      {readOnly ? (
+        <Alert variant="accent">
+          <AlertTitle>Preview mode</AlertTitle>
+          <AlertDescription>
+            Flashcards preview is read-only. Exit preview mode to return to teacher tools.
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -127,7 +137,7 @@ export default function FlashcardsAssignmentPanel({
                       type="button"
                       size="sm"
                       variant={cardStatus[card.id] === "known" ? "secondary" : "outline"}
-                      disabled={dueLocked || attemptsRemaining === 0}
+                      disabled={readOnly || dueLocked || attemptsRemaining === 0}
                       onClick={() =>
                         setCardStatus((current) => ({ ...current, [card.id]: "known" }))
                       }
@@ -139,7 +149,7 @@ export default function FlashcardsAssignmentPanel({
                       type="button"
                       size="sm"
                       variant={cardStatus[card.id] === "review" ? "warm" : "outline"}
-                      disabled={dueLocked || attemptsRemaining === 0}
+                      disabled={readOnly || dueLocked || attemptsRemaining === 0}
                       onClick={() =>
                         setCardStatus((current) => ({ ...current, [card.id]: "review" }))
                       }

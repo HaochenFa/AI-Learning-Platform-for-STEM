@@ -22,6 +22,7 @@ type AuthHeaderProps = {
   classContext?: {
     classId: string;
     isTeacher: boolean;
+    preserveStudentPreview?: boolean;
   };
 };
 
@@ -94,6 +95,10 @@ export default function AuthHeader({
       : "sticky top-0 z-40 border-b border-default bg-white/95 backdrop-blur";
 
   if (classContext) {
+    const openAiChatHref = classContext.preserveStudentPreview
+      ? `/classes/${classContext.classId}?as=student&view=chat`
+      : `/classes/${classContext.classId}?view=chat`;
+
     return (
       <div className="sticky top-0 z-40 border-b border-default bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6">
@@ -113,7 +118,7 @@ export default function AuthHeader({
               </>
             ) : (
               <Button asChild variant="outline" size="sm">
-                <Link href={`/classes/${classContext.classId}?view=chat`}>Open AI Chat</Link>
+                <Link href={openAiChatHref}>Open AI Chat</Link>
               </Button>
             )}
           </div>

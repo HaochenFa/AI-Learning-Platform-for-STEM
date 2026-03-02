@@ -10,6 +10,7 @@ import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 type SearchParams = {
   error?: string;
   submitted?: string;
+  as?: string;
 };
 
 type QuizAttemptContent = {
@@ -31,6 +32,22 @@ function extractLatestAnswers(content: unknown) {
     }
     return accumulator;
   }, {});
+}
+
+function classUrlWithParams(
+  classId: string,
+  options?: { previewAsStudent?: boolean; errorMessage?: string },
+) {
+  const params = new URLSearchParams();
+  if (options?.previewAsStudent) {
+    params.set("as", "student");
+  }
+  if (options?.errorMessage) {
+    params.set("error", options.errorMessage);
+  }
+
+  const query = params.toString();
+  return query ? `/classes/${classId}?${query}` : `/classes/${classId}`;
 }
 
 export default async function QuizAssignmentPage({
@@ -71,6 +88,9 @@ export default async function QuizAssignmentPage({
 
   const isTeacher =
     classRow.owner_id === user.id || enrollment?.role === "teacher" || enrollment?.role === "ta";
+  const isStudentPreview = isTeacher && resolvedSearchParams?.as === "student";
+  const classOverviewHref = classUrlWithParams(classId, { previewAsStudent: isStudentPreview });
+  const dashboardHref = isStudentPreview ? "/teacher/dashboard" : "/student/dashboard";
 
   const { data: recipient } = await supabase
     .from("assignment_recipients")
@@ -79,9 +99,12 @@ export default async function QuizAssignmentPage({
     .eq("student_id", user.id)
     .maybeSingle();
 
-  if (!recipient) {
+  if (!recipient && !isStudentPreview) {
     redirect(
-      `/classes/${classId}?error=${encodeURIComponent("You are not assigned to this quiz.")}`,
+      classUrlWithParams(classId, {
+        previewAsStudent: isStudentPreview,
+        errorMessage: "You are not assigned to this quiz.",
+      }),
     );
   }
 
@@ -93,7 +116,12 @@ export default async function QuizAssignmentPage({
     .single();
 
   if (!assignment) {
-    redirect(`/classes/${classId}?error=${encodeURIComponent("Assignment not found.")}`);
+    redirect(
+      classUrlWithParams(classId, {
+        previewAsStudent: isStudentPreview,
+        errorMessage: "Assignment not found.",
+      }),
+    );
   }
 
   const { data: activity } = await supabase
@@ -104,7 +132,12 @@ export default async function QuizAssignmentPage({
     .single();
 
   if (!activity || activity.type !== "quiz") {
-    redirect(`/classes/${classId}?error=${encodeURIComponent("Quiz activity not found.")}`);
+    redirect(
+      classUrlWithParams(classId, {
+        previewAsStudent: isStudentPreview,
+        errorMessage: "Quiz activity not found.",
+      }),
+    );
   }
 
   const { data: submissions } = await supabase
@@ -177,10 +210,11 @@ export default async function QuizAssignmentPage({
     <div className="min-h-screen surface-page text-ui-primary">
       <AuthHeader
         activeNav="dashboard"
-        classContext={{ classId: classRow.id, isTeacher }}
+        accountType={isStudentPreview ? "teacher" : "student"}
+        classContext={{ classId: classRow.id, isTeacher: false, preserveStudentPreview: isStudentPreview }}
         breadcrumbs={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: classRow.title, href: `/classes/${classRow.id}` },
+          { label: "Dashboard", href: dashboardHref },
+          { label: classRow.title, href: classOverviewHref },
           { label: "Quiz Assignment" },
         ]}
       />
@@ -223,6 +257,7 @@ export default async function QuizAssignmentPage({
           dueLocked={dueLocked}
           revealAnswers={revealAnswers}
           isSubmittedNotice={submittedNotice}
+          readOnly={isStudentPreview}
         />
       </div>
     </div>

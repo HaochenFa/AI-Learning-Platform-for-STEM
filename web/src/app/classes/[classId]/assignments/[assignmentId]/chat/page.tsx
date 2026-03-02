@@ -12,6 +12,7 @@ import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 type SearchParams = {
   error?: string;
   submitted?: string;
+  as?: string;
 };
 
 function parseSubmissionContent(content: unknown): { transcript: ChatTurn[]; reflection: string } {
@@ -51,6 +52,22 @@ function parseSubmissionContent(content: unknown): { transcript: ChatTurn[]; ref
   };
 }
 
+function classUrlWithParams(
+  classId: string,
+  options?: { previewAsStudent?: boolean; errorMessage?: string },
+) {
+  const params = new URLSearchParams();
+  if (options?.previewAsStudent) {
+    params.set("as", "student");
+  }
+  if (options?.errorMessage) {
+    params.set("error", options.errorMessage);
+  }
+
+  const query = params.toString();
+  return query ? `/classes/${classId}?${query}` : `/classes/${classId}`;
+}
+
 export default async function AssignmentChatPage({
   params,
   searchParams,
@@ -79,6 +96,19 @@ export default async function AssignmentChatPage({
     redirect("/dashboard");
   }
 
+  const { data: enrollment } = await supabase
+    .from("enrollments")
+    .select("role")
+    .eq("class_id", classId)
+    .eq("user_id", user.id)
+    .single();
+
+  const isTeacher =
+    classRow.owner_id === user.id || enrollment?.role === "teacher" || enrollment?.role === "ta";
+  const isStudentPreview = isTeacher && resolvedSearchParams?.as === "student";
+  const classOverviewHref = classUrlWithParams(classId, { previewAsStudent: isStudentPreview });
+  const dashboardHref = isStudentPreview ? "/teacher/dashboard" : "/student/dashboard";
+
   const { data: recipient } = await supabase
     .from("assignment_recipients")
     .select("assignment_id,status")
@@ -86,9 +116,12 @@ export default async function AssignmentChatPage({
     .eq("student_id", user.id)
     .maybeSingle();
 
-  if (!recipient) {
+  if (!recipient && !isStudentPreview) {
     redirect(
-      `/classes/${classId}?error=${encodeURIComponent("You are not assigned to this chat.")}`,
+      classUrlWithParams(classId, {
+        previewAsStudent: isStudentPreview,
+        errorMessage: "You are not assigned to this chat.",
+      }),
     );
   }
 
@@ -100,7 +133,12 @@ export default async function AssignmentChatPage({
     .single();
 
   if (!assignment) {
-    redirect(`/classes/${classId}?error=${encodeURIComponent("Assignment not found.")}`);
+    redirect(
+      classUrlWithParams(classId, {
+        previewAsStudent: isStudentPreview,
+        errorMessage: "Assignment not found.",
+      }),
+    );
   }
 
   const { data: activity } = await supabase
@@ -111,7 +149,12 @@ export default async function AssignmentChatPage({
     .single();
 
   if (!activity || activity.type !== "chat") {
-    redirect(`/classes/${classId}?error=${encodeURIComponent("Chat activity not found.")}`);
+    redirect(
+      classUrlWithParams(classId, {
+        previewAsStudent: isStudentPreview,
+        errorMessage: "Chat activity not found.",
+      }),
+    );
   }
 
   const { data: submission } = await supabase
@@ -124,7 +167,8 @@ export default async function AssignmentChatPage({
     .maybeSingle();
 
   const isSubmitted =
-    Boolean(submission) || recipient.status === "submitted" || recipient.status === "reviewed";
+    !isStudentPreview &&
+    (Boolean(submission) || recipient?.status === "submitted" || recipient?.status === "reviewed");
   const initialPayload = parseSubmissionContent(submission?.content);
   const instructions =
     typeof activity.config?.instructions === "string"
@@ -142,10 +186,11 @@ export default async function AssignmentChatPage({
     <div className="min-h-screen surface-page text-ui-primary">
       <AuthHeader
         activeNav="dashboard"
-        classContext={{ classId: classRow.id, isTeacher: false }}
+        accountType={isStudentPreview ? "teacher" : "student"}
+        classContext={{ classId: classRow.id, isTeacher: false, preserveStudentPreview: isStudentPreview }}
         breadcrumbs={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: classRow.title, href: `/classes/${classRow.id}` },
+          { label: "Dashboard", href: dashboardHref },
+          { label: classRow.title, href: classOverviewHref },
           { label: "Chat Assignment" },
         ]}
       />
@@ -184,20 +229,41 @@ export default async function AssignmentChatPage({
           </Alert>
         ) : null}
 
+        {isStudentPreview ? (
+          <Alert variant="accent" className="mb-6">
+            <AlertTitle>Preview mode</AlertTitle>
+            <AlertDescription>
+              This assignment is read-only while previewing as a student.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <Card className="mb-6 rounded-2xl bg-[var(--surface-muted)]">
           <CardContent className="p-4 text-sm text-ui-muted">
             Continue your guided conversation and then submit a short reflection.
           </CardContent>
         </Card>
 
-        <AssignmentChatPanel
-          classId={classId}
-          assignmentId={assignmentId}
-          instructions={instructions}
-          initialTranscript={initialPayload.transcript}
-          initialReflection={initialPayload.reflection}
-          isSubmitted={isSubmitted}
-        />
+        {isStudentPreview ? (
+          <Card className="rounded-2xl">
+            <CardContent className="space-y-2 p-4 text-sm text-ui-muted">
+              <p>Preview mode does not allow sending messages or submitting reflections.</p>
+              <p>
+                Exit preview to return to your teacher workspace, or view this page as a student account to
+                interact.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <AssignmentChatPanel
+            classId={classId}
+            assignmentId={assignmentId}
+            instructions={instructions}
+            initialTranscript={initialPayload.transcript}
+            initialReflection={initialPayload.reflection}
+            isSubmitted={isSubmitted}
+          />
+        )}
       </div>
     </div>
   );

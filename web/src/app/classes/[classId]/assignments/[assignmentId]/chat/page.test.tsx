@@ -103,4 +103,58 @@ describe("AssignmentChatPage", () => {
     expect(html).toContain("Assignment Instructions");
     expect(html).toContain("Submit Assignment");
   });
+
+  it("renders read-only preview for teachers when using as=student", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "teacher-1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", title: "Calculus", owner_id: "teacher-1" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "assignment_recipients") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "assignments") {
+        return makeBuilder({
+          data: {
+            id: "assignment-1",
+            class_id: "class-1",
+            activity_id: "activity-1",
+            due_at: null,
+          },
+          error: null,
+        });
+      }
+      if (table === "activities") {
+        return makeBuilder({
+          data: {
+            id: "activity-1",
+            title: "Week 2 Chat",
+            type: "chat",
+            config: { instructions: "Use formal definitions." },
+          },
+          error: null,
+        });
+      }
+      if (table === "submissions") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const html = renderToStaticMarkup(
+      await AssignmentChatPage({
+        params: Promise.resolve({ classId: "class-1", assignmentId: "assignment-1" }),
+        searchParams: Promise.resolve({ as: "student" }),
+      }),
+    );
+
+    expect(html).toContain("Preview mode");
+    expect(html).toContain("read-only");
+  });
 });

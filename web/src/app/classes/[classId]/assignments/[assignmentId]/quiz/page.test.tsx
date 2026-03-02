@@ -209,4 +209,74 @@ describe("QuizAssignmentPage", () => {
     expect(html).toContain("Correct answer:");
     expect(html).toContain("Basic addition");
   });
+
+  it("allows teacher preview mode without assignment recipient", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "teacher-1" } } });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", title: "Calculus", owner_id: "teacher-1" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "assignment_recipients") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "assignments") {
+        return makeBuilder({
+          data: {
+            id: "assignment-1",
+            class_id: "class-1",
+            activity_id: "activity-1",
+            due_at: null,
+          },
+          error: null,
+        });
+      }
+      if (table === "activities") {
+        return makeBuilder({
+          data: {
+            id: "activity-1",
+            title: "Quiz 1",
+            type: "quiz",
+            status: "published",
+            config: { attemptLimit: 2 },
+          },
+          error: null,
+        });
+      }
+      if (table === "quiz_questions") {
+        return makeBuilder({
+          data: [
+            {
+              id: "q1",
+              question: "1 + 1",
+              choices: ["1", "2", "3", "4"],
+              answer: "2",
+              explanation: "Basic addition",
+              order_index: 0,
+            },
+          ],
+          error: null,
+        });
+      }
+      if (table === "submissions") {
+        return makeBuilder({ data: [], error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const html = renderToStaticMarkup(
+      await QuizAssignmentPage({
+        params: Promise.resolve({ classId: "class-1", assignmentId: "assignment-1" }),
+        searchParams: Promise.resolve({ as: "student" }),
+      }),
+    );
+
+    expect(html).toContain("Preview mode");
+    expect(html).toContain("read-only");
+  });
 });

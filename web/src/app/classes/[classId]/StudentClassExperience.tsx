@@ -75,6 +75,8 @@ export default function StudentClassExperience({
   const [activeWidget, setActiveWidget] = useState<FocusWidget | null>(
     initialView === "chat" ? "chat" : null,
   );
+  const previewQuerySuffix = isPreviewMode ? "?as=student" : "";
+  const dashboardHref = isPreviewMode ? "/teacher/dashboard" : "/student/dashboard";
 
   useEffect(() => {
     const currentView = searchParams.get("view");
@@ -175,7 +177,7 @@ export default function StudentClassExperience({
           {renderAssignmentList(
             chatAssignments,
             "No chat assignments yet. Use AI Chat while you wait.",
-            (assignmentId) => `/classes/${classId}/assignments/${assignmentId}/chat`,
+            (assignmentId) => `/classes/${classId}/assignments/${assignmentId}/chat${previewQuerySuffix}`,
           )}
         </div>
       );
@@ -188,7 +190,7 @@ export default function StudentClassExperience({
           {renderAssignmentList(
             quizAssignments,
             "No quiz assignments yet. Your teacher will publish them here.",
-            (assignmentId) => `/classes/${classId}/assignments/${assignmentId}/quiz`,
+            (assignmentId) => `/classes/${classId}/assignments/${assignmentId}/quiz${previewQuerySuffix}`,
           )}
         </div>
       );
@@ -201,7 +203,8 @@ export default function StudentClassExperience({
           {renderAssignmentList(
             flashcardsAssignments,
             "No flashcard assignments yet. Your teacher will publish them here.",
-            (assignmentId) => `/classes/${classId}/assignments/${assignmentId}/flashcards`,
+            (assignmentId) =>
+              `/classes/${classId}/assignments/${assignmentId}/flashcards${previewQuerySuffix}`,
           )}
         </div>
       );
@@ -235,8 +238,9 @@ export default function StudentClassExperience({
     <div className="surface-page min-h-screen">
       <AuthHeader
         activeNav="dashboard"
-        classContext={{ classId, isTeacher: false }}
-        breadcrumbs={[{ label: "Dashboard", href: "/student/dashboard" }, { label: classTitle }]}
+        accountType={isPreviewMode ? "teacher" : "student"}
+        classContext={{ classId, isTeacher: false, preserveStudentPreview: isPreviewMode }}
+        breadcrumbs={[{ label: "Dashboard", href: dashboardHref }, { label: classTitle }]}
       />
 
       {isPreviewMode && (

@@ -29,6 +29,7 @@ type QuizAssignmentPanelProps = {
   dueLocked: boolean;
   revealAnswers: boolean;
   isSubmittedNotice: boolean;
+  readOnly?: boolean;
 };
 
 export default function QuizAssignmentPanel({
@@ -42,6 +43,7 @@ export default function QuizAssignmentPanel({
   dueLocked,
   revealAnswers,
   isSubmittedNotice,
+  readOnly = false,
 }: QuizAssignmentPanelProps) {
   const [answers, setAnswers] = useState<Record<string, string>>(latestAnswers);
 
@@ -60,7 +62,7 @@ export default function QuizAssignmentPanel({
   );
 
   const allAnswered = questions.every((question) => Boolean(answers[question.id]));
-  const canSubmit = !dueLocked && attemptsRemaining > 0 && allAnswered;
+  const canSubmit = !readOnly && !dueLocked && attemptsRemaining > 0 && allAnswered;
 
   return (
     <div className="space-y-6">
@@ -68,6 +70,14 @@ export default function QuizAssignmentPanel({
         <Alert variant="success">
           <AlertTitle>Attempt submitted</AlertTitle>
           <AlertDescription>Attempt submitted successfully.</AlertDescription>
+        </Alert>
+      ) : null}
+      {readOnly ? (
+        <Alert variant="accent">
+          <AlertTitle>Preview mode</AlertTitle>
+          <AlertDescription>
+            Quiz preview is read-only. Exit preview mode to return to teacher tools.
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -119,7 +129,7 @@ export default function QuizAssignmentPanel({
                               [question.id]: choice,
                             }))
                           }
-                          disabled={dueLocked || attemptsRemaining === 0}
+                          disabled={readOnly || dueLocked || attemptsRemaining === 0}
                           className="mt-0.5 accent-[var(--accent)]"
                         />
                         <span>{choice}</span>
