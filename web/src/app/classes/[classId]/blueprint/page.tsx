@@ -6,6 +6,7 @@ import { BlueprintEditor } from "@/app/classes/[classId]/blueprint/BlueprintEdit
 import BlueprintTimeoutRetryBanner from "@/app/classes/[classId]/blueprint/BlueprintTimeoutRetryBanner";
 import AuthHeader from "@/app/components/AuthHeader";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
+import MaterialProcessingAutoRefresh from "@/app/classes/[classId]/_components/MaterialProcessingAutoRefresh";
 import { AppIcons } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -259,6 +260,7 @@ export default async function BlueprintPage({
                     ? `${readyMaterialCount} of ${materialCount} materials are processed and ready.`
                     : "Materials uploaded, but none are processed yet."}
               </p>
+              <MaterialProcessingAutoRefresh processingCount={processingMaterialCount} />
               {isTeacher ? (
                 <form action={generateBlueprint.bind(null, classRow.id)}>
                   <PendingSubmitButton

@@ -4,6 +4,7 @@ import { uploadMaterialMutation } from "@/app/classes/actions";
 import MaterialUploadForm from "./MaterialUploadForm";
 import AuthHeader from "@/app/components/AuthHeader";
 import StudentClassExperience from "@/app/classes/[classId]/StudentClassExperience";
+import MaterialProcessingAutoRefresh from "@/app/classes/[classId]/_components/MaterialProcessingAutoRefresh";
 import TeacherChatMonitorPanel from "@/app/classes/[classId]/chat/TeacherChatMonitorPanel";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,8 @@ export default async function ClassOverviewPage({
   ]);
   const publishedBlueprint = publishedBlueprintResult.data;
   const materials = materialsResult.data;
+  const processingMaterialCount =
+    materials?.filter((material) => material.status === "processing").length ?? 0;
 
   let teacherChatAssignments: ActivityAssignmentSummary[] = [];
   let teacherQuizAssignments: ActivityAssignmentSummary[] = [];
@@ -648,6 +651,7 @@ export default async function ClassOverviewPage({
                   {materials?.length ?? 0} items
                 </span>
               </div>
+              <MaterialProcessingAutoRefresh processingCount={processingMaterialCount} />
               <div className="mt-4 space-y-3">
                 {materials && materials.length > 0 ? (
                   materials.map((material) => (
