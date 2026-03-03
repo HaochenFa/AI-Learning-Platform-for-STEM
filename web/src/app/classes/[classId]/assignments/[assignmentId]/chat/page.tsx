@@ -3,11 +3,13 @@ import AuthHeader from "@/app/components/AuthHeader";
 import type { ChatTurn } from "@/lib/chat/types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import AssignmentChatPanel from "@/app/classes/[classId]/assignments/[assignmentId]/chat/AssignmentChatPanel";
+import TeacherFeedbackPanel from "@/app/classes/[classId]/assignments/[assignmentId]/_components/TeacherFeedbackPanel";
 import { AppIcons } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
+import { parseTeacherFeedbackContent } from "@/lib/activities/teacher-feedback";
 
 type SearchParams = {
   error?: string;
@@ -159,17 +161,35 @@ export default async function AssignmentChatPage({
 
   const { data: submission } = await supabase
     .from("submissions")
-    .select("id,content,submitted_at")
+    .select("id,content,score,submitted_at")
     .eq("assignment_id", assignmentId)
     .eq("student_id", user.id)
     .order("submitted_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
+  const { data: latestTeacherFeedback } = submission
+    ? await supabase
+        .from("feedback")
+        .select("content,created_at")
+        .eq("submission_id", submission.id)
+        .eq("source", "teacher")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
   const isSubmitted =
     !isStudentPreview &&
     (Boolean(submission) || recipient?.status === "submitted" || recipient?.status === "reviewed");
   const initialPayload = parseSubmissionContent(submission?.content);
+  const parsedTeacherFeedback = parseTeacherFeedbackContent(latestTeacherFeedback?.content);
+  const shouldShowFeedbackPanel =
+    Boolean(submission) &&
+    (recipient?.status === "reviewed" ||
+      Boolean(latestTeacherFeedback) ||
+      typeof submission?.score === "number");
+  const feedbackStatus = recipient?.status ?? (isSubmitted ? "submitted" : "assigned");
   const instructions =
     typeof activity.config?.instructions === "string"
       ? activity.config.instructions
@@ -236,6 +256,16 @@ export default async function AssignmentChatPage({
               This assignment is read-only while previewing as a student.
             </AlertDescription>
           </Alert>
+        ) : null}
+
+        {shouldShowFeedbackPanel ? (
+          <TeacherFeedbackPanel
+            status={feedbackStatus}
+            score={submission?.score ?? null}
+            comment={parsedTeacherFeedback.comment}
+            highlights={parsedTeacherFeedback.highlights}
+            reviewedAt={latestTeacherFeedback?.created_at ?? null}
+          />
         ) : null}
 
         <Card className="mb-6 rounded-2xl bg-[var(--surface-muted)]">

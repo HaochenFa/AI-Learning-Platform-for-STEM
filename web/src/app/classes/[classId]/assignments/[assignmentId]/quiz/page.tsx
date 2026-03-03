@@ -3,9 +3,11 @@ import AuthHeader from "@/app/components/AuthHeader";
 import { isDueDateLocked } from "@/lib/activities/submissions";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import QuizAssignmentPanel from "@/app/classes/[classId]/assignments/[assignmentId]/quiz/QuizAssignmentPanel";
+import TeacherFeedbackPanel from "@/app/classes/[classId]/assignments/[assignmentId]/_components/TeacherFeedbackPanel";
 import { AppIcons } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
+import { parseTeacherFeedbackContent } from "@/lib/activities/teacher-feedback";
 
 type SearchParams = {
   error?: string;
@@ -147,6 +149,17 @@ export default async function QuizAssignmentPage({
     .eq("student_id", user.id)
     .order("submitted_at", { ascending: true });
 
+  const submissionIds = (submissions ?? []).map((submission) => submission.id);
+  const { data: feedbackRows } =
+    submissionIds.length > 0
+      ? await supabase
+          .from("feedback")
+          .select("submission_id,content,created_at")
+          .in("submission_id", submissionIds)
+          .eq("source", "teacher")
+          .order("created_at", { ascending: false })
+      : { data: null };
+
   const activityConfig =
     activity.config && typeof activity.config === "object"
       ? (activity.config as Record<string, unknown>)
@@ -201,6 +214,18 @@ export default async function QuizAssignmentPage({
           0,
         )
       : null;
+  const latestTeacherFeedback = feedbackRows && feedbackRows.length > 0 ? feedbackRows[0] : null;
+  const parsedTeacherFeedback = parseTeacherFeedbackContent(latestTeacherFeedback?.content);
+  const submissionById = new Map((submissions ?? []).map((submission) => [submission.id, submission]));
+  const feedbackSubmission = latestTeacherFeedback
+    ? submissionById.get(latestTeacherFeedback.submission_id) ?? latestSubmission
+    : latestSubmission;
+  const shouldShowFeedbackPanel =
+    attemptsUsed > 0 &&
+    (recipient?.status === "reviewed" ||
+      Boolean(latestTeacherFeedback) ||
+      typeof feedbackSubmission?.score === "number");
+  const feedbackStatus = recipient?.status ?? (attemptsUsed > 0 ? "submitted" : "assigned");
 
   const submittedNotice = resolvedSearchParams?.submitted === "1";
   const errorMessage =
@@ -243,6 +268,17 @@ export default async function QuizAssignmentPage({
             title="Unable to load assignment"
             message={errorMessage}
             className="mb-6"
+          />
+        ) : null}
+
+        {shouldShowFeedbackPanel ? (
+          <TeacherFeedbackPanel
+            status={feedbackStatus}
+            score={feedbackSubmission?.score ?? bestScore}
+            comment={parsedTeacherFeedback.comment}
+            highlights={parsedTeacherFeedback.highlights}
+            reviewedAt={latestTeacherFeedback?.created_at ?? null}
+            submissionLabel="Based on your latest reviewed quiz attempt."
           />
         ) : null}
 
