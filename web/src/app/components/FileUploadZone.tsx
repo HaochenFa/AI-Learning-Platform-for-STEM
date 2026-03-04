@@ -180,7 +180,7 @@ export default function FileUploadZone({
           }
         }}
         className={cn(
-          "cursor-pointer border-2 border-dashed p-8 text-center transition-all",
+          "cursor-pointer border-2 border-dashed p-8 text-center transition-colors duration-200",
           disabled && "cursor-not-allowed bg-[var(--surface-muted)]",
           isDragging && !disabled && "bg-[var(--surface-muted)]",
         )}

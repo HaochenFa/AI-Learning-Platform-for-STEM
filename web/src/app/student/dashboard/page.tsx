@@ -1,6 +1,6 @@
 import Link from "next/link";
 import DashboardHashRedirect from "@/app/components/DashboardHashRedirect";
-import Sidebar from "@/app/components/Sidebar";
+import RoleAppShell from "@/app/components/RoleAppShell";
 import { AppIcons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -143,15 +143,13 @@ export default async function StudentDashboardPage() {
   timer.end({ classes: classes?.length ?? 0, assignments: allAssignments.length });
 
   return (
-    <div className="surface-page min-h-screen">
-      <Sidebar
-        accountType="student"
-        userEmail={user.email ?? undefined}
-        userDisplayName={profile.display_name}
-      />
-      <div className="sidebar-content">
-        <DashboardHashRedirect classesHref="/student/classes" />
-        <main className="mx-auto max-w-5xl p-6 pt-16">
+    <RoleAppShell
+      accountType="student"
+      userEmail={user.email ?? undefined}
+      userDisplayName={profile.display_name}
+    >
+      <DashboardHashRedirect classesHref="/student/classes" />
+      <main className="mx-auto max-w-5xl p-6 pt-16">
           <header className="flex flex-wrap items-center justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">
@@ -291,8 +289,7 @@ export default async function StudentDashboardPage() {
               </div>
             </div>
           </Card>
-        </main>
-      </div>
-    </div>
+      </main>
+    </RoleAppShell>
   );
 }

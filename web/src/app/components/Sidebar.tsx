@@ -8,6 +8,8 @@ import { signOut } from "@/app/actions";
 import BrandMark from "@/app/components/BrandMark";
 import { AppIcons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { STANDARD_EASE, SURFACE_TRANSITION } from "@/lib/motion/presets";
 import { cn } from "@/lib/utils";
 import type { AccountType } from "@/lib/auth/session";
 
@@ -75,6 +77,7 @@ type SidebarProps = {
 };
 
 const COLLAPSED_KEY = "ui.sidebar.collapsed";
+const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 export default function Sidebar({ accountType, userEmail, userDisplayName, classId }: SidebarProps) {
   const pathname = usePathname();
@@ -111,6 +114,34 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
     };
   }, [isCollapsed, isCompact]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key.toLowerCase() !== SIDEBAR_KEYBOARD_SHORTCUT ||
+        (!event.metaKey && !event.ctrlKey)
+      ) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setIsCollapsed((value) => !value);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const navItems = accountType === "teacher" ? teacherNavItems : studentNavItems;
 
   const isActive = (item: NavItem) => {
@@ -121,12 +152,13 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
   };
 
   return (
-    <motion.aside
-      layout
-      className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-default bg-background"
-      style={{ width: "var(--sidebar-width)" }}
-      transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
-    >
+    <TooltipProvider delayDuration={0}>
+      <motion.aside
+        layout
+        className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-default bg-background"
+        style={{ width: "var(--sidebar-width)" }}
+        transition={{ duration: SURFACE_TRANSITION.duration, ease: STANDARD_EASE }}
+      >
       <div className={cn("flex h-16 items-center border-b border-default px-4", isCompact ? "justify-center" : "justify-between")}>
         {!isCompact && (
           <Link
@@ -144,6 +176,7 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
           variant="outline"
           size="icon"
           aria-label={isCompact ? "Expand sidebar" : "Collapse sidebar"}
+          aria-keyshortcuts="Meta+B Control+B"
           type="button"
           className="text-ui-muted hover:text-accent"
         >
@@ -152,11 +185,16 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
       </div>
 
       <nav className={cn("flex-1 py-4", isCompact ? "flex flex-col items-center gap-2 px-0" : "space-y-1 px-2")}>
+        {!isCompact ? (
+          <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ui-subtle">
+            Main
+          </p>
+        ) : null}
         {navItems.map((item) => {
           const Icon = AppIcons[item.icon];
           const active = isActive(item);
 
-          return (
+          const navLink = (
             <Link
               key={item.label}
               href={item.href}
@@ -175,6 +213,17 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
               <Icon className="h-5 w-5" />
               {!isCompact && <span>{item.label}</span>}
             </Link>
+          );
+
+          if (!isCompact) {
+            return navLink;
+          }
+
+          return (
+            <Tooltip key={item.label}>
+              <TooltipTrigger asChild>{navLink}</TooltipTrigger>
+              <TooltipContent side="right">{item.label}</TooltipContent>
+            </Tooltip>
           );
         })}
       </nav>
@@ -234,6 +283,7 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
           </Button>
         </form>
       </div>
-    </motion.aside>
+      </motion.aside>
+    </TooltipProvider>
   );
 }

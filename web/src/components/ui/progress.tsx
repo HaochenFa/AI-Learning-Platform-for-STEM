@@ -15,7 +15,7 @@ function Progress({ className, value = 0, ...props }: ProgressProps) {
       className={cn("relative h-2 w-full overflow-hidden rounded-full bg-[var(--border-default)]", className)}
       {...props}
     >
-      <div className="h-full bg-accent transition-all duration-300" style={{ width: `${width}%` }} />
+      <div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${width}%` }} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import Sidebar from "@/app/components/Sidebar";
+import EmptyStateCard from "@/app/components/EmptyStateCard";
+import RoleAppShell from "@/app/components/RoleAppShell";
 import { AppIcons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,14 +32,12 @@ export default async function StudentClassesPage() {
   timer.end({ classes: classes?.length ?? 0 });
 
   return (
-    <div className="surface-page min-h-screen">
-      <Sidebar
-        accountType="student"
-        userEmail={user.email ?? undefined}
-        userDisplayName={profile.display_name}
-      />
-      <div className="sidebar-content">
-        <main className="mx-auto max-w-5xl p-6 pt-16">
+    <RoleAppShell
+      accountType="student"
+      userEmail={user.email ?? undefined}
+      userDisplayName={profile.display_name}
+    >
+      <main className="mx-auto max-w-5xl p-6 pt-16">
           <header className="flex flex-wrap items-center justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">My Classes</p>
@@ -69,7 +68,7 @@ export default async function StudentClassesPage() {
                 classes.map((classItem) => (
                   <Card
                     key={classItem.id}
-                    className="ui-motion-lift group rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
+                    className="ui-motion-lift group rounded-2xl p-6 hover:-translate-y-0.5 hover:border-accent hover:shadow-md"
                   >
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Student</p>
                     <Link href={`/classes/${classItem.id}`} className="mt-2 block">
@@ -89,14 +88,18 @@ export default async function StudentClassesPage() {
                   </Card>
                 ))
               ) : (
-                <Card className="rounded-2xl border-dashed bg-[var(--surface-muted)] p-6 text-sm text-ui-muted md:col-span-2">
-                  No classes joined yet. Use a join code from your teacher.
-                </Card>
+                <EmptyStateCard
+                  className="md:col-span-2"
+                  icon="classes"
+                  title="No classes joined yet"
+                  description="Use a class join code from your teacher to unlock AI chat, quizzes, and flashcards."
+                  primaryAction={{ label: "Join class", href: "/join", variant: "default" }}
+                  secondaryAction={{ label: "Back to dashboard", href: "/student/dashboard", variant: "outline" }}
+                />
               )}
             </div>
           </section>
-        </main>
-      </div>
-    </div>
+      </main>
+    </RoleAppShell>
   );
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Sidebar from "@/app/components/Sidebar";
+import RoleAppShell from "@/app/components/RoleAppShell";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
 export default async function ClassRouteLayout({
@@ -13,14 +13,13 @@ export default async function ClassRouteLayout({
   const { accountType, user, profile } = await requireVerifiedUser();
 
   return (
-    <div className="surface-page min-h-screen">
-      <Sidebar
-        accountType={accountType}
-        userEmail={user.email ?? undefined}
-        userDisplayName={profile.display_name}
-        classId={classId}
-      />
-      <div className="sidebar-content">{children}</div>
-    </div>
+    <RoleAppShell
+      accountType={accountType}
+      userEmail={user.email ?? undefined}
+      userDisplayName={profile.display_name}
+      classId={classId}
+    >
+      {children}
+    </RoleAppShell>
   );
 }

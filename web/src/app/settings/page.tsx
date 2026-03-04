@@ -1,4 +1,4 @@
-import Sidebar from "@/app/components/Sidebar";
+import RoleAppShell from "@/app/components/RoleAppShell";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { changePassword, updateDisplayName } from "@/app/settings/actions";
 import { Alert } from "@/components/ui/alert";
@@ -36,14 +36,12 @@ export default async function SettingsPage({
   const passwordMessage = section === "password" && status ? { status, message } : null;
 
   return (
-    <div className="surface-page min-h-screen">
-      <Sidebar
-        accountType={accountType}
-        userEmail={user.email ?? undefined}
-        userDisplayName={profile.display_name}
-      />
-      <div className="sidebar-content">
-        <main className="mx-auto max-w-5xl p-6 pt-16">
+    <RoleAppShell
+      accountType={accountType}
+      userEmail={user.email ?? undefined}
+      userDisplayName={profile.display_name}
+    >
+      <main className="mx-auto max-w-5xl p-6 pt-16">
           <header className="mb-8 space-y-2">
             <p className="text-sm font-medium text-ui-muted">Account Settings</p>
             <h1 className="text-3xl font-semibold text-ui-primary">Settings</h1>
@@ -199,8 +197,7 @@ export default async function SettingsPage({
               </Card>
             </div>
           </section>
-        </main>
-      </div>
-    </div>
+      </main>
+    </RoleAppShell>
   );
 }

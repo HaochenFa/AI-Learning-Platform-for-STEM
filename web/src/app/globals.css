@@ -166,7 +166,7 @@ h3 {
 
 .sidebar-content {
   padding-left: var(--sidebar-width);
-  transition: padding-left var(--motion-standard) ease;
+  transition: padding-left 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .link-warm {
@@ -278,6 +278,11 @@ h3 {
 
   .ui-motion-lift:hover {
     transform: none !important;
+  }
+
+  .animate-pulse,
+  .animate-spin {
+    animation: none !important;
   }
 }
 

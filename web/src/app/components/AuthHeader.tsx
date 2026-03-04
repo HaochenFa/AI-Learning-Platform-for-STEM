@@ -3,19 +3,27 @@ import { signOut } from "@/app/actions";
 import BrandMark from "@/app/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { AppIcons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import type { AccountType } from "@/lib/auth/session";
 
-type Breadcrumb = {
+export type HeaderBreadcrumb = {
   label: string;
   href?: string;
 };
 
-type NavKey = "dashboard" | "new-class" | "join-class";
+export type NavKey = "dashboard" | "new-class" | "join-class";
 
-type AuthHeaderProps = {
-  breadcrumbs?: Breadcrumb[];
+export type AuthHeaderProps = {
+  breadcrumbs?: HeaderBreadcrumb[];
   activeNav?: NavKey;
   accountType?: AccountType;
   tone?: "default" | "subtle";
@@ -30,28 +38,32 @@ function getNavVariant(isActive: boolean) {
   return isActive ? "default" : "outline";
 }
 
-function renderBreadcrumbs(breadcrumbs: Breadcrumb[], clickable = true) {
+function renderBreadcrumbs(breadcrumbs: HeaderBreadcrumb[], clickable = true) {
   return (
-    <nav className="flex flex-wrap items-center gap-2 text-xs font-medium text-ui-muted">
-      {breadcrumbs.map((crumb, index) => {
-        const isLast = index === breadcrumbs.length - 1;
-        if (clickable && crumb.href && !isLast) {
+    <Breadcrumb>
+      <BreadcrumbList>
+        {breadcrumbs.map((crumb, index) => {
+          const isLast = index === breadcrumbs.length - 1;
+          const key = `${crumb.label}-${index}`;
+
+          if (clickable && crumb.href && !isLast) {
+            return [
+              <BreadcrumbItem key={`${key}-item`}>
+                <BreadcrumbLink asChild>
+                  <Link href={crumb.href}>{crumb.label}</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>,
+              <BreadcrumbSeparator key={`${key}-separator`} />,
+            ];
+          }
           return (
-            <span key={`${crumb.label}-${index}`} className="flex items-center gap-2">
-              <Link href={crumb.href} className="ui-motion-color hover:text-accent">
-                {crumb.label}
-              </Link>
-              <span className="text-ui-subtle">/</span>
-            </span>
+            <BreadcrumbItem key={key}>
+              <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+            </BreadcrumbItem>
           );
-        }
-        return (
-          <span key={`${crumb.label}-${index}`} className="text-ui-subtle">
-            {crumb.label}
-          </span>
-        );
-      })}
-    </nav>
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }
 

@@ -1,4 +1,4 @@
-import Sidebar from "@/app/components/Sidebar";
+import RoleAppShell from "@/app/components/RoleAppShell";
 import { AppIcons } from "@/components/icons";
 import {
   Accordion,
@@ -15,14 +15,12 @@ export default async function HelpPage() {
   const content = getHelpContent(accountType);
 
   return (
-    <div className="surface-page min-h-screen">
-      <Sidebar
-        accountType={accountType}
-        userEmail={user.email ?? undefined}
-        userDisplayName={profile.display_name}
-      />
-      <div className="sidebar-content">
-        <main className="mx-auto max-w-5xl p-6 pt-16">
+    <RoleAppShell
+      accountType={accountType}
+      userEmail={user.email ?? undefined}
+      userDisplayName={profile.display_name}
+    >
+      <main className="mx-auto max-w-5xl p-6 pt-16">
           <header className="mb-8 space-y-2">
             <p className="text-sm font-medium text-ui-muted">Help Center</p>
             <h1 className="text-3xl font-semibold text-ui-primary">Help & FAQ</h1>
@@ -69,8 +67,7 @@ export default async function HelpPage() {
               </Card>
             </div>
           </section>
-        </main>
-      </div>
-    </div>
+      </main>
+    </RoleAppShell>
   );
 }

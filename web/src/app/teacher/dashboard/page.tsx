@@ -1,6 +1,7 @@
 import Link from "next/link";
 import DashboardHashRedirect from "@/app/components/DashboardHashRedirect";
-import Sidebar from "@/app/components/Sidebar";
+import EmptyStateCard from "@/app/components/EmptyStateCard";
+import RoleAppShell from "@/app/components/RoleAppShell";
 import { AppIcons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -66,15 +67,13 @@ export default async function TeacherDashboardPage() {
   timer.end({ classes: classes.length });
 
   return (
-    <div className="surface-page min-h-screen">
-      <Sidebar
-        accountType="teacher"
-        userEmail={user.email ?? undefined}
-        userDisplayName={profile.display_name}
-      />
-      <div className="sidebar-content">
-        <DashboardHashRedirect classesHref="/teacher/classes" />
-        <main className="mx-auto max-w-5xl p-6 pt-16">
+    <RoleAppShell
+      accountType="teacher"
+      userEmail={user.email ?? undefined}
+      userDisplayName={profile.display_name}
+    >
+      <DashboardHashRedirect classesHref="/teacher/classes" />
+      <main className="mx-auto max-w-5xl p-6 pt-16">
           <header className="flex flex-wrap items-center justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">
@@ -136,14 +135,17 @@ export default async function TeacherDashboardPage() {
                   </Link>
                 ))
               ) : (
-                <Card className="rounded-2xl border-dashed bg-[var(--surface-muted)] p-6 text-sm text-ui-muted md:col-span-3">
-                  No classes yet. Create one to get started.
-                </Card>
+                <EmptyStateCard
+                  className="md:col-span-3"
+                  icon="classes"
+                  title="No classes yet"
+                  description="Create your first class to start building a blueprint and assigning activities."
+                  primaryAction={{ label: "Create class", href: "/classes/new", variant: "default" }}
+                />
               )}
             </div>
           </section>
-        </main>
-      </div>
-    </div>
+      </main>
+    </RoleAppShell>
   );
 }
