@@ -76,6 +76,30 @@ class BlueprintGenerateResult(BaseModel):
     latency_ms: int
 
 
+class QuizGenerateRequest(BaseModel):
+    class_title: str = Field(min_length=1)
+    question_count: int = Field(ge=1, le=20)
+    instructions: str = Field(min_length=1)
+    blueprint_context: str
+    material_context: str
+    timeout_ms: int | None = None
+
+
+class QuizGeneratedQuestion(BaseModel):
+    question: str
+    choices: list[str]
+    answer: str
+    explanation: str
+
+
+class QuizGenerateResult(BaseModel):
+    payload: dict[str, Any]
+    provider: AiProvider
+    model: str
+    usage: AiUsage | None = None
+    latency_ms: int
+
+
 class ApiError(BaseModel):
     message: str
     code: str | None = None

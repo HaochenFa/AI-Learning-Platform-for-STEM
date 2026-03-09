@@ -99,7 +99,9 @@ Student Flow
 - API Layer: server actions or API routes for all data writes.
 - Python Backend (strangler path): optional internal AI orchestration service (`backend/`) with
   deterministic envelopes (`{ ok, data, error, meta }`) consumed by Next via adapter flags.
-  - Current domain endpoint slice: blueprint generation (`POST /v1/blueprints/generate`).
+  - Current domain endpoint slices:
+    - blueprint generation (`POST /v1/blueprints/generate`)
+    - quiz generation (`POST /v1/quiz/generate`)
 - AI Orchestrator: provider adapters, prompt templates, safety checks.
 - Supabase: Auth, Postgres, Storage, Row Level Security.
 

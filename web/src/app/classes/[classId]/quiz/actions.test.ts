@@ -129,6 +129,11 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 describe("quiz actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.PYTHON_BACKEND_ENABLED;
+    delete process.env.PYTHON_BACKEND_QUIZ_ENABLED;
+    delete process.env.PYTHON_BACKEND_URL;
+    delete process.env.PYTHON_BACKEND_API_KEY;
+    delete process.env.PYTHON_BACKEND_STRICT;
     getClassAccess.mockResolvedValue({
       found: true,
       isTeacher: true,
@@ -389,6 +394,89 @@ describe("quiz actions", () => {
     );
   });
 
+  it("routes quiz generation through python backend when enabled", async () => {
+    process.env.PYTHON_BACKEND_ENABLED = "true";
+    process.env.PYTHON_BACKEND_QUIZ_ENABLED = "true";
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    process.env.PYTHON_BACKEND_API_KEY = "secret";
+
+    const supabaseFromMock = vi.fn();
+    requireAuthenticatedUser.mockResolvedValue({
+      supabase: { from: supabaseFromMock },
+      user: { id: "teacher-1" },
+    });
+    getClassAccess.mockResolvedValue({
+      found: true,
+      isTeacher: true,
+      isMember: true,
+      classTitle: "Calculus",
+    });
+    requirePublishedBlueprintId.mockResolvedValue("bp-1");
+    loadPublishedBlueprintContext.mockResolvedValue({
+      blueprintContext: "Limits and derivatives",
+    });
+    retrieveMaterialContext.mockResolvedValue("Material context");
+
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse({
+        ok: true,
+        data: {
+          payload: {
+            questions: [
+              {
+                question: "1 + 1",
+                choices: ["1", "2", "3", "4"],
+                answer: "2",
+                explanation: "Basic addition.",
+              },
+            ],
+          },
+          provider: "openrouter",
+          model: "or-model",
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
+          latency_ms: 30,
+        },
+      }),
+    );
+
+    const activityInsertBuilder = makeBuilder({ data: { id: "activity-1" }, error: null });
+    const questionInsertBuilder = makeBuilder({ error: null });
+    const aiRequestsBuilder = makeBuilder({ error: null });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "activities") {
+        return activityInsertBuilder;
+      }
+      if (table === "quiz_questions") {
+        return questionInsertBuilder;
+      }
+      if (table === "ai_requests") {
+        return aiRequestsBuilder;
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Generated Quiz");
+    formData.set("instructions", "Use only class notes.");
+    formData.set("question_count", "1");
+
+    await expectRedirect(
+      () => generateQuizDraft("class-1", formData),
+      "/classes/class-1/activities/quiz/activity-1/edit?created=1",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(buildQuizGenerationPrompt).not.toHaveBeenCalled();
+    expect(generateTextWithFallback).not.toHaveBeenCalled();
+    expect(parseQuizGenerationResponse).not.toHaveBeenCalled();
+    expect(aiRequestsBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "openrouter",
+        model: "or-model",
+      }),
+    );
+  });
+
   it("shows a friendly message when an internal redirect token is raised as an error", async () => {
     const supabaseFromMock = vi.fn();
     requireAuthenticatedUser.mockResolvedValue({
@@ -564,3 +652,10 @@ describe("quiz actions", () => {
     expect(activityCleanupBuilder.eq).toHaveBeenCalledWith("id", "activity-1");
   });
 });
+
+function makeJsonResponse(payload: unknown, ok = true) {
+  return {
+    ok,
+    json: async () => payload,
+  } as Response;
+}

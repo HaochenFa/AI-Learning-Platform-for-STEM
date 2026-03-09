@@ -147,6 +147,7 @@ Legacy fallback names (optional):
 
 - `PYTHON_BACKEND_ENABLED=false` (set `true` to route AI generation/embeddings via Python service)
 - `PYTHON_BACKEND_BLUEPRINT_ENABLED=false` (set `true` to route blueprint generation domain to Python endpoint)
+- `PYTHON_BACKEND_QUIZ_ENABLED=false` (set `true` to route quiz generation domain to Python endpoint)
 - `PYTHON_BACKEND_STRICT=false` (set `true` to fail fast instead of falling back to local Next adapters)
 - `PYTHON_BACKEND_URL` (for example `https://python-backend.example.com`)
 - `PYTHON_BACKEND_API_KEY` (if Python service requires API key auth)

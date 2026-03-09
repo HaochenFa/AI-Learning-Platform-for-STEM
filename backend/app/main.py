@@ -9,6 +9,7 @@ from app.blueprints import generate_blueprint
 from app.config import get_settings
 from app.materials import dispatch_material_job
 from app.providers import generate_embeddings_with_fallback, generate_with_fallback
+from app.quiz import generate_quiz
 from app.schemas import (
     ApiEnvelope,
     ApiError,
@@ -16,6 +17,7 @@ from app.schemas import (
     EmbeddingsRequest,
     GenerateRequest,
     MaterialDispatchRequest,
+    QuizGenerateRequest,
 )
 
 app = FastAPI(title="STEM Learning Python Backend", version="0.1.0")
@@ -155,6 +157,31 @@ async def generate_blueprints(request: Request, payload: BlueprintGenerateReques
             content=ApiEnvelope(
                 ok=False,
                 error=ApiError(message=str(error), code="blueprint_error"),
+                meta={"request_id": request.state.request_id},
+            ).model_dump(),
+        )
+
+
+@app.post("/v1/quiz/generate")
+async def generate_quizzes(request: Request, payload: QuizGenerateRequest):
+    unauthorized = _auth_error_response(request)
+    if unauthorized:
+        return unauthorized
+
+    settings = get_settings()
+    try:
+        result = generate_quiz(settings, payload)
+        return ApiEnvelope(
+            ok=True,
+            data=result.model_dump(),
+            meta={"request_id": request.state.request_id},
+        ).model_dump()
+    except RuntimeError as error:
+        return JSONResponse(
+            status_code=502,
+            content=ApiEnvelope(
+                ok=False,
+                error=ApiError(message=str(error), code="quiz_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
