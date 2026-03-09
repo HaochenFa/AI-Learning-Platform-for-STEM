@@ -12,9 +12,12 @@ vi.mock("next/navigation", () => ({
 }));
 
 const supabaseAuth = {
+  getUser: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
   signInWithPassword: vi.fn(),
-  signUp: vi.fn(),
   signOut: vi.fn(),
+  signUp: vi.fn(),
+  updateUser: vi.fn(),
 };
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -39,6 +42,9 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 describe("auth actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+    delete process.env.NEXT_PUBLIC_VERCEL_URL;
+    delete process.env.VERCEL_URL;
   });
 
   it("redirects to login with error on failed sign in", async () => {
@@ -102,6 +108,7 @@ describe("auth actions", () => {
   });
 
   it("redirects to login with verify on successful sign up", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ai-stem-learning-platform-group-8.vercel.app";
     supabaseAuth.signUp.mockResolvedValueOnce({ error: null });
 
     const formData = new FormData();
@@ -114,7 +121,10 @@ describe("auth actions", () => {
     expect(supabaseAuth.signUp).toHaveBeenCalledWith({
       email: "test@example.com",
       password: "goodpass1",
-      options: { data: { account_type: "student" } },
+      options: {
+        data: { account_type: "student" },
+        emailRedirectTo: "https://ai-stem-learning-platform-group-8.vercel.app",
+      },
     });
   });
 
@@ -175,5 +185,36 @@ describe("auth actions", () => {
     await expectRedirect(() => signOut(), "/login");
     expect(supabaseAuth.signOut).toHaveBeenCalled();
     expect(redirect).toHaveBeenCalled();
+  });
+
+  it("requests a password reset email using the canonical app URL", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ai-stem-learning-platform-group-8.vercel.app";
+    supabaseAuth.resetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
+    const { requestPasswordReset } = await import("@/app/actions");
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+
+    await expectRedirect(() => requestPasswordReset(formData), "/forgot-password?sent=1");
+    expect(supabaseAuth.resetPasswordForEmail).toHaveBeenCalledWith("test@example.com", {
+      redirectTo: "https://ai-stem-learning-platform-group-8.vercel.app",
+    });
+  });
+
+  it("updates the password during recovery and redirects back to login", async () => {
+    supabaseAuth.getUser.mockResolvedValueOnce({
+      data: { user: { id: "user-1", email: "test@example.com" } },
+    });
+    supabaseAuth.updateUser.mockResolvedValueOnce({ error: null });
+    supabaseAuth.signOut.mockResolvedValueOnce({});
+
+    const { completePasswordRecovery } = await import("@/app/actions");
+    const formData = new FormData();
+    formData.set("new_password", "Newpass1");
+    formData.set("confirm_password", "Newpass1");
+
+    await expectRedirect(() => completePasswordRecovery(formData), "/login?reset=1");
+    expect(supabaseAuth.updateUser).toHaveBeenCalledWith({ password: "Newpass1" });
+    expect(supabaseAuth.signOut).toHaveBeenCalled();
   });
 });
