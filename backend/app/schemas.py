@@ -122,6 +122,38 @@ class FlashcardsGenerateResult(BaseModel):
     latency_ms: int
 
 
+class ChatTranscriptTurn(BaseModel):
+    role: Literal["student", "assistant"]
+    message: str
+    created_at: str
+
+
+class ChatGenerateRequest(BaseModel):
+    class_title: str = Field(min_length=1)
+    user_message: str = Field(min_length=1)
+    transcript: list[ChatTranscriptTurn] = Field(default_factory=list)
+    blueprint_context: str
+    material_context: str
+    compacted_memory_context: str | None = None
+    assignment_instructions: str | None = None
+    purpose: str | None = None
+    session_id: str | None = None
+    timeout_ms: int | None = None
+    max_tokens: int | None = Field(default=None, ge=1, le=16000)
+    tool_mode: Literal["off", "plan", "auto"] = "off"
+    tool_catalog: list[str] | None = None
+    orchestration_hints: dict[str, Any] | None = None
+
+
+class ChatGenerateResult(BaseModel):
+    payload: dict[str, Any]
+    provider: AiProvider
+    model: str
+    usage: AiUsage | None = None
+    latency_ms: int
+    orchestration: dict[str, Any]
+
+
 class ApiError(BaseModel):
     message: str
     code: str | None = None

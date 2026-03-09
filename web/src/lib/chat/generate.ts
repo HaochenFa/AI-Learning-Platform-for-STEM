@@ -1,6 +1,7 @@
 import "server-only";
 
 import { generateTextWithFallback } from "@/lib/ai/providers";
+import { generateChatViaPythonBackend } from "@/lib/ai/python-chat";
 import { buildChatPrompt, loadPublishedBlueprintContext } from "@/lib/chat/context";
 import type { ChatModelResponse, ChatTurn } from "@/lib/chat/types";
 import { parseChatModelResponse } from "@/lib/chat/validation";
@@ -99,6 +100,31 @@ function resolveChatMaxTokens() {
   return Math.floor(parsed);
 }
 
+function normalizeBooleanEnv(value: string | undefined, fallback: boolean) {
+  if (!value) {
+    return fallback;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+}
+
+function shouldUsePythonChatBackend() {
+  return normalizeBooleanEnv(
+    process.env.PYTHON_BACKEND_CHAT_ENABLED ?? process.env.PYTHON_BACKEND_ENABLED,
+    false,
+  );
+}
+
+function isPythonBackendStrict() {
+  return normalizeBooleanEnv(process.env.PYTHON_BACKEND_STRICT, false);
+}
+
 function toFriendlyChatGenerationError(error: unknown) {
   if (!(error instanceof Error)) {
     return "Unable to generate a chat response right now. Please try again.";
@@ -112,7 +138,11 @@ function toFriendlyChatGenerationError(error: unknown) {
     return "Chat response generation timed out. Please try again.";
   }
 
-  if (/no json object found|not valid json|model response payload is invalid/i.test(error.message)) {
+  if (
+    /no json object found|not valid json|model response payload is invalid|invalid chat json/i.test(
+      error.message,
+    )
+  ) {
     return "The AI response was incomplete. Please ask again.";
   }
 
@@ -133,6 +163,9 @@ export async function generateGroundedChatResponse(input: {
   const supabase = await createServerSupabaseClient();
   const startedAt = Date.now();
   let usedProvider = "unknown";
+  let usedModel: string | null = null;
+  let usedUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined;
+  let usedLatencyMs: number | null = null;
 
   try {
     const blueprintContext = await loadPublishedBlueprintContext(input.classId);
@@ -149,18 +182,67 @@ export async function generateGroundedChatResponse(input: {
       compactedMemoryContext: input.compactedMemoryContext,
       assignmentInstructions: input.assignmentInstructions,
     });
+    const maxTokens = resolveChatMaxTokens();
+    let parsed: ChatModelResponse;
+    if (shouldUsePythonChatBackend()) {
+      try {
+        const pythonResult = await generateChatViaPythonBackend({
+          classTitle: input.classTitle,
+          userMessage: input.userMessage,
+          transcript: input.transcript,
+          blueprintContext: blueprintContext.blueprintContext,
+          materialContext,
+          compactedMemoryContext: input.compactedMemoryContext,
+          assignmentInstructions: input.assignmentInstructions,
+          purpose: input.purpose,
+          sessionId: input.sessionId,
+          maxTokens,
+          toolMode: "off",
+          toolCatalog: [],
+          orchestrationHints: {
+            phase: "phase_6_chat_domain",
+            reserved_for: "langgraph_tool_calling",
+          },
+        });
+        usedProvider = pythonResult.provider;
+        usedModel = pythonResult.model;
+        usedUsage = pythonResult.usage;
+        usedLatencyMs = pythonResult.latencyMs;
+        parsed = pythonResult.payload;
+      } catch (error) {
+        if (isPythonBackendStrict()) {
+          throw error;
+        }
+        const result = await generateTextWithFallback({
+          system: prompt.system,
+          user: prompt.user,
+          temperature: 0.2,
+          maxTokens,
+          sessionId: input.sessionId,
+          transforms: resolveOpenRouterTransforms(),
+        });
+        usedProvider = result.provider;
+        usedModel = result.model;
+        usedUsage = result.usage;
+        usedLatencyMs = result.latencyMs;
+        parsed = parseChatModelResponse(result.content);
+      }
+    } else {
+      const result = await generateTextWithFallback({
+        system: prompt.system,
+        user: prompt.user,
+        temperature: 0.2,
+        maxTokens,
+        sessionId: input.sessionId,
+        transforms: resolveOpenRouterTransforms(),
+      });
+      usedProvider = result.provider;
+      usedModel = result.model;
+      usedUsage = result.usage;
+      usedLatencyMs = result.latencyMs;
+      parsed = parseChatModelResponse(result.content);
+    }
 
-    const result = await generateTextWithFallback({
-      system: prompt.system,
-      user: prompt.user,
-      temperature: 0.2,
-      maxTokens: resolveChatMaxTokens(),
-      sessionId: input.sessionId,
-      transforms: resolveOpenRouterTransforms(),
-    });
-    usedProvider = result.provider;
-
-    const parsed = parseChatModelResponse(result.content);
     const sourceLabels = collectSourceLabels(blueprintContext.blueprintContext, materialContext);
     const normalizedCitations = parsed.citations
       .map((citation) => ({
@@ -179,14 +261,14 @@ export async function generateGroundedChatResponse(input: {
       supabase,
       classId: input.classId,
       userId: input.userId,
-      provider: result.provider,
-      model: result.model,
+      provider: usedProvider,
+      model: usedModel,
       purpose: input.purpose,
       status: "success",
-      latencyMs: result.latencyMs,
-      promptTokens: result.usage?.promptTokens,
-      completionTokens: result.usage?.completionTokens,
-      totalTokens: result.usage?.totalTokens,
+      latencyMs: usedLatencyMs ?? Date.now() - startedAt,
+      promptTokens: usedUsage?.promptTokens,
+      completionTokens: usedUsage?.completionTokens,
+      totalTokens: usedUsage?.totalTokens,
     });
 
     return {

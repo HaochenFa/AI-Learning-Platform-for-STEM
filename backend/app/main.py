@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.blueprints import generate_blueprint
+from app.chat import generate_chat
 from app.config import get_settings
 from app.flashcards import generate_flashcards
 from app.materials import dispatch_material_job
@@ -15,6 +16,7 @@ from app.schemas import (
     ApiEnvelope,
     ApiError,
     BlueprintGenerateRequest,
+    ChatGenerateRequest,
     EmbeddingsRequest,
     FlashcardsGenerateRequest,
     GenerateRequest,
@@ -209,6 +211,31 @@ async def generate_flashcards_route(request: Request, payload: FlashcardsGenerat
             content=ApiEnvelope(
                 ok=False,
                 error=ApiError(message=str(error), code="flashcards_error"),
+                meta={"request_id": request.state.request_id},
+            ).model_dump(),
+        )
+
+
+@app.post("/v1/chat/generate")
+async def generate_chat_route(request: Request, payload: ChatGenerateRequest):
+    unauthorized = _auth_error_response(request)
+    if unauthorized:
+        return unauthorized
+
+    settings = get_settings()
+    try:
+        result = generate_chat(settings, payload)
+        return ApiEnvelope(
+            ok=True,
+            data=result.model_dump(),
+            meta={"request_id": request.state.request_id},
+        ).model_dump()
+    except RuntimeError as error:
+        return JSONResponse(
+            status_code=502,
+            content=ApiEnvelope(
+                ok=False,
+                error=ApiError(message=str(error), code="chat_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )

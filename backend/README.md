@@ -12,6 +12,7 @@ fallback and deterministic response envelopes.
 - `POST /v1/blueprints/generate` (domain endpoint for blueprint AI generation)
 - `POST /v1/quiz/generate` (domain endpoint for quiz AI generation)
 - `POST /v1/flashcards/generate` (domain endpoint for flashcards AI generation)
+- `POST /v1/chat/generate` (domain endpoint for grounded chat AI generation)
 
 Response envelope:
 

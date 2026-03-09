@@ -3,6 +3,7 @@ import { generateGroundedChatResponse } from "@/lib/chat/generate";
 
 const {
   generateTextWithFallback,
+  generateChatViaPythonBackend,
   buildChatPrompt,
   loadPublishedBlueprintContext,
   parseChatModelResponse,
@@ -10,6 +11,7 @@ const {
   createServerSupabaseClient,
 } = vi.hoisted(() => ({
   generateTextWithFallback: vi.fn(),
+  generateChatViaPythonBackend: vi.fn(),
   buildChatPrompt: vi.fn(),
   loadPublishedBlueprintContext: vi.fn(),
   parseChatModelResponse: vi.fn(),
@@ -19,6 +21,10 @@ const {
 
 vi.mock("@/lib/ai/providers", () => ({
   generateTextWithFallback,
+}));
+
+vi.mock("@/lib/ai/python-chat", () => ({
+  generateChatViaPythonBackend,
 }));
 
 vi.mock("@/lib/chat/context", () => ({
@@ -42,6 +48,9 @@ describe("generateGroundedChatResponse", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.CHAT_GENERATION_MAX_TOKENS;
+    delete process.env.PYTHON_BACKEND_ENABLED;
+    delete process.env.PYTHON_BACKEND_CHAT_ENABLED;
+    delete process.env.PYTHON_BACKEND_STRICT;
 
     const insertMock = vi.fn(async () => ({ error: null }));
     createServerSupabaseClient.mockResolvedValue({
@@ -63,6 +72,69 @@ describe("generateGroundedChatResponse", () => {
       answer: "Grounded response",
       citations: [{ sourceLabel: "Source 1", rationale: "Based on class material." }],
     });
+  });
+
+  it("routes grounded chat generation through python backend when enabled", async () => {
+    process.env.PYTHON_BACKEND_ENABLED = "true";
+    process.env.PYTHON_BACKEND_CHAT_ENABLED = "true";
+
+    generateChatViaPythonBackend.mockResolvedValue({
+      payload: {
+        safety: "ok",
+        answer: "Grounded response",
+        citations: [{ sourceLabel: "Source 1", rationale: "Based on class material." }],
+      },
+      provider: "openrouter",
+      model: "or-model",
+      usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
+      latencyMs: 15,
+      orchestration: {
+        engine: "direct_v1",
+        tool_mode: "off",
+        tool_calls: [],
+      },
+    });
+
+    await generateGroundedChatResponse({
+      classId: "class-1",
+      classTitle: "Physics",
+      userId: "student-1",
+      userMessage: "Can we review kinematics?",
+      transcript: [],
+      purpose: "student_chat_open_v2",
+    });
+
+    expect(generateChatViaPythonBackend).toHaveBeenCalledTimes(1);
+    expect(generateTextWithFallback).not.toHaveBeenCalled();
+    expect(parseChatModelResponse).not.toHaveBeenCalled();
+  });
+
+  it("falls back to local chat generation when python backend fails and strict mode is disabled", async () => {
+    process.env.PYTHON_BACKEND_ENABLED = "true";
+    process.env.PYTHON_BACKEND_CHAT_ENABLED = "true";
+    process.env.PYTHON_BACKEND_STRICT = "false";
+
+    generateChatViaPythonBackend.mockRejectedValue(new Error("Python backend chat request failed with 502."));
+    generateTextWithFallback.mockResolvedValue({
+      provider: "openai",
+      model: "gpt-5-mini",
+      content: "{}",
+      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+      latencyMs: 12,
+    });
+
+    await generateGroundedChatResponse({
+      classId: "class-1",
+      classTitle: "Physics",
+      userId: "student-1",
+      userMessage: "Can we review kinematics?",
+      transcript: [],
+      purpose: "student_chat_open_v2",
+    });
+
+    expect(generateChatViaPythonBackend).toHaveBeenCalledTimes(1);
+    expect(generateTextWithFallback).toHaveBeenCalledTimes(1);
+    expect(parseChatModelResponse).toHaveBeenCalledTimes(1);
   });
 
   it("uses a default max token budget above other generators", async () => {
