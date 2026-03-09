@@ -24,6 +24,12 @@ For each project, configure:
 - Auth email confirmation: enabled
 - Auth password policy: minimum length `8` and requirement `letters_digits`
 - Phone auth provider: disabled
+- Auth URL Configuration:
+  - Site URL = canonical environment URL
+  - Redirect URLs include localhost and preview deployment wildcards
+- Auth email templates:
+  - Confirm signup = `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`
+  - Recovery = `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
 - Database extensions required by migrations (`pgcrypto`, `vector`, `pgmq`, `pg_net`, `pg_cron`, `vault`)
 
 ## 3. Apply migrations to staging
@@ -113,6 +119,7 @@ Set these in Vercel for both Preview (staging Supabase) and Production (producti
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SITE_URL`
 - `SUPABASE_SECRET_KEY`
 
 Legacy fallback names (optional):
@@ -146,15 +153,30 @@ Legacy fallback names (optional):
 - Pull requests -> Preview deployment (staging env vars)
 - Merge to `main` -> Production deployment (production env vars)
 
-## 10. Post-deploy smoke tests
+## 10. Configure Supabase Auth redirect URLs
+
+For each hosted Supabase project, open `Auth -> URL Configuration` and set:
+
+- `Site URL` to the canonical domain for that environment
+- Redirect URLs to include:
+  - `http://localhost:3000/**`
+  - the exact production domain with `/**`
+  - the Vercel preview wildcard for your team or account
+
+For production, use:
+
+- `https://ai-stem-learning-platform-group-8.vercel.app`
+
+## 11. Post-deploy smoke tests
 
 - Register teacher and student accounts
+- Trigger a password reset email and confirm it lands on the correct domain
 - Teacher creates class and uploads a material
 - Material processing reaches `ready` status (without Vercel cron)
 - Blueprint generation succeeds
 - Student joins class and accesses at least one assignment
 
-## 11. Rollback
+## 12. Rollback
 
 - App rollback: promote previous Vercel deployment
 - Database rollback: restore from Supabase backup/PITR or forward-fix with a new migration

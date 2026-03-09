@@ -36,6 +36,11 @@ pnpm dev
 - Run Supabase migrations before testing class creation.
 - New accounts must choose an immutable account type at signup (`teacher` or `student`).
 - Enable Supabase Auth email confirmation so users must verify email before protected access.
+- Set `NEXT_PUBLIC_SITE_URL` to the canonical app origin for the active environment.
+- In hosted Supabase, configure `Auth -> URL Configuration` with the same Site URL plus localhost and preview redirect URLs.
+- Update Supabase email templates to use the SSR auth callback:
+  - Confirm signup: `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`
+  - Recovery: `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
 - Disable Supabase phone auth provider (phone-based auth is intentionally out of scope).
 - Ensure the `materials` storage bucket exists for uploads.
 - Configure at least one AI provider with both a chat model and an embedding model.

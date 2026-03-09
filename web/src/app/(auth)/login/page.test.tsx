@@ -20,6 +20,22 @@ describe("LoginPage", () => {
     expect(html).toContain("Check your email to verify your account");
   });
 
+  it("shows confirmation success when confirmed=1", async () => {
+    const html = renderToStaticMarkup(
+      await LoginPage({ searchParams: Promise.resolve({ confirmed: "1" }) }),
+    );
+
+    expect(html).toContain("Your email has been verified");
+  });
+
+  it("shows password reset success when reset=1", async () => {
+    const html = renderToStaticMarkup(
+      await LoginPage({ searchParams: Promise.resolve({ reset: "1" }) }),
+    );
+
+    expect(html).toContain("Your password has been reset");
+  });
+
   it("shows error message when provided", async () => {
     const html = renderToStaticMarkup(
       await LoginPage({
