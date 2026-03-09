@@ -65,9 +65,9 @@ describe("auth actions", () => {
     expect(redirect).toHaveBeenCalled();
   });
 
-  it("redirects to register with error on failed sign up", async () => {
+  it("falls back to the raw sign up error for non-duplicate failures", async () => {
     supabaseAuth.signUp.mockResolvedValueOnce({
-      error: { message: "Email already used" },
+      error: { message: "Unexpected auth failure" },
     });
 
     const formData = new FormData();
@@ -75,8 +75,30 @@ describe("auth actions", () => {
     formData.set("password", "goodpass1");
     formData.set("account_type", "teacher");
 
-    await expectRedirect(() => signUp(formData), "/register?error=Email%20already%20used");
+    await expectRedirect(
+      () => signUp(formData),
+      "/register?error=Unexpected%20auth%20failure",
+    );
     expect(redirect).toHaveBeenCalled();
+  });
+
+  it("maps stable duplicate error code from sign up to a generic recovery hint", async () => {
+    supabaseAuth.signUp.mockResolvedValueOnce({
+      error: {
+        message: "Database conflict",
+        code: "23505",
+      },
+    });
+
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("password", "goodpass1");
+    formData.set("account_type", "teacher");
+
+    await expectRedirect(
+      () => signUp(formData),
+      "/register?error=We%20couldn't%20create%20an%20account%20with%20that%20email.%20Try%20signing%20in%20or%20resetting%20your%20password.",
+    );
   });
 
   it("redirects to login with verify on successful sign up", async () => {

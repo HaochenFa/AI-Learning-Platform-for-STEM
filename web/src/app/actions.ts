@@ -4,6 +4,9 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { validatePasswordPolicy } from "@/lib/auth/password-policy";
 import { redirect } from "next/navigation";
 
+const DUPLICATE_SIGN_UP_ERROR_MESSAGE =
+  "We couldn't create an account with that email. Try signing in or resetting your password.";
+
 function getFormValue(formData: FormData, key: string) {
   const value = formData.get(key);
   if (!value || typeof value !== "string") {
@@ -14,6 +17,19 @@ function getFormValue(formData: FormData, key: string) {
 
 function parseAccountType(value: string): "teacher" | "student" | null {
   return value === "teacher" || value === "student" ? value : null;
+}
+
+function isEmailAlreadyRegisteredError(error: {
+  status?: number;
+  code?: string;
+}): boolean {
+  const normalizedCode = (error.code ?? "").toLowerCase();
+  return (
+    error.status === 422 ||
+    normalizedCode === "email_exists" ||
+    normalizedCode === "user_already_exists" ||
+    normalizedCode === "23505"
+  );
 }
 
 export async function signIn(formData: FormData) {
@@ -49,7 +65,7 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signUp(formData: FormData) {
-  const email = getFormValue(formData, "email");
+  const email = getFormValue(formData, "email").toLowerCase();
   const password = getFormValue(formData, "password");
   const accountType = parseAccountType(getFormValue(formData, "account_type"));
 
@@ -66,15 +82,15 @@ export async function signUp(formData: FormData) {
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      data: {
-        account_type: accountType,
-      },
-    },
+    options: { data: { account_type: accountType } },
   });
 
   if (error) {
-    redirect(`/register?error=${encodeURIComponent(error.message)}`);
+    const msg = isEmailAlreadyRegisteredError(error)
+      ? DUPLICATE_SIGN_UP_ERROR_MESSAGE
+      : error.message;
+
+    redirect(`/register?error=${encodeURIComponent(msg)}`);
   }
 
   redirect("/login?verify=1");
