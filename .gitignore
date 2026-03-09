@@ -35,8 +35,10 @@ pnpm-debug.log*
 # Build output
 .next/
 out/
+output/
 dist/
 build/
+tmp/
 
 # Misc
 *.tsbuildinfo
