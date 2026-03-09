@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.blueprints import generate_blueprint
 from app.config import get_settings
+from app.flashcards import generate_flashcards
 from app.materials import dispatch_material_job
 from app.providers import generate_embeddings_with_fallback, generate_with_fallback
 from app.quiz import generate_quiz
@@ -15,6 +16,7 @@ from app.schemas import (
     ApiError,
     BlueprintGenerateRequest,
     EmbeddingsRequest,
+    FlashcardsGenerateRequest,
     GenerateRequest,
     MaterialDispatchRequest,
     QuizGenerateRequest,
@@ -182,6 +184,31 @@ async def generate_quizzes(request: Request, payload: QuizGenerateRequest):
             content=ApiEnvelope(
                 ok=False,
                 error=ApiError(message=str(error), code="quiz_error"),
+                meta={"request_id": request.state.request_id},
+            ).model_dump(),
+        )
+
+
+@app.post("/v1/flashcards/generate")
+async def generate_flashcards_route(request: Request, payload: FlashcardsGenerateRequest):
+    unauthorized = _auth_error_response(request)
+    if unauthorized:
+        return unauthorized
+
+    settings = get_settings()
+    try:
+        result = generate_flashcards(settings, payload)
+        return ApiEnvelope(
+            ok=True,
+            data=result.model_dump(),
+            meta={"request_id": request.state.request_id},
+        ).model_dump()
+    except RuntimeError as error:
+        return JSONResponse(
+            status_code=502,
+            content=ApiEnvelope(
+                ok=False,
+                error=ApiError(message=str(error), code="flashcards_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )

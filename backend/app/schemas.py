@@ -100,6 +100,28 @@ class QuizGenerateResult(BaseModel):
     latency_ms: int
 
 
+class FlashcardsGenerateRequest(BaseModel):
+    class_title: str = Field(min_length=1)
+    card_count: int = Field(ge=1, le=30)
+    instructions: str = Field(min_length=1)
+    blueprint_context: str
+    material_context: str
+    timeout_ms: int | None = None
+
+
+class FlashcardsGeneratedCard(BaseModel):
+    front: str
+    back: str
+
+
+class FlashcardsGenerateResult(BaseModel):
+    payload: dict[str, Any]
+    provider: AiProvider
+    model: str
+    usage: AiUsage | None = None
+    latency_ms: int
+
+
 class ApiError(BaseModel):
     message: str
     code: str | None = None

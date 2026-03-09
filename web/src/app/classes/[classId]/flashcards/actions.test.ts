@@ -104,6 +104,11 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 describe("flashcards actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.PYTHON_BACKEND_ENABLED;
+    delete process.env.PYTHON_BACKEND_FLASHCARDS_ENABLED;
+    delete process.env.PYTHON_BACKEND_URL;
+    delete process.env.PYTHON_BACKEND_API_KEY;
+    delete process.env.PYTHON_BACKEND_STRICT;
     getClassAccess.mockResolvedValue({
       found: true,
       isTeacher: true,
@@ -178,6 +183,78 @@ describe("flashcards actions", () => {
     );
   });
 
+  it("routes flashcards generation through python backend when enabled", async () => {
+    process.env.PYTHON_BACKEND_ENABLED = "true";
+    process.env.PYTHON_BACKEND_FLASHCARDS_ENABLED = "true";
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    process.env.PYTHON_BACKEND_API_KEY = "secret";
+
+    const supabaseFromMock = vi.fn();
+    requireAuthenticatedUser.mockResolvedValue({
+      supabase: { from: supabaseFromMock },
+      user: { id: "teacher-1" },
+    });
+
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse({
+        ok: true,
+        data: {
+          payload: {
+            cards: [
+              {
+                front: "What is 1 + 1?",
+                back: "The sum equals 2.",
+              },
+            ],
+          },
+          provider: "openrouter",
+          model: "or-model",
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
+          latency_ms: 30,
+        },
+      }),
+    );
+
+    const activityInsertBuilder = makeBuilder({ data: { id: "activity-1" }, error: null });
+    const cardsInsertBuilder = makeBuilder({ error: null });
+    const aiRequestsBuilder = makeBuilder({ error: null });
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "activities") {
+        return activityInsertBuilder;
+      }
+      if (table === "flashcards") {
+        return cardsInsertBuilder;
+      }
+      if (table === "ai_requests") {
+        return aiRequestsBuilder;
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Generated Flashcards");
+    formData.set("instructions", "Use only class notes.");
+    formData.set("card_count", "1");
+
+    await expectRedirect(
+      () => generateFlashcardsDraft("class-1", formData),
+      "/classes/class-1/activities/flashcards/activity-1/edit?created=1",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(buildFlashcardsGenerationPrompt).not.toHaveBeenCalled();
+    expect(generateTextWithFallback).not.toHaveBeenCalled();
+    expect(parseFlashcardsGenerationResponse).not.toHaveBeenCalled();
+    expect(aiRequestsBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "openrouter",
+        model: "or-model",
+      }),
+    );
+    fetchMock.mockRestore();
+  });
+
   it("shows a friendly message when an internal redirect token is raised as an error", async () => {
     const supabaseFromMock = vi.fn();
     requireAuthenticatedUser.mockResolvedValue({
@@ -215,3 +292,10 @@ describe("flashcards actions", () => {
     );
   });
 });
+
+function makeJsonResponse(payload: unknown, ok = true) {
+  return {
+    ok,
+    json: async () => payload,
+  } as Response;
+}

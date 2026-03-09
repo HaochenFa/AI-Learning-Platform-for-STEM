@@ -75,23 +75,36 @@ def _resolve_provider_order(
     requested_default: AiProvider | None,
     for_embeddings: bool,
 ) -> list[AiProvider]:
-    configured = [provider for provider in PROVIDER_ORDER if _is_provider_configured(settings, provider, for_embeddings)]
+    configured: list[AiProvider] = [
+        provider
+        for provider in PROVIDER_ORDER
+        if _is_provider_configured(settings, provider, for_embeddings)
+    ]
     if not configured:
         return []
 
-    order = [provider for provider in (requested_order or configured) if provider in configured]
+    base_order = requested_order if requested_order is not None else configured
+    order: list[AiProvider] = [provider for provider in base_order if provider in configured]
     if not order:
         order = configured
 
     default_provider = requested_default or _normalize_provider(settings.ai_provider_default)
     if default_provider and default_provider in order:
-        return [default_provider, *[provider for provider in order if provider != default_provider]]
+        prioritized: list[AiProvider] = [default_provider]
+        for provider in order:
+            if provider != default_provider:
+                prioritized.append(provider)
+        return prioritized
     return order
 
 
 def _normalize_provider(value: str | None) -> AiProvider | None:
-    if value in {"openrouter", "openai", "gemini"}:
-        return value
+    if value == "openrouter":
+        return "openrouter"
+    if value == "openai":
+        return "openai"
+    if value == "gemini":
+        return "gemini"
     return None
 
 

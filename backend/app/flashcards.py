@@ -5,16 +5,18 @@ from typing import Any
 
 from app.config import Settings
 from app.providers import generate_with_fallback
-from app.schemas import GenerateRequest, QuizGenerateRequest, QuizGenerateResult
+from app.schemas import FlashcardsGenerateRequest, FlashcardsGenerateResult, GenerateRequest
 
 QUALITY_PROFILE = "quality_v1"
 GROUNDING_MODE = "balanced"
 
 
-def generate_quiz(settings: Settings, request: QuizGenerateRequest) -> QuizGenerateResult:
-    prompt = build_quiz_prompt(
+def generate_flashcards(
+    settings: Settings, request: FlashcardsGenerateRequest
+) -> FlashcardsGenerateResult:
+    prompt = build_flashcards_prompt(
         class_title=request.class_title,
-        question_count=request.question_count,
+        card_count=request.card_count,
         instructions=request.instructions,
         blueprint_context=request.blueprint_context,
         material_context=request.material_context,
@@ -29,8 +31,8 @@ def generate_quiz(settings: Settings, request: QuizGenerateRequest) -> QuizGener
             timeout_ms=request.timeout_ms,
         ),
     )
-    payload = parse_quiz_response(result.content, request.question_count)
-    return QuizGenerateResult(
+    payload = parse_flashcards_response(result.content, request.card_count)
+    return FlashcardsGenerateResult(
         payload=payload,
         provider=result.provider,
         model=result.model,
@@ -39,21 +41,20 @@ def generate_quiz(settings: Settings, request: QuizGenerateRequest) -> QuizGener
     )
 
 
-def build_quiz_prompt(
+def build_flashcards_prompt(
     *,
     class_title: str,
-    question_count: int,
+    card_count: int,
     instructions: str,
     blueprint_context: str,
     material_context: str,
 ) -> dict[str, str]:
     system = " ".join(
         [
-            "You are an expert STEM assessment designer.",
+            "You are an expert STEM learning designer.",
             "Generate only valid JSON with deterministic structure.",
-            "Use only the provided blueprint/material context for content and explanations.",
-            "Questions must be multiple choice with exactly 4 choices and exactly one correct answer.",
-            "Distractors must be plausible and non-trivial.",
+            "Use only the provided blueprint/material context for content.",
+            "Each flashcard must have a concise front and a clear, grounded back.",
             f"Quality profile: {QUALITY_PROFILE}.",
             f"Grounding mode: {GROUNDING_MODE}.",
         ]
@@ -62,7 +63,7 @@ def build_quiz_prompt(
     user = "\n".join(
         [
             f"Class: {class_title}",
-            f"Question count: {question_count}",
+            f"Card count: {card_count}",
             f"Teacher instructions: {instructions}",
             "",
             "Published blueprint context:",
@@ -73,18 +74,16 @@ def build_quiz_prompt(
             "",
             "Generation objectives:",
             "1) Cover multiple blueprint topics/objectives when possible.",
-            "2) Mix cognitive demand levels (recall, understanding, application, analysis) based on available context.",
-            "3) Avoid duplicate or near-duplicate question stems.",
-            "4) Explanations must justify the correct answer using class context, not generic trivia.",
+            "2) Keep fronts short and prompt-like.",
+            "3) Keep backs precise and grounded in class context.",
+            "4) Avoid duplicates or near-duplicates.",
             "",
             "Return JSON using this exact shape:",
             "{",
-            '  "questions": [',
+            '  "cards": [',
             "    {",
-            '      "question": "string",',
-            '      "choices": ["string", "string", "string", "string"],',
-            '      "answer": "string",',
-            '      "explanation": "string"',
+            '      "front": "string",',
+            '      "back": "string"',
             "    }",
             "  ]",
             "}",
@@ -92,15 +91,14 @@ def build_quiz_prompt(
             "Rules:",
             "- No markdown.",
             "- No additional top-level keys.",
-            "- `answer` must exactly match one item in `choices`.",
-            "- Avoid weak distractors such as 'all of the above' or 'none of the above'.",
+            "- Avoid overly long backs; keep them focused.",
         ]
     )
     return {"system": system, "user": user}
 
 
-def parse_quiz_response(raw: str, question_count: int) -> dict[str, Any]:
-    not_found_message = "No JSON object found in quiz generation response."
+def parse_flashcards_response(raw: str, card_count: int) -> dict[str, Any]:
+    not_found_message = "No JSON object found in flashcards generation response."
     normalized_raw = raw.strip()
 
     candidates: list[Any] = []
@@ -119,7 +117,7 @@ def parse_quiz_response(raw: str, question_count: int) -> dict[str, Any]:
 
     if not candidates:
         if direct_json_parse_failed:
-            raise RuntimeError("Quiz generation response is not valid JSON.")
+            raise RuntimeError("Flashcards generation response is not valid JSON.")
         raise RuntimeError(not_found_message)
 
     best_errors: list[str] = []
@@ -127,14 +125,14 @@ def parse_quiz_response(raw: str, question_count: int) -> dict[str, Any]:
     for candidate in candidates:
         if not isinstance(candidate, dict):
             continue
-        questions_raw = candidate.get("questions")
-        questions = questions_raw if isinstance(questions_raw, list) else []
-        payload = {"questions": questions[:20]}
-        ok, normalized, errors = validate_quiz_payload(payload, question_count)
+        cards_raw = candidate.get("cards")
+        cards = cards_raw if isinstance(cards_raw, list) else []
+        payload = {"cards": cards[:30]}
+        ok, normalized, errors = validate_flashcards_payload(payload, card_count)
         if ok:
             if normalized is None:
                 continue
-            if not best_payload or len(normalized["questions"]) > len(best_payload["questions"]):
+            if not best_payload or len(normalized["cards"]) > len(best_payload["cards"]):
                 best_payload = normalized
             continue
         if not best_errors or len(errors) < len(best_errors):
@@ -144,70 +142,49 @@ def parse_quiz_response(raw: str, question_count: int) -> dict[str, Any]:
         return best_payload
 
     raise RuntimeError(
-        f"Invalid quiz JSON: {'; '.join(best_errors) if best_errors else 'Payload could not be validated.'}"
+        "Invalid flashcards JSON: "
+        + ("; ".join(best_errors) if best_errors else "Payload could not be validated.")
     )
 
 
-def validate_quiz_payload(
-    payload: dict[str, Any], question_count: int
+def validate_flashcards_payload(
+    payload: dict[str, Any], card_count: int
 ) -> tuple[bool, dict[str, Any] | None, list[str]]:
     errors: list[str] = []
-    questions = payload.get("questions")
-    if not isinstance(questions, list) or len(questions) == 0:
-        errors.append("questions must be a non-empty array.")
+    cards = payload.get("cards")
+    if not isinstance(cards, list) or len(cards) == 0:
+        errors.append("cards must be a non-empty array.")
         return False, None, errors
 
-    normalized_questions: list[dict[str, Any]] = []
-    seen_stems: set[str] = set()
-    for index, item in enumerate(questions):
+    normalized_cards: list[dict[str, str]] = []
+    front_set: set[str] = set()
+    for index, item in enumerate(cards):
         if not isinstance(item, dict):
-            errors.append(f"questions[{index}] must be an object.")
-            continue
-        question = normalize_text(item.get("question"))
-        explanation = normalize_text(item.get("explanation"))
-        answer = normalize_text(item.get("answer"))
-        choices_raw = item.get("choices")
-        if not question:
-            errors.append(f"questions[{index}].question is required.")
-        if not explanation:
-            errors.append(f"questions[{index}].explanation is required.")
-        if not answer:
-            errors.append(f"questions[{index}].answer is required.")
-        if not isinstance(choices_raw, list) or len(choices_raw) != 4:
-            errors.append(f"questions[{index}].choices must contain exactly 4 options.")
+            errors.append(f"cards[{index}] must be an object.")
             continue
 
-        choices: list[str] = []
-        for choice in choices_raw:
-            text = normalize_text(choice)
-            if not text:
-                errors.append(f"questions[{index}].choices contains an empty option.")
-            choices.append(text)
-        if len(set(choices)) != 4:
-            errors.append(f"questions[{index}].choices must be unique.")
-        if answer and answer not in choices:
-            errors.append(f"questions[{index}].answer must match one choice.")
+        front = normalize_text(item.get("front"))
+        back = normalize_text(item.get("back"))
+        if not front:
+            errors.append(f"cards[{index}].front is required.")
+        if not back:
+            errors.append(f"cards[{index}].back is required.")
+        elif word_count(back) < 3:
+            errors.append(f"cards[{index}].back must be at least 3 words.")
 
-        normalized_stem = " ".join(question.lower().split())
-        if normalized_stem in seen_stems:
-            errors.append("questions contain duplicate or near-duplicate stems.")
-        seen_stems.add(normalized_stem)
+        normalized_front = normalize_for_dedup(front)
+        if normalized_front in front_set:
+            errors.append(f"cards[{index}].front duplicates an earlier front.")
+        front_set.add(normalized_front)
 
-        normalized_questions.append(
-            {
-                "question": question,
-                "choices": choices,
-                "answer": answer,
-                "explanation": explanation,
-            }
-        )
+        normalized_cards.append({"front": front, "back": back})
 
-    trimmed = normalized_questions[: max(1, question_count)]
+    trimmed = normalized_cards[: max(1, card_count)]
     if not trimmed:
-        errors.append("No valid questions were generated.")
+        errors.append("No valid cards were generated.")
     if errors:
         return False, None, errors
-    return True, {"questions": trimmed}, errors
+    return True, {"cards": trimmed}, errors
 
 
 def extract_json_object_candidates(raw: str) -> list[str]:
@@ -248,3 +225,16 @@ def normalize_text(value: Any) -> str:
     if not isinstance(value, str):
         return ""
     return value.strip()
+
+
+def normalize_for_dedup(value: str) -> str:
+    return " ".join(
+        "".join(char.lower() if char.isalnum() or char.isspace() else " " for char in value).split()
+    )
+
+
+def word_count(value: str) -> int:
+    stripped = value.strip()
+    if not stripped:
+        return 0
+    return len(stripped.split())
