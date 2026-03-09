@@ -149,10 +149,13 @@ Legacy fallback names (optional):
 - `PYTHON_BACKEND_STRICT=false` (set `true` to fail fast instead of falling back to local Next adapters)
 - `PYTHON_BACKEND_URL` (for example `https://python-backend.example.com`)
 - `PYTHON_BACKEND_API_KEY` (if Python service requires API key auth)
+- `PYTHON_BACKEND_MATERIAL_TIMEOUT_MS=15000` (web -> python material-dispatch timeout)
 
 ### Material processing backend
 
 - `MATERIAL_WORKER_BACKEND=supabase` (default recommended)
+- `MATERIAL_WORKER_BACKEND=python` routes queue/trigger through Python middleware:
+  `web -> python /v1/materials/dispatch -> supabase queue + edge function worker`
 - Optional fallback-only route worker secret: `CRON_SECRET`
 
 ## 9. Deployment flow

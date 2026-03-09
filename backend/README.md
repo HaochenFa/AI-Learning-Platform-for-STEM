@@ -8,6 +8,7 @@ fallback and deterministic response envelopes.
 - `GET /healthz`
 - `POST /v1/llm/generate`
 - `POST /v1/llm/embeddings`
+- `POST /v1/materials/dispatch` (enqueue + optionally trigger Supabase `material-worker`)
 
 Response envelope:
 
@@ -32,6 +33,11 @@ pip install -r backend/requirements.txt
 
 - `PYTHON_BACKEND_API_KEY` for internal auth.
 - `PYTHON_BACKEND_LOG_PROVIDER_FAILURES=true` (default).
+- For materials dispatch middleware mode:
+  - `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`)
+  - `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`)
+  - `MATERIAL_WORKER_TOKEN` (if your Edge worker requires bearer auth)
+  - `MATERIAL_WORKER_FUNCTION_URL` (optional override; defaults to `${SUPABASE_URL}/functions/v1/material-worker`)
 
 3. Start the service:
 

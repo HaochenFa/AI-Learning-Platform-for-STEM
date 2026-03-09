@@ -32,6 +32,84 @@ function resolveMaterialWorkerBackend() {
   return (process.env.MATERIAL_WORKER_BACKEND ?? "supabase").toLowerCase();
 }
 
+function isPythonBackendStrict() {
+  const raw = process.env.PYTHON_BACKEND_STRICT;
+  if (!raw) {
+    return false;
+  }
+  return ["1", "true", "yes", "on"].includes(raw.trim().toLowerCase());
+}
+
+function resolvePythonBackendTimeoutMs() {
+  const parsed = Number(process.env.PYTHON_BACKEND_MATERIAL_TIMEOUT_MS ?? "15000");
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 15000;
+  }
+  return Math.floor(parsed);
+}
+
+async function dispatchMaterialJobViaPythonBackend(input: {
+  classId: string;
+  materialId: string;
+}) {
+  const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
+  if (!baseUrl) {
+    throw new Error("PYTHON_BACKEND_URL is not configured.");
+  }
+
+  const apiKey = process.env.PYTHON_BACKEND_API_KEY?.trim();
+  const timeoutMs = resolvePythonBackendTimeoutMs();
+  let didTimeout = false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    didTimeout = true;
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/v1/materials/dispatch`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { "x-api-key": apiKey } : {}),
+      },
+      body: JSON.stringify({
+        class_id: input.classId,
+        material_id: input.materialId,
+        trigger_worker: true,
+      }),
+      signal: controller.signal,
+    });
+
+    let payload: {
+      ok?: boolean;
+      error?: { message?: string };
+    } | null = null;
+    try {
+      payload = (await response.json()) as {
+        ok?: boolean;
+        error?: { message?: string };
+      };
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok || !payload?.ok) {
+      throw new Error(
+        payload?.error?.message ??
+          `Python backend material dispatch failed with status ${response.status}.`,
+      );
+    }
+  } catch (error) {
+    if (didTimeout || (error instanceof Error && error.name === "AbortError")) {
+      throw new Error(`Python backend material dispatch timed out after ${timeoutMs}ms.`);
+    }
+    throw error instanceof Error ? error : new Error("Python backend material dispatch failed.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function requireTeacherAccess(
   classId: string,
   userId: string,
@@ -238,22 +316,40 @@ async function uploadMaterialMutationInternal(
   let jobFailed = false;
   if (processingStatus === "processing") {
     const workerBackend = resolveMaterialWorkerBackend();
-    const jobError =
-      workerBackend === "supabase"
-        ? (
-            await supabase.rpc("enqueue_material_job", {
-              p_material_id: materialRow.id,
-              p_class_id: classId,
-            })
-          ).error
-        : (
-            await supabase.from("material_processing_jobs").insert({
-              material_id: materialRow.id,
-              class_id: classId,
-              status: "pending",
-              stage: "queued",
-            })
-          ).error;
+    let jobError: { message: string } | null = null;
+
+    if (workerBackend === "python") {
+      try {
+        await dispatchMaterialJobViaPythonBackend({
+          classId,
+          materialId: materialRow.id,
+        });
+      } catch (error) {
+        if (isPythonBackendStrict()) {
+          jobError = { message: error instanceof Error ? error.message : "Python dispatch failed." };
+        } else {
+          const fallback = await supabase.rpc("enqueue_material_job", {
+            p_material_id: materialRow.id,
+            p_class_id: classId,
+          });
+          jobError = fallback.error ? { message: fallback.error.message } : null;
+        }
+      }
+    } else if (workerBackend === "supabase") {
+      const result = await supabase.rpc("enqueue_material_job", {
+        p_material_id: materialRow.id,
+        p_class_id: classId,
+      });
+      jobError = result.error ? { message: result.error.message } : null;
+    } else {
+      const result = await supabase.from("material_processing_jobs").insert({
+        material_id: materialRow.id,
+        class_id: classId,
+        status: "pending",
+        stage: "queued",
+      });
+      jobError = result.error ? { message: result.error.message } : null;
+    }
 
     if (jobError) {
       jobFailed = true;

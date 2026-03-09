@@ -48,6 +48,17 @@ class EmbeddingsResult(BaseModel):
     latency_ms: int
 
 
+class MaterialDispatchRequest(BaseModel):
+    class_id: str = Field(min_length=1)
+    material_id: str = Field(min_length=1)
+    trigger_worker: bool = True
+
+
+class MaterialDispatchResult(BaseModel):
+    enqueued: bool
+    triggered: bool
+
+
 class ApiError(BaseModel):
     message: str
     code: str | None = None

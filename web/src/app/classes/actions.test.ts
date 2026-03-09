@@ -104,6 +104,9 @@ describe("class actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.MATERIAL_WORKER_BACKEND;
+    delete process.env.PYTHON_BACKEND_URL;
+    delete process.env.PYTHON_BACKEND_API_KEY;
+    delete process.env.PYTHON_BACKEND_STRICT;
     vi.mocked(requireVerifiedUser).mockResolvedValue({
       supabase: {
         from: supabaseFromMock,
@@ -334,6 +337,100 @@ describe("class actions", () => {
       "enqueue_material_job",
       expect.anything(),
     );
+  });
+
+  it("dispatches worker through python backend when MATERIAL_WORKER_BACKEND=python", async () => {
+    process.env.MATERIAL_WORKER_BACKEND = "python";
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    process.env.PYTHON_BACKEND_API_KEY = "test-key";
+
+    const file = new File([Buffer.from("hello")], "lecture.pdf", {
+      type: "application/pdf",
+    });
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("title", "Lecture 1");
+
+    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
+    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
+
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, data: { enqueued: true, triggered: true } }),
+    } as Response);
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({ data: { id: "m1" }, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => uploadMaterial("class-1", formData),
+      "/classes/class-1?uploaded=processing",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(supabaseRpcMock).not.toHaveBeenCalledWith(
+      "enqueue_material_job",
+      expect.anything(),
+    );
+  });
+
+  it("falls back to supabase enqueue when python dispatch fails and strict mode is disabled", async () => {
+    process.env.MATERIAL_WORKER_BACKEND = "python";
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    process.env.PYTHON_BACKEND_STRICT = "false";
+
+    const file = new File([Buffer.from("hello")], "lecture.pdf", {
+      type: "application/pdf",
+    });
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("title", "Lecture 1");
+
+    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
+    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      json: async () => ({ ok: false, error: { message: "python down" } }),
+    } as Response);
+    supabaseRpcMock.mockResolvedValueOnce({ data: "job-1", error: null });
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({ data: { id: "m1" }, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => uploadMaterial("class-1", formData),
+      "/classes/class-1?uploaded=processing",
+    );
+    expect(supabaseRpcMock).toHaveBeenCalledWith("enqueue_material_job", {
+      p_material_id: "m1",
+      p_class_id: "class-1",
+    });
   });
 
   it("blocks class creation for student accounts", async () => {
