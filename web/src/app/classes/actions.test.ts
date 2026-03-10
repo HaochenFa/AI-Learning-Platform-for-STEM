@@ -118,6 +118,7 @@ describe("class actions", () => {
       profile: { id: "u1", account_type: "teacher" },
       accountType: "teacher",
       isEmailVerified: true,
+      accessToken: "session-token",
     } as never);
   });
 

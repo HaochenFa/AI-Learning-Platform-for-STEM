@@ -43,6 +43,7 @@ class Settings:
     gemini_embedding_model: str | None
     log_provider_failures: bool
     supabase_url: str | None
+    supabase_publishable_key: str | None
     supabase_service_role_key: str | None
     material_worker_token: str | None
     material_worker_batch: int
@@ -73,6 +74,8 @@ def get_settings() -> Settings:
         gemini_embedding_model=os.getenv("GEMINI_EMBEDDING_MODEL"),
         log_provider_failures=_get_bool("PYTHON_BACKEND_LOG_PROVIDER_FAILURES", True),
         supabase_url=os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL"),
+        supabase_publishable_key=os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+        or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         or os.getenv("SUPABASE_SECRET_KEY"),
         material_worker_token=os.getenv("MATERIAL_WORKER_TOKEN"),

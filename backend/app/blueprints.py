@@ -257,6 +257,10 @@ def validate_and_normalize_blueprint(payload: dict[str, Any]) -> dict[str, Any]:
                 }
             )
 
+        assessment_ideas = normalize_string_list(topic.get("assessmentIdeas"))
+        if len(assessment_ideas) == 0:
+            raise RuntimeError(f"Invalid blueprint JSON: topics[{index}].assessmentIdeas must be non-empty.")
+
         normalized_topics.append(
             {
                 "key": key,
@@ -266,7 +270,7 @@ def validate_and_normalize_blueprint(payload: dict[str, Any]) -> dict[str, Any]:
                 "sequence": sequence,
                 "prerequisites": normalize_string_list(topic.get("prerequisites")),
                 "objectives": normalized_objectives,
-                "assessmentIdeas": normalize_string_list(topic.get("assessmentIdeas")),
+                "assessmentIdeas": assessment_ideas,
                 "misconceptionFlags": normalize_string_list(topic.get("misconceptionFlags")),
                 "evidence": normalize_evidence_list(topic.get("evidence")),
             }

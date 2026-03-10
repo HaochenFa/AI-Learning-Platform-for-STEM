@@ -14,6 +14,7 @@ export type AuthContext = {
   user: Awaited<
     ReturnType<Awaited<ReturnType<typeof createServerSupabaseClient>>["auth"]["getUser"]>
   >["data"]["user"];
+  accessToken: string | null;
   profile: ProfileRow | null;
   isEmailVerified: boolean;
 };
@@ -33,6 +34,7 @@ export async function getAuthContext(): Promise<AuthContext> {
     return {
       supabase,
       user: null,
+      accessToken: null,
       profile: null,
       isEmailVerified: false,
     };
@@ -47,6 +49,7 @@ export async function getAuthContext(): Promise<AuthContext> {
   return {
     supabase,
     user,
+    accessToken: session?.access_token ?? null,
     profile: profile ?? null,
     isEmailVerified: Boolean(user.email_confirmed_at),
   };

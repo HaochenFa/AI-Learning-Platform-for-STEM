@@ -45,6 +45,7 @@ def _make_settings() -> Settings:
         gemini_embedding_model=None,
         log_provider_failures=True,
         supabase_url="https://example.supabase.co",
+        supabase_publishable_key="publishable-key",
         supabase_service_role_key="service-role",
         material_worker_token=None,
         material_worker_batch=3,

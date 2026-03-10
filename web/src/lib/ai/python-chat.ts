@@ -5,6 +5,7 @@ import type { ChatModelResponse, ChatTurn } from "@/lib/chat/types";
 export type PythonChatGenerateRequest = {
   classId: string;
   userId: string;
+  accessToken: string;
   classTitle: string;
   userMessage: string;
   transcript: ChatTurn[];
@@ -56,6 +57,7 @@ export async function generateChatViaPythonBackend(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${input.accessToken}`,
         ...(apiKey ? { "x-api-key": apiKey } : {}),
       },
       body: JSON.stringify({

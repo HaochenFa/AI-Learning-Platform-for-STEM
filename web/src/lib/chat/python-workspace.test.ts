@@ -57,6 +57,7 @@ describe("python workspace timeout handling", () => {
     const request = sendWorkspaceMessageViaPython({
       classId: "class-1",
       userId: "student-1",
+      accessToken: "session-token",
       sessionId: "session-1",
       message: "Help me solve this derivative.",
     });
@@ -75,6 +76,7 @@ describe("python workspace timeout handling", () => {
     const request = listWorkspaceParticipantsViaPython({
       classId: "class-1",
       userId: "teacher-1",
+      accessToken: "session-token",
     });
 
     const timeoutMessage = expectTimeout(request);

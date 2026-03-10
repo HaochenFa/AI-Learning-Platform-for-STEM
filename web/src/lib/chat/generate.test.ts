@@ -58,6 +58,11 @@ describe("generateGroundedChatResponse", () => {
 
     const insertMock = vi.fn(async () => ({ error: null }));
     createServerSupabaseClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn(async () => ({
+          data: { session: { access_token: "session-token" } },
+        })),
+      },
       from: vi.fn(() => ({
         insert: insertMock,
       })),

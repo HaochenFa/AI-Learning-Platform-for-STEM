@@ -249,7 +249,7 @@ function normalizeCompactionSummary(row: SessionCompactionRow | null | undefined
 }
 
 async function resolveAccess(classId: string) {
-  const { supabase, user, authError } = await requireAuthenticatedUser();
+  const { supabase, user, accessToken, authError } = await requireAuthenticatedUser();
 
   if (!user) {
     return {
@@ -276,6 +276,7 @@ async function resolveAccess(classId: string) {
     ok: true as const,
     supabase,
     user,
+    accessToken,
     role,
   };
 }
@@ -356,6 +357,7 @@ export async function listClassChatParticipants(
       const data = await listWorkspaceParticipantsViaPython({
         classId,
         userId: access.user.id,
+        accessToken: access.accessToken ?? "",
       });
       return {
         ok: true,
@@ -448,6 +450,7 @@ export async function listClassChatSessions(
       const data = await listWorkspaceSessionsViaPython({
         classId,
         userId: access.user.id,
+        accessToken: access.accessToken ?? "",
         ownerUserId,
       });
       return {
@@ -515,6 +518,7 @@ export async function createClassChatSession(
       const data = await createWorkspaceSessionViaPython({
         classId,
         userId: access.user.id,
+        accessToken: access.accessToken ?? "",
         title,
       });
       return {
@@ -583,6 +587,7 @@ export async function renameClassChatSession(
       const data = await renameWorkspaceSessionViaPython({
         classId,
         userId: access.user.id,
+        accessToken: access.accessToken ?? "",
         sessionId,
         title: normalizedTitle,
       });
@@ -641,6 +646,7 @@ export async function archiveClassChatSession(
       const data = await archiveWorkspaceSessionViaPython({
         classId,
         userId: access.user.id,
+        accessToken: access.accessToken ?? "",
         sessionId,
       });
       return {
@@ -707,6 +713,7 @@ export async function listClassChatMessages(
       const data = await listWorkspaceMessagesViaPython({
         classId,
         userId: access.user.id,
+        accessToken: access.accessToken ?? "",
         sessionId,
         ownerUserId,
         beforeCursor: options?.beforeCursor,
@@ -847,6 +854,7 @@ export async function sendClassChatMessage(
       const data = await sendWorkspaceMessageViaPython({
         classId,
         userId: access.user.id,
+        accessToken: access.accessToken ?? "",
         sessionId,
         message,
       });

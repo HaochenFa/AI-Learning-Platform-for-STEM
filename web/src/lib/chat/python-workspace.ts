@@ -27,6 +27,7 @@ const DEFAULT_CHAT_TIMEOUT_MS = 45000;
 export async function listWorkspaceParticipantsViaPython(input: {
   classId: string;
   userId: string;
+  accessToken: string;
 }) {
   const payload = await postWorkspace<{
     participants?: Array<{
@@ -36,7 +37,7 @@ export async function listWorkspaceParticipantsViaPython(input: {
   }>("/v1/chat/workspace/participants", {
     class_id: input.classId,
     user_id: input.userId,
-  });
+  }, input.accessToken);
 
   const participants: ClassChatParticipant[] = (payload.participants ?? [])
     .filter((item) => typeof item.user_id === "string" && item.user_id.trim().length > 0)
@@ -51,6 +52,7 @@ export async function listWorkspaceParticipantsViaPython(input: {
 export async function listWorkspaceSessionsViaPython(input: {
   classId: string;
   userId: string;
+  accessToken: string;
   ownerUserId?: string;
 }) {
   const payload = await postWorkspace<{
@@ -59,7 +61,7 @@ export async function listWorkspaceSessionsViaPython(input: {
     class_id: input.classId,
     user_id: input.userId,
     owner_user_id: input.ownerUserId ?? null,
-  });
+  }, input.accessToken);
 
   return {
     sessions: (payload.sessions ?? []).map(normalizeSessionRow),
@@ -69,6 +71,7 @@ export async function listWorkspaceSessionsViaPython(input: {
 export async function createWorkspaceSessionViaPython(input: {
   classId: string;
   userId: string;
+  accessToken: string;
   title?: string;
 }) {
   const payload = await postWorkspace<{
@@ -77,7 +80,7 @@ export async function createWorkspaceSessionViaPython(input: {
     class_id: input.classId,
     user_id: input.userId,
     title: input.title ?? null,
-  });
+  }, input.accessToken);
 
   if (!payload.session) {
     throw new Error("Python workspace create session response is invalid.");
@@ -91,6 +94,7 @@ export async function createWorkspaceSessionViaPython(input: {
 export async function renameWorkspaceSessionViaPython(input: {
   classId: string;
   userId: string;
+  accessToken: string;
   sessionId: string;
   title: string;
 }) {
@@ -101,7 +105,7 @@ export async function renameWorkspaceSessionViaPython(input: {
     user_id: input.userId,
     session_id: input.sessionId,
     title: input.title,
-  });
+  }, input.accessToken);
 
   if (!payload.session) {
     throw new Error("Python workspace rename session response is invalid.");
@@ -115,6 +119,7 @@ export async function renameWorkspaceSessionViaPython(input: {
 export async function archiveWorkspaceSessionViaPython(input: {
   classId: string;
   userId: string;
+  accessToken: string;
   sessionId: string;
 }) {
   const payload = await postWorkspace<{
@@ -123,7 +128,7 @@ export async function archiveWorkspaceSessionViaPython(input: {
     class_id: input.classId,
     user_id: input.userId,
     session_id: input.sessionId,
-  });
+  }, input.accessToken);
 
   if (!payload.session_id) {
     throw new Error("Python workspace archive session response is invalid.");
@@ -137,6 +142,7 @@ export async function archiveWorkspaceSessionViaPython(input: {
 export async function listWorkspaceMessagesViaPython(input: {
   classId: string;
   userId: string;
+  accessToken: string;
   sessionId: string;
   ownerUserId?: string;
   beforeCursor?: string | null;
@@ -156,7 +162,7 @@ export async function listWorkspaceMessagesViaPython(input: {
     owner_user_id: input.ownerUserId ?? null,
     before_cursor: input.beforeCursor ?? null,
     limit: input.limit ?? null,
-  });
+  }, input.accessToken);
 
   if (!payload.session) {
     throw new Error("Python workspace messages response is invalid.");
@@ -177,6 +183,7 @@ export async function listWorkspaceMessagesViaPython(input: {
 export async function sendWorkspaceMessageViaPython(input: {
   classId: string;
   userId: string;
+  accessToken: string;
   sessionId: string;
   message: string;
 }) {
@@ -196,7 +203,7 @@ export async function sendWorkspaceMessageViaPython(input: {
     session_id: input.sessionId,
     message: input.message,
     timeout_ms: timeoutMs,
-  }, { timeoutMs });
+  }, input.accessToken, { timeoutMs });
 
   if (!payload.response || !payload.user_message || !payload.assistant_message) {
     throw new Error("Python workspace send response is invalid.");
@@ -239,6 +246,7 @@ function resolvePythonBackendChatTimeoutMs() {
 async function postWorkspace<T>(
   path: string,
   body: Record<string, unknown>,
+  accessToken: string,
   options: { timeoutMs?: number } = {},
 ) {
   const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
@@ -259,6 +267,7 @@ async function postWorkspace<T>(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
         ...(apiKey ? { "x-api-key": apiKey } : {}),
       },
       body: JSON.stringify(body),

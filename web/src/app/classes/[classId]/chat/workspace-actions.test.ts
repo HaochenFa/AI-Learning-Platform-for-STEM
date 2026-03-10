@@ -144,6 +144,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
 
     vi.mocked(getClassAccess).mockResolvedValue({
@@ -188,6 +189,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
     vi.mocked(getClassAccess).mockResolvedValue({
       found: true,
@@ -206,6 +208,7 @@ describe("workspace chat actions", () => {
     expect(listWorkspaceSessionsViaPython).toHaveBeenCalledWith({
       classId: "class-1",
       userId: "student-1",
+      accessToken: "session-token",
       ownerUserId: undefined,
     });
     expect(supabaseFromMock).not.toHaveBeenCalled();
@@ -241,6 +244,7 @@ describe("workspace chat actions", () => {
       profile: { id: "teacher-1", account_type: "teacher" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
 
     vi.mocked(getClassAccess).mockResolvedValue({
@@ -291,6 +295,7 @@ describe("workspace chat actions", () => {
       profile: { id: "teacher-1", account_type: "teacher" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
     vi.mocked(getClassAccess).mockResolvedValue({
       found: true,
@@ -348,6 +353,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
     vi.mocked(getClassAccess).mockResolvedValue({
       found: true,
@@ -362,6 +368,7 @@ describe("workspace chat actions", () => {
     expect(createWorkspaceSessionViaPython).toHaveBeenCalledWith({
       classId: "class-1",
       userId: "student-1",
+      accessToken: "session-token",
       title: "  New chat  ",
     });
 
@@ -370,6 +377,7 @@ describe("workspace chat actions", () => {
     expect(renameWorkspaceSessionViaPython).toHaveBeenCalledWith({
       classId: "class-1",
       userId: "student-1",
+      accessToken: "session-token",
       sessionId: "session-python-1",
       title: "Renamed session",
     });
@@ -384,6 +392,7 @@ describe("workspace chat actions", () => {
     expect(archiveWorkspaceSessionViaPython).toHaveBeenCalledWith({
       classId: "class-1",
       userId: "student-1",
+      accessToken: "session-token",
       sessionId: "session-python-1",
     });
   });
@@ -445,6 +454,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
     vi.mocked(getClassAccess).mockResolvedValue({
       found: true,
@@ -462,6 +472,7 @@ describe("workspace chat actions", () => {
     expect(sendWorkspaceMessageViaPython).toHaveBeenCalledWith({
       classId: "class-1",
       userId: "student-1",
+      accessToken: "session-token",
       sessionId: "session-1",
       message: "How do I start this proof?",
     });
@@ -484,6 +495,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
     vi.mocked(getClassAccess).mockResolvedValue({
       found: true,
@@ -548,6 +560,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
 
     vi.mocked(getClassAccess).mockResolvedValue({
@@ -626,6 +639,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
 
     vi.mocked(getClassAccess).mockResolvedValue({
@@ -748,6 +762,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
 
     vi.mocked(getClassAccess).mockResolvedValue({
@@ -858,6 +873,7 @@ describe("workspace chat actions", () => {
       profile: { id: "student-1", account_type: "student" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
 
     vi.mocked(getClassAccess).mockResolvedValue({
@@ -906,6 +922,7 @@ describe("workspace chat actions", () => {
       profile: { id: "teacher-1", account_type: "teacher" },
       isEmailVerified: true,
       authError: null,
+      accessToken: "session-token",
     } as never);
     vi.mocked(getClassAccess).mockResolvedValue({
       found: true,

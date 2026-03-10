@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
 from uuid import uuid4
 
+import httpx
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from app.blueprints import generate_blueprint
 from app.chat import generate_chat
@@ -18,7 +22,7 @@ from app.chat_workspace import (
     send_message,
 )
 from app.classes import ClassDomainError, create_class, join_class
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.flashcards import generate_flashcards
 from app.materials import dispatch_material_job, process_material_jobs
 from app.providers import generate_embeddings_with_fallback, generate_with_fallback
@@ -46,6 +50,7 @@ from app.schemas import (
 )
 
 app = FastAPI(title="STEM Learning Python Backend", version="0.1.0")
+USER_TOKEN_VERIFY_TIMEOUT_SECONDS = 8.0
 
 
 @app.middleware("http")
@@ -57,22 +62,27 @@ async def request_context_middleware(request: Request, call_next):
     return response
 
 
-def _auth_error_response(request: Request) -> JSONResponse | None:
-    settings = get_settings()
+def _error_response(request: Request, *, status_code: int, message: str, code: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content=ApiEnvelope(
+            ok=False,
+            error=ApiError(message=message, code=code),
+            meta={"request_id": request.state.request_id},
+        ).model_dump(),
+    )
+
+
+def _auth_error_response(request: Request, settings: Settings) -> JSONResponse | None:
     expected_api_key = settings.python_backend_api_key
     if not expected_api_key:
         if settings.python_backend_allow_unauthenticated_requests:
             return None
-        return JSONResponse(
+        return _error_response(
+            request,
             status_code=503,
-            content=ApiEnvelope(
-                ok=False,
-                error=ApiError(
-                    message="Python backend authentication is misconfigured.",
-                    code="backend_auth_misconfigured",
-                ),
-                meta={"request_id": request.state.request_id},
-            ).model_dump(),
+            message="Python backend authentication is misconfigured.",
+            code="backend_auth_misconfigured",
         )
 
     header_key = request.headers.get("x-api-key")
@@ -80,14 +90,123 @@ def _auth_error_response(request: Request) -> JSONResponse | None:
     if header_key == expected_api_key or bearer == expected_api_key:
         return None
 
-    return JSONResponse(
+    return _error_response(
+        request,
         status_code=401,
-        content=ApiEnvelope(
-            ok=False,
-            error=ApiError(message="Unauthorized", code="unauthorized"),
-            meta={"request_id": request.state.request_id},
-        ).model_dump(),
+        message="Unauthorized",
+        code="unauthorized",
     )
+
+
+async def _authorize_request(
+    request: Request,
+    *,
+    require_actor_user: bool = False,
+) -> tuple[Settings, str | None, JSONResponse | None]:
+    settings = get_settings()
+    unauthorized = _auth_error_response(request, settings)
+    if unauthorized:
+        return settings, None, unauthorized
+    if not require_actor_user:
+        return settings, None, None
+
+    user_id, user_error = await _resolve_actor_user_id(request, settings)
+    if user_error:
+        return settings, None, user_error
+    return settings, user_id, None
+
+
+async def _resolve_actor_user_id(
+    request: Request,
+    settings: Settings,
+) -> tuple[str | None, JSONResponse | None]:
+    token = _parse_bearer_token(request.headers.get("authorization"))
+    if not token or token == settings.python_backend_api_key:
+        return None, _error_response(
+            request,
+            status_code=401,
+            message="A valid user bearer token is required.",
+            code="user_token_required",
+        )
+
+    supabase_url = settings.supabase_url
+    auth_api_key = settings.supabase_publishable_key or settings.supabase_service_role_key
+    if not supabase_url or not auth_api_key:
+        return None, _error_response(
+            request,
+            status_code=503,
+            message="Python backend user authentication is misconfigured.",
+            code="backend_user_auth_misconfigured",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=USER_TOKEN_VERIFY_TIMEOUT_SECONDS) as client:
+            response = await client.get(
+                f"{supabase_url.rstrip('/')}/auth/v1/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "apikey": auth_api_key,
+                },
+            )
+    except httpx.TimeoutException:
+        return None, _error_response(
+            request,
+            status_code=504,
+            message="Timed out while validating user token.",
+            code="user_auth_timeout",
+        )
+    except httpx.HTTPError:
+        return None, _error_response(
+            request,
+            status_code=502,
+            message="Failed to validate user token.",
+            code="user_auth_unavailable",
+        )
+
+    if response.status_code >= 400:
+        return None, _error_response(
+            request,
+            status_code=401,
+            message="Invalid user token.",
+            code="invalid_user_token",
+        )
+
+    payload = _safe_json_dict(response)
+    user_id = payload.get("id")
+    if not isinstance(user_id, str) or not user_id.strip():
+        return None, _error_response(
+            request,
+            status_code=401,
+            message="Invalid user token.",
+            code="invalid_user_token",
+        )
+    return user_id.strip(), None
+
+
+def _safe_json_dict(response: httpx.Response) -> dict[str, Any]:
+    try:
+        payload = response.json()
+    except ValueError:
+        return {}
+    if isinstance(payload, dict):
+        return payload
+    return {}
+
+
+def _bind_actor_user_id(
+    request: Request,
+    payload: BaseModel,
+    actor_user_id: str,
+) -> tuple[BaseModel | None, JSONResponse | None]:
+    payload_user_id = getattr(payload, "user_id", None)
+    if isinstance(payload_user_id, str) and payload_user_id.strip() and payload_user_id != actor_user_id:
+        return None, _error_response(
+            request,
+            status_code=403,
+            message="Payload user_id does not match authenticated user.",
+            code="user_id_mismatch",
+        )
+    return payload.model_copy(update={"user_id": actor_user_id}), None
 
 
 @app.get("/healthz")
@@ -101,13 +220,12 @@ async def healthz(request: Request):
 
 @app.post("/v1/llm/generate")
 async def generate(request: Request, payload: GenerateRequest):
-    unauthorized = _auth_error_response(request)
+    settings, _, unauthorized = await _authorize_request(request)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
     try:
-        result = generate_with_fallback(settings, payload)
+        result = await run_in_threadpool(generate_with_fallback, settings, payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -126,13 +244,12 @@ async def generate(request: Request, payload: GenerateRequest):
 
 @app.post("/v1/llm/embeddings")
 async def embeddings(request: Request, payload: EmbeddingsRequest):
-    unauthorized = _auth_error_response(request)
+    settings, _, unauthorized = await _authorize_request(request)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
     try:
-        result = generate_embeddings_with_fallback(settings, payload)
+        result = await run_in_threadpool(generate_embeddings_with_fallback, settings, payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -151,13 +268,12 @@ async def embeddings(request: Request, payload: EmbeddingsRequest):
 
 @app.post("/v1/materials/dispatch")
 async def dispatch_materials(request: Request, payload: MaterialDispatchRequest):
-    unauthorized = _auth_error_response(request)
+    settings, _, unauthorized = await _authorize_request(request)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
     try:
-        result = dispatch_material_job(settings, payload)
+        result = await run_in_threadpool(dispatch_material_job, settings, payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -176,13 +292,12 @@ async def dispatch_materials(request: Request, payload: MaterialDispatchRequest)
 
 @app.post("/v1/materials/process")
 async def process_materials(request: Request, payload: MaterialProcessRequest):
-    unauthorized = _auth_error_response(request)
+    settings, _, unauthorized = await _authorize_request(request)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
     try:
-        result = process_material_jobs(settings, payload)
+        result = await run_in_threadpool(process_material_jobs, settings, payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -201,13 +316,16 @@ async def process_materials(request: Request, payload: MaterialProcessRequest):
 
 @app.post("/v1/classes/create")
 async def create_class_route(request: Request, payload: ClassCreateRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = create_class(settings, payload)
+        result = await run_in_threadpool(create_class, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -235,13 +353,16 @@ async def create_class_route(request: Request, payload: ClassCreateRequest):
 
 @app.post("/v1/classes/join")
 async def join_class_route(request: Request, payload: ClassJoinRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = join_class(settings, payload)
+        result = await run_in_threadpool(join_class, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -269,13 +390,12 @@ async def join_class_route(request: Request, payload: ClassJoinRequest):
 
 @app.post("/v1/blueprints/generate")
 async def generate_blueprints(request: Request, payload: BlueprintGenerateRequest):
-    unauthorized = _auth_error_response(request)
+    settings, _, unauthorized = await _authorize_request(request)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
     try:
-        result = generate_blueprint(settings, payload)
+        result = await run_in_threadpool(generate_blueprint, settings, payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -294,13 +414,12 @@ async def generate_blueprints(request: Request, payload: BlueprintGenerateReques
 
 @app.post("/v1/quiz/generate")
 async def generate_quizzes(request: Request, payload: QuizGenerateRequest):
-    unauthorized = _auth_error_response(request)
+    settings, _, unauthorized = await _authorize_request(request)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
     try:
-        result = generate_quiz(settings, payload)
+        result = await run_in_threadpool(generate_quiz, settings, payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -319,13 +438,12 @@ async def generate_quizzes(request: Request, payload: QuizGenerateRequest):
 
 @app.post("/v1/flashcards/generate")
 async def generate_flashcards_route(request: Request, payload: FlashcardsGenerateRequest):
-    unauthorized = _auth_error_response(request)
+    settings, _, unauthorized = await _authorize_request(request)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
     try:
-        result = generate_flashcards(settings, payload)
+        result = await run_in_threadpool(generate_flashcards, settings, payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -344,13 +462,16 @@ async def generate_flashcards_route(request: Request, payload: FlashcardsGenerat
 
 @app.post("/v1/chat/generate")
 async def generate_chat_route(request: Request, payload: ChatGenerateRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = generate_chat(settings, payload)
+        result = await run_in_threadpool(generate_chat, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),
@@ -369,13 +490,16 @@ async def generate_chat_route(request: Request, payload: ChatGenerateRequest):
 
 @app.post("/v1/chat/workspace/participants")
 async def list_chat_workspace_participants_route(request: Request, payload: ChatWorkspaceParticipantsRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = list_participants(settings, payload)
+        result = await run_in_threadpool(list_participants, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result,
@@ -403,13 +527,16 @@ async def list_chat_workspace_participants_route(request: Request, payload: Chat
 
 @app.post("/v1/chat/workspace/sessions/list")
 async def list_chat_workspace_sessions_route(request: Request, payload: ChatWorkspaceSessionsListRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = list_sessions(settings, payload)
+        result = await run_in_threadpool(list_sessions, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result,
@@ -437,13 +564,16 @@ async def list_chat_workspace_sessions_route(request: Request, payload: ChatWork
 
 @app.post("/v1/chat/workspace/sessions/create")
 async def create_chat_workspace_session_route(request: Request, payload: ChatWorkspaceSessionCreateRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = create_session(settings, payload)
+        result = await run_in_threadpool(create_session, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result,
@@ -471,13 +601,16 @@ async def create_chat_workspace_session_route(request: Request, payload: ChatWor
 
 @app.post("/v1/chat/workspace/sessions/rename")
 async def rename_chat_workspace_session_route(request: Request, payload: ChatWorkspaceSessionRenameRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = rename_session(settings, payload)
+        result = await run_in_threadpool(rename_session, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result,
@@ -505,13 +638,16 @@ async def rename_chat_workspace_session_route(request: Request, payload: ChatWor
 
 @app.post("/v1/chat/workspace/sessions/archive")
 async def archive_chat_workspace_session_route(request: Request, payload: ChatWorkspaceSessionArchiveRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = archive_session(settings, payload)
+        result = await run_in_threadpool(archive_session, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result,
@@ -539,13 +675,16 @@ async def archive_chat_workspace_session_route(request: Request, payload: ChatWo
 
 @app.post("/v1/chat/workspace/messages/list")
 async def list_chat_workspace_messages_route(request: Request, payload: ChatWorkspaceMessagesListRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = list_messages(settings, payload)
+        result = await run_in_threadpool(list_messages, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result,
@@ -573,13 +712,16 @@ async def list_chat_workspace_messages_route(request: Request, payload: ChatWork
 
 @app.post("/v1/chat/workspace/messages/send")
 async def send_chat_workspace_message_route(request: Request, payload: ChatWorkspaceMessageSendRequest):
-    unauthorized = _auth_error_response(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
-    settings = get_settings()
+    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    if payload_error:
+        return payload_error
+
     try:
-        result = send_message(settings, payload)
+        result = await run_in_threadpool(send_message, settings, bound_payload)
         return ApiEnvelope(
             ok=True,
             data=result,

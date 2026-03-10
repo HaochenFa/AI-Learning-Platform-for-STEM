@@ -27,6 +27,7 @@ class ConfigTests(unittest.TestCase):
                 "PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS": "true",
                 "AI_PROVIDER_DEFAULT": "OpenRouter",
                 "SUPABASE_URL": "https://db.example",
+                "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "pk",
                 "SUPABASE_SERVICE_ROLE_KEY": "srk",
                 "MATERIAL_WORKER_BATCH": "5",
             },
@@ -38,6 +39,7 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(settings.python_backend_allow_unauthenticated_requests)
         self.assertEqual(settings.ai_provider_default, "openrouter")
         self.assertEqual(settings.supabase_url, "https://db.example")
+        self.assertEqual(settings.supabase_publishable_key, "pk")
         self.assertEqual(settings.supabase_service_role_key, "srk")
         self.assertEqual(settings.material_worker_batch, 5)
 

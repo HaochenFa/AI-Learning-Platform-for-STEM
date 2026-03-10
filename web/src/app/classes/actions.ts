@@ -31,6 +31,14 @@ function redirectWithError(path: string, message: string) {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
 
+function requireAccessTokenOrRedirect(path: string, accessToken: string | null): string {
+  if (!accessToken) {
+    redirectWithError(path, "Session token is missing. Please sign in again.");
+    throw new Error("unreachable");
+  }
+  return accessToken;
+}
+
 const MAX_JOIN_CODE_ATTEMPTS = 5;
 const MATERIALS_BUCKET = "materials";
 
@@ -129,6 +137,7 @@ async function dispatchMaterialJobViaPythonBackend(input: {
 
 async function createClassViaPythonBackend(input: {
   userId: string;
+  accessToken: string;
   title: string;
   description?: string | null;
   subject?: string | null;
@@ -154,6 +163,7 @@ async function createClassViaPythonBackend(input: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${input.accessToken}`,
         ...(apiKey ? { "x-api-key": apiKey } : {}),
       },
       body: JSON.stringify({
@@ -196,7 +206,7 @@ async function createClassViaPythonBackend(input: {
   }
 }
 
-async function joinClassViaPythonBackend(input: { userId: string; joinCode: string }) {
+async function joinClassViaPythonBackend(input: { userId: string; accessToken: string; joinCode: string }) {
   const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
   if (!baseUrl) {
     throw new Error("PYTHON_BACKEND_URL is not configured.");
@@ -216,6 +226,7 @@ async function joinClassViaPythonBackend(input: { userId: string; joinCode: stri
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${input.accessToken}`,
         ...(apiKey ? { "x-api-key": apiKey } : {}),
       },
       body: JSON.stringify({
@@ -310,7 +321,7 @@ export async function createClass(formData: FormData) {
     redirectWithError("/classes/new", "Class title is required");
   }
 
-  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+  const { supabase, user, accessToken } = await requireVerifiedUser({ accountType: "teacher" });
 
   let newClassId: string | null = null;
 
@@ -318,8 +329,10 @@ export async function createClass(formData: FormData) {
     const joinCode = generateJoinCode();
     if (shouldUsePythonClassesBackend()) {
       try {
+        const sessionAccessToken = requireAccessTokenOrRedirect("/classes/new", accessToken);
         newClassId = await createClassViaPythonBackend({
           userId: user.id,
+          accessToken: sessionAccessToken,
           title,
           description: description || null,
           subject: subject || null,
@@ -373,12 +386,14 @@ export async function joinClass(formData: FormData) {
     redirectWithError("/join", "Join code is required");
   }
 
-  const { supabase, user } = await requireVerifiedUser({ accountType: "student" });
+  const { supabase, user, accessToken } = await requireVerifiedUser({ accountType: "student" });
 
   if (shouldUsePythonClassesBackend()) {
     try {
+      const sessionAccessToken = requireAccessTokenOrRedirect("/join", accessToken);
       const classId = await joinClassViaPythonBackend({
         userId: user.id,
+        accessToken: sessionAccessToken,
         joinCode,
       });
       redirect(`/classes/${classId}`);
