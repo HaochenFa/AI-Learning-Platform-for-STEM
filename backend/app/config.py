@@ -57,13 +57,15 @@ def get_settings() -> Settings:
             "PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS",
             False,
         ),
-        ai_provider_default=os.getenv("AI_PROVIDER_DEFAULT", "openrouter").strip().lower(),
+        ai_provider_default=os.getenv(
+            "AI_PROVIDER_DEFAULT", "openrouter").strip().lower(),
         ai_request_timeout_ms=_get_int("AI_REQUEST_TIMEOUT_MS", 30000),
         ai_embedding_timeout_ms=_get_int("AI_EMBEDDING_TIMEOUT_MS", 30000),
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY"),
         openrouter_model=os.getenv("OPENROUTER_MODEL"),
         openrouter_embedding_model=os.getenv("OPENROUTER_EMBEDDING_MODEL"),
-        openrouter_base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+        openrouter_base_url=os.getenv(
+            "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
         openrouter_site_url=os.getenv("OPENROUTER_SITE_URL"),
         openrouter_app_name=os.getenv("OPENROUTER_APP_NAME"),
         openai_api_key=os.getenv("OPENAI_API_KEY"),
@@ -72,9 +74,12 @@ def get_settings() -> Settings:
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
         gemini_model=os.getenv("GEMINI_MODEL"),
         gemini_embedding_model=os.getenv("GEMINI_EMBEDDING_MODEL"),
-        log_provider_failures=_get_bool("PYTHON_BACKEND_LOG_PROVIDER_FAILURES", True),
-        supabase_url=os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL"),
-        supabase_publishable_key=os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+        log_provider_failures=_get_bool(
+            "PYTHON_BACKEND_LOG_PROVIDER_FAILURES", True),
+        supabase_url=os.getenv("SUPABASE_URL") or os.getenv(
+            "NEXT_PUBLIC_SUPABASE_URL"),
+        supabase_publishable_key=os.getenv(
+            "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
         or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         or os.getenv("SUPABASE_SECRET_KEY"),

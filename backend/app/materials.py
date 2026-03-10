@@ -15,7 +15,8 @@ from app.schemas import (
 
 def dispatch_material_job(settings: Settings, request: MaterialDispatchRequest) -> MaterialDispatchResult:
     if not settings.supabase_url or not settings.supabase_service_role_key:
-        raise RuntimeError("Supabase service credentials are not configured on Python backend.")
+        raise RuntimeError(
+            "Supabase service credentials are not configured on Python backend.")
 
     headers = {
         "apikey": settings.supabase_service_role_key,
@@ -37,7 +38,8 @@ def dispatch_material_job(settings: Settings, request: MaterialDispatchRequest) 
 
         enqueue_payload = _safe_json(enqueue_response)
         if enqueue_response.status_code >= 400:
-            message = _extract_error_message(enqueue_payload) or "Failed to enqueue material job."
+            message = _extract_error_message(
+                enqueue_payload) or "Failed to enqueue material job."
             raise RuntimeError(message)
 
         triggered = False
@@ -53,7 +55,8 @@ def dispatch_material_job(settings: Settings, request: MaterialDispatchRequest) 
 
 def process_material_jobs(settings: Settings, request: MaterialProcessRequest) -> MaterialProcessResult:
     with httpx.Client(timeout=max(5, settings.ai_request_timeout_ms / 1000)) as client:
-        payload = trigger_material_worker(settings, request.batch_size, client=client)
+        payload = trigger_material_worker(
+            settings, request.batch_size, client=client)
 
     return MaterialProcessResult(
         triggered=True,
@@ -74,10 +77,12 @@ def trigger_material_worker(
     worker_url = settings.material_worker_function_url
     if not worker_url:
         if not settings.supabase_url:
-            raise RuntimeError("Supabase URL is not configured on Python backend.")
+            raise RuntimeError(
+                "Supabase URL is not configured on Python backend.")
         worker_url = f"{settings.supabase_url.rstrip('/')}/functions/v1/material-worker"
 
-    clamped_batch = max(1, min(25, batch_size or settings.material_worker_batch))
+    clamped_batch = max(
+        1, min(25, batch_size or settings.material_worker_batch))
     worker_headers = {"Content-Type": "application/json"}
     token = settings.material_worker_token
     if token:
@@ -90,7 +95,8 @@ def trigger_material_worker(
     )
     worker_payload = _safe_json(worker_response)
     if worker_response.status_code >= 400:
-        message = _extract_error_message(worker_payload) or "Failed to trigger material worker."
+        message = _extract_error_message(
+            worker_payload) or "Failed to trigger material worker."
         raise RuntimeError(message)
     return worker_payload
 

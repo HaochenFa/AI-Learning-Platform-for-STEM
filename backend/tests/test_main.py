@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import path_setup  # noqa: F401
+import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import unittest
 from unittest.mock import patch
@@ -26,7 +26,8 @@ class MainTests(unittest.TestCase):
         settings = make_settings(python_backend_api_key="secret")
         client = TestClient(app)
         with patch("app.main.get_settings", return_value=settings):
-            response = client.post("/v1/llm/generate", json={"system": "s", "user": "u"})
+            response = client.post(
+                "/v1/llm/generate", json={"system": "s", "user": "u"})
 
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["error"]["code"], "unauthorized")
@@ -49,18 +50,21 @@ class MainTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.json()["error"]["code"], "user_token_required")
+        self.assertEqual(response.json()["error"]
+                         ["code"], "user_token_required")
 
     def test_user_bound_route_rejects_payload_user_mismatch(self) -> None:
         settings = make_settings(python_backend_api_key="secret")
         client = TestClient(app)
         with (
             patch("app.main.get_settings", return_value=settings),
-            patch("app.main._resolve_actor_user_id", return_value=("actor-1", None)),
+            patch("app.main._resolve_actor_user_id",
+                  return_value=("actor-1", None)),
         ):
             response = client.post(
                 "/v1/classes/create",
-                headers={"x-api-key": "secret", "authorization": "Bearer user-jwt"},
+                headers={"x-api-key": "secret",
+                         "authorization": "Bearer user-jwt"},
                 json={
                     "user_id": "someone-else",
                     "title": "Physics",

@@ -117,7 +117,8 @@ def parse_flashcards_response(raw: str, card_count: int) -> dict[str, Any]:
 
     if not candidates:
         if direct_json_parse_failed:
-            raise RuntimeError("Flashcards generation response is not valid JSON.")
+            raise RuntimeError(
+                "Flashcards generation response is not valid JSON.")
         raise RuntimeError(not_found_message)
 
     best_errors: list[str] = []
@@ -128,7 +129,8 @@ def parse_flashcards_response(raw: str, card_count: int) -> dict[str, Any]:
         cards_raw = candidate.get("cards")
         cards = cards_raw if isinstance(cards_raw, list) else []
         payload = {"cards": cards[:30]}
-        ok, normalized, errors = validate_flashcards_payload(payload, card_count)
+        ok, normalized, errors = validate_flashcards_payload(
+            payload, card_count)
         if ok:
             if normalized is None:
                 continue
@@ -216,7 +218,7 @@ def extract_json_object_candidates(raw: str) -> list[str]:
                 continue
             depth -= 1
             if depth == 0 and start_index >= 0:
-                candidates.append(raw[start_index : index + 1])
+                candidates.append(raw[start_index: index + 1])
                 start_index = -1
     return candidates
 
@@ -229,7 +231,8 @@ def normalize_text(value: Any) -> str:
 
 def normalize_for_dedup(value: str) -> str:
     return " ".join(
-        "".join(char.lower() if char.isalnum() or char.isspace() else " " for char in value).split()
+        "".join(char.lower() if char.isalnum() or char.isspace()
+                else " " for char in value).split()
     )
 
 

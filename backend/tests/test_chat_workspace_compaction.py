@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import path_setup  # noqa: F401
+import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import sys
 import unittest
@@ -54,7 +54,8 @@ def _make_settings() -> Settings:
 
 
 def _make_message(index: int, *, content: str, author_kind: str = "student") -> dict[str, object]:
-    created_at = (datetime(2026, 3, 10, tzinfo=UTC) + timedelta(minutes=index)).isoformat()
+    created_at = (datetime(2026, 3, 10, tzinfo=UTC) +
+                  timedelta(minutes=index)).isoformat()
     return {
         "id": f"m{index:04d}",
         "session_id": "session-1",
@@ -69,7 +70,8 @@ def _make_message(index: int, *, content: str, author_kind: str = "student") -> 
 
 class ChatWorkspaceCompactionTests(unittest.TestCase):
     def test_compaction_decision_below_trigger(self) -> None:
-        messages = [_make_message(i, content="short context") for i in range(10)]
+        messages = [_make_message(i, content="short context")
+                    for i in range(10)]
         decision = _build_compaction_decision(
             messages=messages,
             existing_summary=None,
@@ -113,7 +115,8 @@ class ChatWorkspaceCompactionTests(unittest.TestCase):
             }
         }
 
-        candidates = _collect_compaction_candidates(messages, recent_turns=4, existing_summary=existing_summary)
+        candidates = _collect_compaction_candidates(
+            messages, recent_turns=4, existing_summary=existing_summary)
         self.assertGreater(len(candidates), 0)
         for candidate in candidates:
             created_at = str(candidate["created_at"])
@@ -131,7 +134,8 @@ class ChatWorkspaceCompactionTests(unittest.TestCase):
             else:
                 content = f"Therefore use epsilon-delta reasoning at step {i}."
                 author = "assistant"
-            messages.append(_make_message(i, content=content, author_kind=author))
+            messages.append(_make_message(
+                i, content=content, author_kind=author))
 
         result = _build_compaction_result(
             messages=messages,
@@ -159,7 +163,8 @@ class ChatWorkspaceCompactionTests(unittest.TestCase):
             message="Can you help me with this proof?",
         )
 
-        context_rows = [_make_message(i, content="prior turn") for i in range(35)]
+        context_rows = [_make_message(i, content="prior turn")
+                        for i in range(35)]
         compaction_summary = {
             "version": "v1",
             "generatedAt": "2026-03-10T00:40:00+00:00",
@@ -180,8 +185,10 @@ class ChatWorkspaceCompactionTests(unittest.TestCase):
         }
 
         with (
-            patch("app.chat_workspace._client", return_value=nullcontext(object())),
-            patch("app.chat_workspace._resolve_access", return_value={"is_member": True, "is_teacher": False, "class_title": "Calculus"}),
+            patch("app.chat_workspace._client",
+                  return_value=nullcontext(object())),
+            patch("app.chat_workspace._resolve_access", return_value={
+                  "is_member": True, "is_teacher": False, "class_title": "Calculus"}),
             patch(
                 "app.chat_workspace._query_maybe_single",
                 side_effect=[
@@ -200,14 +207,19 @@ class ChatWorkspaceCompactionTests(unittest.TestCase):
                 ],
             ),
             patch("app.chat_workspace._query_list", return_value=context_rows),
-            patch("app.chat_workspace._build_compaction_decision", return_value={"should_compact": True, "reason": "token_pressure"}),
+            patch("app.chat_workspace._build_compaction_decision", return_value={
+                  "should_compact": True, "reason": "token_pressure"}),
             patch(
                 "app.chat_workspace._build_compaction_result",
-                return_value={"summary": compaction_summary, "summary_text": "memory text"},
+                return_value={"summary": compaction_summary,
+                              "summary_text": "memory text"},
             ),
-            patch("app.chat_workspace._build_compaction_memory_text", return_value="memory text"),
-            patch("app.chat_workspace._load_published_blueprint_context", return_value="blueprint context"),
-            patch("app.chat_workspace._retrieve_material_context", return_value="material context"),
+            patch("app.chat_workspace._build_compaction_memory_text",
+                  return_value="memory text"),
+            patch("app.chat_workspace._load_published_blueprint_context",
+                  return_value="blueprint context"),
+            patch("app.chat_workspace._retrieve_material_context",
+                  return_value="material context"),
             patch(
                 "app.chat_workspace.generate_chat",
                 return_value=ChatGenerateResult(
@@ -230,7 +242,8 @@ class ChatWorkspaceCompactionTests(unittest.TestCase):
 
         self.assertTrue(result["context_meta"]["compacted"])
         self.assertEqual(result["context_meta"]["reason"], "token_pressure")
-        self.assertEqual(result["context_meta"]["compacted_at"], compaction_summary["generatedAt"])
+        self.assertEqual(
+            result["context_meta"]["compacted_at"], compaction_summary["generatedAt"])
 
         chat_request = generate_chat_mock.call_args[0][1]
         self.assertEqual(chat_request.compacted_memory_context, "memory text")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import path_setup  # noqa: F401
+import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import unittest
 from unittest.mock import patch
@@ -40,7 +40,8 @@ class FlashcardsTests(unittest.TestCase):
             provider="openrouter",
             model="or-model",
             content='{"cards":[{"front":"Term","back":"A grounded explanation here"}]}',
-            usage=AiUsage(prompt_tokens=1, completion_tokens=2, total_tokens=3),
+            usage=AiUsage(prompt_tokens=1,
+                          completion_tokens=2, total_tokens=3),
             latency_ms=99,
         )
         with patch("app.flashcards.generate_with_fallback", return_value=provider_result):

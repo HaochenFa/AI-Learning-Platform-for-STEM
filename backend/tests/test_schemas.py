@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import path_setup  # noqa: F401
+import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import unittest
 

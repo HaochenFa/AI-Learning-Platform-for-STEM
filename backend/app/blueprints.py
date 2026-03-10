@@ -149,7 +149,8 @@ def parse_json_with_repair(json_text: str) -> Any:
         try:
             return json.loads(repaired)
         except json.JSONDecodeError as error:
-            raise RuntimeError("Blueprint response is not valid JSON.") from error
+            raise RuntimeError(
+                "Blueprint response is not valid JSON.") from error
 
 
 def repair_json(input_text: str) -> str:
@@ -193,10 +194,11 @@ def extract_single_json_object(raw: str) -> str | None:
         elif char == "}":
             depth -= 1
             if found_start and depth == 0:
-                candidate = raw[start : index + 1]
-                trailing = raw[index + 1 :].strip()
+                candidate = raw[start: index + 1]
+                trailing = raw[index + 1:].strip()
                 if trailing and "{" in trailing:
-                    raise RuntimeError("Multiple JSON objects found in AI response.")
+                    raise RuntimeError(
+                        "Multiple JSON objects found in AI response.")
                 return candidate
     return None
 
@@ -207,34 +209,41 @@ def validate_and_normalize_blueprint(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(summary, str) or not summary.strip():
         raise RuntimeError("Invalid blueprint JSON: summary is required.")
     if not isinstance(topics, list) or len(topics) == 0:
-        raise RuntimeError("Invalid blueprint JSON: topics must be a non-empty array.")
+        raise RuntimeError(
+            "Invalid blueprint JSON: topics must be a non-empty array.")
 
     normalized_topics: list[dict[str, Any]] = []
     keys: set[str] = set()
     sequences: list[int] = []
     for index, topic in enumerate(topics):
         if not isinstance(topic, dict):
-            raise RuntimeError(f"Invalid blueprint JSON: topics[{index}] must be an object.")
+            raise RuntimeError(
+                f"Invalid blueprint JSON: topics[{index}] must be an object.")
 
         key = normalize_topic_key(topic.get("key"))
         if not key:
-            raise RuntimeError(f"Invalid blueprint JSON: topics[{index}].key is required and must be kebab-case.")
+            raise RuntimeError(
+                f"Invalid blueprint JSON: topics[{index}].key is required and must be kebab-case.")
         if key in keys:
-            raise RuntimeError(f"Invalid blueprint JSON: topics[{index}].key is duplicated.")
+            raise RuntimeError(
+                f"Invalid blueprint JSON: topics[{index}].key is duplicated.")
         keys.add(key)
 
         sequence = topic.get("sequence")
         if not isinstance(sequence, int) or sequence < 1:
-            raise RuntimeError(f"Invalid blueprint JSON: topics[{index}].sequence must be an integer >= 1.")
+            raise RuntimeError(
+                f"Invalid blueprint JSON: topics[{index}].sequence must be an integer >= 1.")
         sequences.append(sequence)
 
         title = string_or_empty(topic.get("title"))
         if not title:
-            raise RuntimeError(f"Invalid blueprint JSON: topics[{index}].title is required.")
+            raise RuntimeError(
+                f"Invalid blueprint JSON: topics[{index}].title is required.")
 
         objectives = topic.get("objectives")
         if not isinstance(objectives, list) or len(objectives) == 0:
-            raise RuntimeError(f"Invalid blueprint JSON: topics[{index}].objectives must be non-empty.")
+            raise RuntimeError(
+                f"Invalid blueprint JSON: topics[{index}].objectives must be non-empty.")
         normalized_objectives: list[dict[str, Any]] = []
         for objective_index, objective in enumerate(objectives):
             if not isinstance(objective, dict):
@@ -259,7 +268,8 @@ def validate_and_normalize_blueprint(payload: dict[str, Any]) -> dict[str, Any]:
 
         assessment_ideas = normalize_string_list(topic.get("assessmentIdeas"))
         if len(assessment_ideas) == 0:
-            raise RuntimeError(f"Invalid blueprint JSON: topics[{index}].assessmentIdeas must be non-empty.")
+            raise RuntimeError(
+                f"Invalid blueprint JSON: topics[{index}].assessmentIdeas must be non-empty.")
 
         normalized_topics.append(
             {
@@ -278,10 +288,12 @@ def validate_and_normalize_blueprint(payload: dict[str, Any]) -> dict[str, Any]:
 
     unique_sequences = sorted(set(sequences))
     if len(unique_sequences) != len(sequences):
-        raise RuntimeError("Invalid blueprint JSON: topic sequence values are duplicated.")
+        raise RuntimeError(
+            "Invalid blueprint JSON: topic sequence values are duplicated.")
     for expected, actual in enumerate(unique_sequences, start=1):
         if actual != expected:
-            raise RuntimeError("Invalid blueprint JSON: topic sequences must be contiguous starting at 1.")
+            raise RuntimeError(
+                "Invalid blueprint JSON: topic sequences must be contiguous starting at 1.")
 
     topic_key_set = {topic["key"] for topic in normalized_topics}
     graph: dict[str, list[str]] = {}
@@ -293,17 +305,21 @@ def validate_and_normalize_blueprint(payload: dict[str, Any]) -> dict[str, Any]:
                     f"Invalid blueprint JSON: topic '{topic['key']}' prerequisite '{prereq}' is missing."
                 )
             if prereq == topic["key"]:
-                raise RuntimeError(f"Invalid blueprint JSON: topic '{topic['key']}' cannot require itself.")
+                raise RuntimeError(
+                    f"Invalid blueprint JSON: topic '{topic['key']}' cannot require itself.")
         graph[topic["key"]] = prereqs
 
     if has_cycle(graph):
-        raise RuntimeError("Invalid blueprint JSON: topics prerequisites must form an acyclic graph.")
+        raise RuntimeError(
+            "Invalid blueprint JSON: topics prerequisites must form an acyclic graph.")
 
     quality = payload.get("qualityRubric")
     normalized_quality: dict[str, Any] | None = None
     if isinstance(quality, dict):
-        coverage = normalize_coverage_level(quality.get("coverageCompleteness"))
-        progression = normalize_coverage_level(quality.get("logicalProgression"))
+        coverage = normalize_coverage_level(
+            quality.get("coverageCompleteness"))
+        progression = normalize_coverage_level(
+            quality.get("logicalProgression"))
         grounding = normalize_coverage_level(quality.get("evidenceGrounding"))
         if coverage and progression and grounding:
             normalized_quality = {

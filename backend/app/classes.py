@@ -62,12 +62,14 @@ def create_class(settings: Settings, request: ClassCreateRequest) -> ClassCreate
                     code="join_code_conflict",
                     status_code=409,
                 )
-            message = _extract_error_message(create_payload) or "Failed to create class."
+            message = _extract_error_message(
+                create_payload) or "Failed to create class."
             raise RuntimeError(message)
 
         class_id = _extract_first_id(create_payload)
         if not class_id:
-            raise RuntimeError("Supabase create class response did not include class id.")
+            raise RuntimeError(
+                "Supabase create class response did not include class id.")
 
         enrollments_url = f"{base_url}/rest/v1/enrollments?on_conflict=class_id,user_id"
         enrollment_response = client.post(
@@ -85,7 +87,8 @@ def create_class(settings: Settings, request: ClassCreateRequest) -> ClassCreate
         if enrollment_response.status_code >= 400:
             _rollback_created_class(client, settings, class_id)
             enrollment_payload = _safe_json(enrollment_response)
-            message = _extract_error_message(enrollment_payload) or "Failed to create class enrollment."
+            message = _extract_error_message(
+                enrollment_payload) or "Failed to create class enrollment."
             raise RuntimeError(message)
 
         return ClassCreateResult(class_id=class_id)
@@ -123,7 +126,8 @@ def join_class(settings: Settings, request: ClassJoinRequest) -> ClassJoinResult
         )
         class_lookup_payload = _safe_json(class_lookup_response)
         if class_lookup_response.status_code >= 400:
-            message = _extract_error_message(class_lookup_payload) or "Failed to lookup class by join code."
+            message = _extract_error_message(
+                class_lookup_payload) or "Failed to lookup class by join code."
             raise RuntimeError(message)
 
         class_id = _extract_first_id(class_lookup_payload)
@@ -149,7 +153,8 @@ def join_class(settings: Settings, request: ClassJoinRequest) -> ClassJoinResult
         )
         if enrollment_response.status_code >= 400:
             enrollment_payload = _safe_json(enrollment_response)
-            message = _extract_error_message(enrollment_payload) or "Failed to join class."
+            message = _extract_error_message(
+                enrollment_payload) or "Failed to join class."
             raise RuntimeError(message)
 
         return ClassJoinResult(class_id=class_id)
@@ -157,12 +162,14 @@ def join_class(settings: Settings, request: ClassJoinRequest) -> ClassJoinResult
 
 def _require_supabase_credentials(settings: Settings) -> None:
     if not settings.supabase_url or not settings.supabase_service_role_key:
-        raise RuntimeError("Supabase service credentials are not configured on Python backend.")
+        raise RuntimeError(
+            "Supabase service credentials are not configured on Python backend.")
 
 
 def _supabase_base_url(settings: Settings) -> str:
     if not settings.supabase_url:
-        raise RuntimeError("Supabase service URL is not configured on Python backend.")
+        raise RuntimeError(
+            "Supabase service URL is not configured on Python backend.")
     return settings.supabase_url.rstrip("/")
 
 
@@ -178,7 +185,8 @@ def _load_account_type(client: httpx.Client, settings: Settings, user_id: str) -
     )
     payload = _safe_json(response)
     if response.status_code >= 400:
-        message = _extract_error_message(payload) or "Failed to load user profile."
+        message = _extract_error_message(
+            payload) or "Failed to load user profile."
         raise RuntimeError(message)
 
     if isinstance(payload, list) and payload:

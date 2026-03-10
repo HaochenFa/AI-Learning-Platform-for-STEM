@@ -12,7 +12,8 @@ PROVIDER_ORDER: tuple[AiProvider, ...] = ("openrouter", "openai", "gemini")
 
 
 def generate_with_fallback(settings: Settings, request: GenerateRequest) -> GenerateResult:
-    timeout_ms = _resolve_timeout(request.timeout_ms, settings.ai_request_timeout_ms)
+    timeout_ms = _resolve_timeout(
+        request.timeout_ms, settings.ai_request_timeout_ms)
     deadline = _deadline(timeout_ms)
     providers = _resolve_provider_order(
         settings=settings,
@@ -28,12 +29,14 @@ def generate_with_fallback(settings: Settings, request: GenerateRequest) -> Gene
         try:
             remaining_ms = _remaining_timeout_ms(deadline)
             if remaining_ms <= 0:
-                raise RuntimeError(f"AI request timed out after {timeout_ms}ms.")
+                raise RuntimeError(
+                    f"AI request timed out after {timeout_ms}ms.")
             return _generate_with_provider(settings, provider, request, remaining_ms)
         except RuntimeError as error:
             last_error = error
             if settings.log_provider_failures:
-                print(f"[python-backend] generate provider={provider} failed: {error}")
+                print(
+                    f"[python-backend] generate provider={provider} failed: {error}")
             continue
 
     raise last_error or RuntimeError("AI request failed.")
@@ -42,7 +45,8 @@ def generate_with_fallback(settings: Settings, request: GenerateRequest) -> Gene
 def generate_embeddings_with_fallback(
     settings: Settings, request: EmbeddingsRequest
 ) -> EmbeddingsResult:
-    timeout_ms = _resolve_timeout(request.timeout_ms, settings.ai_embedding_timeout_ms)
+    timeout_ms = _resolve_timeout(
+        request.timeout_ms, settings.ai_embedding_timeout_ms)
     deadline = _deadline(timeout_ms)
     providers = _resolve_provider_order(
         settings=settings,
@@ -58,12 +62,14 @@ def generate_embeddings_with_fallback(
         try:
             remaining_ms = _remaining_timeout_ms(deadline)
             if remaining_ms <= 0:
-                raise RuntimeError(f"Embedding request timed out after {timeout_ms}ms.")
+                raise RuntimeError(
+                    f"Embedding request timed out after {timeout_ms}ms.")
             return _embed_with_provider(settings, provider, request.inputs, remaining_ms)
         except RuntimeError as error:
             last_error = error
             if settings.log_provider_failures:
-                print(f"[python-backend] embeddings provider={provider} failed: {error}")
+                print(
+                    f"[python-backend] embeddings provider={provider} failed: {error}")
             continue
 
     raise last_error or RuntimeError("Embedding request failed.")
@@ -84,11 +90,13 @@ def _resolve_provider_order(
         return []
 
     base_order = requested_order if requested_order is not None else configured
-    order: list[AiProvider] = [provider for provider in base_order if provider in configured]
+    order: list[AiProvider] = [
+        provider for provider in base_order if provider in configured]
     if not order:
         order = configured
 
-    default_provider = requested_default or _normalize_provider(settings.ai_provider_default)
+    default_provider = requested_default or _normalize_provider(
+        settings.ai_provider_default)
     if default_provider and default_provider in order:
         prioritized: list[AiProvider] = [default_provider]
         for provider in order:
@@ -201,7 +209,8 @@ def _call_openrouter_generate(
     return GenerateResult(
         provider="openrouter",
         model=settings.openrouter_model,
-        content=_normalize_chat_content((data.get("choices") or [{}])[0].get("message", {}).get("content")),
+        content=_normalize_chat_content((data.get("choices") or [{}])[
+                                        0].get("message", {}).get("content")),
         usage=_normalize_usage(data.get("usage")),
         latency_ms=int((time.perf_counter() - started_at) * 1000),
     )
@@ -235,7 +244,8 @@ def _call_openai_generate(settings: Settings, request: GenerateRequest, timeout_
     return GenerateResult(
         provider="openai",
         model=settings.openai_model,
-        content=_normalize_chat_content((data.get("choices") or [{}])[0].get("message", {}).get("content")),
+        content=_normalize_chat_content((data.get("choices") or [{}])[
+                                        0].get("message", {}).get("content")),
         usage=_normalize_usage(data.get("usage")),
         latency_ms=int((time.perf_counter() - started_at) * 1000),
     )
@@ -262,7 +272,8 @@ def _call_gemini_generate(settings: Settings, request: GenerateRequest, timeout_
     )
 
     content = "".join(
-        [part.get("text", "") for part in ((data.get("candidates") or [{}])[0].get("content", {}).get("parts") or [])]
+        [part.get("text", "") for part in ((data.get("candidates") or [{}])[
+            0].get("content", {}).get("parts") or [])]
     )
 
     return GenerateResult(
@@ -289,7 +300,8 @@ def _call_openai_embeddings(settings: Settings, inputs: list[str], timeout_ms: i
         timeout_ms=timeout_ms,
         label="OpenAI embeddings request",
     )
-    embeddings = [item.get("embedding", []) for item in (data.get("data") or [])]
+    embeddings = [item.get("embedding", [])
+                  for item in (data.get("data") or [])]
 
     return EmbeddingsResult(
         provider="openai",
@@ -323,7 +335,8 @@ def _call_openrouter_embeddings(
         timeout_ms=timeout_ms,
         label="OpenRouter embeddings request",
     )
-    embeddings = [item.get("embedding", []) for item in (data.get("data") or [])]
+    embeddings = [item.get("embedding", [])
+                  for item in (data.get("data") or [])]
 
     return EmbeddingsResult(
         provider="openrouter",
@@ -348,7 +361,8 @@ def _call_gemini_embeddings(settings: Settings, inputs: list[str], timeout_ms: i
         timeout_ms=timeout_ms,
         label="Gemini embeddings request",
     )
-    embeddings = [item.get("values", []) for item in (data.get("embeddings") or [])]
+    embeddings = [item.get("values", [])
+                  for item in (data.get("embeddings") or [])]
 
     return EmbeddingsResult(
         provider="gemini",
@@ -371,7 +385,8 @@ def _post_json(
         with httpx.Client(timeout=timeout_seconds) as client:
             response = client.post(url, json=payload, headers=headers)
     except httpx.TimeoutException as error:
-        raise RuntimeError(f"{label} timed out after {timeout_ms}ms.") from error
+        raise RuntimeError(
+            f"{label} timed out after {timeout_ms}ms.") from error
     except httpx.HTTPError as error:
         raise RuntimeError(f"{label} failed.") from error
 

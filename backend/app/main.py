@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeVar, cast
 from uuid import uuid4
 
 import httpx
@@ -51,6 +51,7 @@ from app.schemas import (
 
 app = FastAPI(title="STEM Learning Python Backend", version="0.1.0")
 USER_TOKEN_VERIFY_TIMEOUT_SECONDS = 8.0
+UserBoundPayload = TypeVar("UserBoundPayload", bound=BaseModel)
 
 
 @app.middleware("http")
@@ -195,9 +196,9 @@ def _safe_json_dict(response: httpx.Response) -> dict[str, Any]:
 
 def _bind_actor_user_id(
     request: Request,
-    payload: BaseModel,
+    payload: UserBoundPayload,
     actor_user_id: str,
-) -> tuple[BaseModel | None, JSONResponse | None]:
+) -> tuple[UserBoundPayload | None, JSONResponse | None]:
     payload_user_id = getattr(payload, "user_id", None)
     if isinstance(payload_user_id, str) and payload_user_id.strip() and payload_user_id != actor_user_id:
         return None, _error_response(
@@ -206,7 +207,7 @@ def _bind_actor_user_id(
             message="Payload user_id does not match authenticated user.",
             code="user_id_mismatch",
         )
-    return payload.model_copy(update={"user_id": actor_user_id}), None
+    return cast(UserBoundPayload, payload.model_copy(update={"user_id": actor_user_id})), None
 
 
 @app.get("/healthz")
@@ -308,7 +309,8 @@ async def process_materials(request: Request, payload: MaterialProcessRequest):
             status_code=502,
             content=ApiEnvelope(
                 ok=False,
-                error=ApiError(message=str(error), code="material_process_error"),
+                error=ApiError(message=str(error),
+                               code="material_process_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
@@ -320,9 +322,11 @@ async def create_class_route(request: Request, payload: ClassCreateRequest):
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(create_class, settings, bound_payload)
@@ -357,9 +361,11 @@ async def join_class_route(request: Request, payload: ClassJoinRequest):
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(join_class, settings, bound_payload)
@@ -466,9 +472,11 @@ async def generate_chat_route(request: Request, payload: ChatGenerateRequest):
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(generate_chat, settings, bound_payload)
@@ -494,9 +502,11 @@ async def list_chat_workspace_participants_route(request: Request, payload: Chat
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(list_participants, settings, bound_payload)
@@ -519,7 +529,8 @@ async def list_chat_workspace_participants_route(request: Request, payload: Chat
             status_code=502,
             content=ApiEnvelope(
                 ok=False,
-                error=ApiError(message=str(error), code="chat_workspace_error"),
+                error=ApiError(message=str(error),
+                               code="chat_workspace_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
@@ -531,9 +542,11 @@ async def list_chat_workspace_sessions_route(request: Request, payload: ChatWork
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(list_sessions, settings, bound_payload)
@@ -556,7 +569,8 @@ async def list_chat_workspace_sessions_route(request: Request, payload: ChatWork
             status_code=502,
             content=ApiEnvelope(
                 ok=False,
-                error=ApiError(message=str(error), code="chat_workspace_error"),
+                error=ApiError(message=str(error),
+                               code="chat_workspace_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
@@ -568,9 +582,11 @@ async def create_chat_workspace_session_route(request: Request, payload: ChatWor
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(create_session, settings, bound_payload)
@@ -593,7 +609,8 @@ async def create_chat_workspace_session_route(request: Request, payload: ChatWor
             status_code=502,
             content=ApiEnvelope(
                 ok=False,
-                error=ApiError(message=str(error), code="chat_workspace_error"),
+                error=ApiError(message=str(error),
+                               code="chat_workspace_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
@@ -605,9 +622,11 @@ async def rename_chat_workspace_session_route(request: Request, payload: ChatWor
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(rename_session, settings, bound_payload)
@@ -630,7 +649,8 @@ async def rename_chat_workspace_session_route(request: Request, payload: ChatWor
             status_code=502,
             content=ApiEnvelope(
                 ok=False,
-                error=ApiError(message=str(error), code="chat_workspace_error"),
+                error=ApiError(message=str(error),
+                               code="chat_workspace_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
@@ -642,9 +662,11 @@ async def archive_chat_workspace_session_route(request: Request, payload: ChatWo
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(archive_session, settings, bound_payload)
@@ -667,7 +689,8 @@ async def archive_chat_workspace_session_route(request: Request, payload: ChatWo
             status_code=502,
             content=ApiEnvelope(
                 ok=False,
-                error=ApiError(message=str(error), code="chat_workspace_error"),
+                error=ApiError(message=str(error),
+                               code="chat_workspace_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
@@ -679,9 +702,11 @@ async def list_chat_workspace_messages_route(request: Request, payload: ChatWork
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(list_messages, settings, bound_payload)
@@ -704,7 +729,8 @@ async def list_chat_workspace_messages_route(request: Request, payload: ChatWork
             status_code=502,
             content=ApiEnvelope(
                 ok=False,
-                error=ApiError(message=str(error), code="chat_workspace_error"),
+                error=ApiError(message=str(error),
+                               code="chat_workspace_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
@@ -716,9 +742,11 @@ async def send_chat_workspace_message_route(request: Request, payload: ChatWorks
     if unauthorized:
         return unauthorized
 
-    bound_payload, payload_error = _bind_actor_user_id(request, payload, actor_user_id or "")
+    bound_payload, payload_error = _bind_actor_user_id(
+        request, payload, actor_user_id or "")
     if payload_error:
         return payload_error
+    assert bound_payload is not None
 
     try:
         result = await run_in_threadpool(send_message, settings, bound_payload)
@@ -741,7 +769,8 @@ async def send_chat_workspace_message_route(request: Request, payload: ChatWorks
             status_code=502,
             content=ApiEnvelope(
                 ok=False,
-                error=ApiError(message=str(error), code="chat_workspace_error"),
+                error=ApiError(message=str(error),
+                               code="chat_workspace_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
@@ -753,4 +782,4 @@ def _parse_bearer_token(header: str | None) -> str | None:
     prefix = "bearer "
     if not header.lower().startswith(prefix):
         return None
-    return header[len(prefix) :].strip() or None
+    return header[len(prefix):].strip() or None

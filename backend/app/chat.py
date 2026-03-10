@@ -15,7 +15,8 @@ GROUNDING_MODE = "balanced"
 DEFAULT_CHAT_MAX_TOKENS = 9000
 DEFAULT_CHAT_ENGINE = "direct_v1"
 LANGGRAPH_CHAT_ENGINE = "langgraph_v1"
-DEFAULT_TOOL_CATALOG = ["grounding_context.read", "memory.search", "memory.save"]
+DEFAULT_TOOL_CATALOG = ["grounding_context.read",
+                        "memory.search", "memory.save"]
 DEFAULT_MEMORY_RECALL_LIMIT = 5
 
 _LANGGRAPH_CHECKPOINTER: Any | None = None
@@ -34,7 +35,8 @@ def generate_chat(settings: Settings, request: ChatGenerateRequest) -> ChatGener
     )
     orchestration_engine = resolve_chat_engine(request.orchestration_hints)
     if orchestration_engine == LANGGRAPH_CHAT_ENGINE:
-        langgraph_result = generate_chat_with_langgraph(settings, request, prompt)
+        langgraph_result = generate_chat_with_langgraph(
+            settings, request, prompt)
         if langgraph_result is not None:
             return langgraph_result
 
@@ -110,9 +112,11 @@ def generate_chat_with_langgraph(
     tool_catalog = request.tool_catalog or DEFAULT_TOOL_CATALOG
     checkpointer, store = get_langgraph_memory_backends(runtime)
     memory_namespace = resolve_memory_namespace(request)
-    tools = build_langchain_tools(runtime["tool"], request, tool_catalog, memory_namespace, store)
+    tools = build_langchain_tools(
+        runtime["tool"], request, tool_catalog, memory_namespace, store)
     thread_id = resolve_thread_id(request)
-    memory_context = recall_long_term_memory(store, memory_namespace, request.user_message)
+    memory_context = recall_long_term_memory(
+        store, memory_namespace, request.user_message)
 
     system_prompt = build_langchain_system_prompt(
         base_system_prompt=prompt["system"],
@@ -153,7 +157,8 @@ def generate_chat_with_langgraph(
             request,
             prompt,
             engine=DEFAULT_CHAT_ENGINE,
-            notes=["LangGraph produced no assistant output; falling back to direct_v1."],
+            notes=[
+                "LangGraph produced no assistant output; falling back to direct_v1."],
         )
 
     try:
@@ -164,7 +169,8 @@ def generate_chat_with_langgraph(
             request,
             prompt,
             engine=DEFAULT_CHAT_ENGINE,
-            notes=["LangGraph output was not valid JSON payload; falling back to direct_v1."],
+            notes=[
+                "LangGraph output was not valid JSON payload; falling back to direct_v1."],
         )
 
     metadata = extract_last_assistant_metadata(
@@ -308,7 +314,8 @@ def build_langchain_tools(
             if not value:
                 return "Skipped: note was empty."
 
-            namespace = memory_namespace + (normalize_text(category) or "general",)
+            namespace = memory_namespace + \
+                (normalize_text(category) or "general",)
             key = str(uuid4())
             store.put(
                 namespace,
@@ -388,7 +395,8 @@ def resolve_thread_id(request: ChatGenerateRequest) -> str:
     purpose_key = normalize_namespace_key(request.purpose or "chat")
     session_key = normalize_namespace_key(request.session_id or "default")
     seed = f"{class_key}.{user_key}.{purpose_key}.{session_key}"
-    normalized = "".join(char if char.isalnum() or char in {"-", "_", "."} else "_" for char in seed)
+    normalized = "".join(char if char.isalnum() or char in {
+                         "-", "_", "."} else "_" for char in seed)
     return normalized[:128] or "chat-thread"
 
 
@@ -401,7 +409,8 @@ def resolve_memory_namespace(request: ChatGenerateRequest) -> tuple[str, ...]:
 
 
 def normalize_namespace_key(value: str) -> str:
-    normalized = "".join(char.lower() if char.isalnum() or char in {"-", "_"} else "_" for char in value.strip())
+    normalized = "".join(char.lower() if char.isalnum() or char in {
+                         "-", "_"} else "_" for char in value.strip())
     return normalized.strip("_")[:64]
 
 
@@ -463,11 +472,13 @@ def extract_last_assistant_metadata(
 
         response_metadata = getattr(message, "response_metadata", None)
         if isinstance(response_metadata, dict):
-            model_name = normalize_text(response_metadata.get("model_name") or response_metadata.get("model"))
+            model_name = normalize_text(response_metadata.get(
+                "model_name") or response_metadata.get("model"))
             if model_name:
                 metadata["model"] = model_name
 
-            provider = normalize_text(response_metadata.get("provider") or response_metadata.get("model_provider"))
+            provider = normalize_text(response_metadata.get(
+                "provider") or response_metadata.get("model_provider"))
             if provider in {"openrouter", "openai", "gemini"}:
                 metadata["provider"] = provider
 
@@ -615,7 +626,8 @@ def build_chat_prompt(
             compacted_memory_context or "No compacted memory yet.",
             "",
             "Conversation transcript:",
-            "\n".join(transcript_lines) if transcript_lines else "No previous turns.",
+            "\n".join(
+                transcript_lines) if transcript_lines else "No previous turns.",
             "",
             f"Latest student message: {user_message}",
         ]
@@ -749,7 +761,7 @@ def extract_json_object_candidates(raw: str) -> list[str]:
                 continue
             depth -= 1
             if depth == 0 and start_index >= 0:
-                candidates.append(raw[start_index : index + 1])
+                candidates.append(raw[start_index: index + 1])
                 start_index = -1
     return candidates
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import path_setup  # noqa: F401
+import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import unittest
 from unittest.mock import patch
@@ -40,7 +40,8 @@ class QuizTests(unittest.TestCase):
             provider="openrouter",
             model="or-model",
             content='{"questions":[{"question":"Q1","choices":["A","B","C","D"],"answer":"A","explanation":"Because context says so."}]}',
-            usage=AiUsage(prompt_tokens=1, completion_tokens=2, total_tokens=3),
+            usage=AiUsage(prompt_tokens=1,
+                          completion_tokens=2, total_tokens=3),
             latency_ms=120,
         )
         with patch("app.quiz.generate_with_fallback", return_value=provider_result):

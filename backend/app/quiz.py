@@ -174,14 +174,16 @@ def validate_quiz_payload(
         if not answer:
             errors.append(f"questions[{index}].answer is required.")
         if not isinstance(choices_raw, list) or len(choices_raw) != 4:
-            errors.append(f"questions[{index}].choices must contain exactly 4 options.")
+            errors.append(
+                f"questions[{index}].choices must contain exactly 4 options.")
             continue
 
         choices: list[str] = []
         for choice in choices_raw:
             text = normalize_text(choice)
             if not text:
-                errors.append(f"questions[{index}].choices contains an empty option.")
+                errors.append(
+                    f"questions[{index}].choices contains an empty option.")
             choices.append(text)
         if len(set(choices)) != 4:
             errors.append(f"questions[{index}].choices must be unique.")
@@ -190,7 +192,8 @@ def validate_quiz_payload(
 
         normalized_stem = " ".join(question.lower().split())
         if normalized_stem in seen_stems:
-            errors.append("questions contain duplicate or near-duplicate stems.")
+            errors.append(
+                "questions contain duplicate or near-duplicate stems.")
         seen_stems.add(normalized_stem)
 
         normalized_questions.append(
@@ -239,7 +242,7 @@ def extract_json_object_candidates(raw: str) -> list[str]:
                 continue
             depth -= 1
             if depth == 0 and start_index >= 0:
-                candidates.append(raw[start_index : index + 1])
+                candidates.append(raw[start_index: index + 1])
                 start_index = -1
     return candidates
 

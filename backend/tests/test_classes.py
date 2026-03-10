@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import path_setup  # noqa: F401
+import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import unittest
 from unittest.mock import MagicMock, patch
@@ -23,12 +23,14 @@ class ClassesTests(unittest.TestCase):
 
     def test_is_unique_violation(self) -> None:
         self.assertTrue(_is_unique_violation({"code": "23505"}))
-        self.assertTrue(_is_unique_violation({"message": "duplicate key value"}))
+        self.assertTrue(_is_unique_violation(
+            {"message": "duplicate key value"}))
         self.assertFalse(_is_unique_violation({"message": "other"}))
 
     def test_create_class_forbidden_for_non_teacher(self) -> None:
         settings = make_settings()
-        request = ClassCreateRequest(user_id="u1", title="Physics", join_code="JOIN1")
+        request = ClassCreateRequest(
+            user_id="u1", title="Physics", join_code="JOIN1")
         with patch("app.classes._load_account_type", return_value="student"):
             with self.assertRaises(ClassDomainError):
                 create_class(settings, request)

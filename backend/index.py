@@ -5,4 +5,3 @@ Vercel auto-detects FastAPI apps when an `app` variable is exported from
 """
 
 from app.main import app
-

@@ -96,9 +96,11 @@ class ChatWorkspaceError(RuntimeError):
 def list_participants(settings: Settings, request: ChatWorkspaceParticipantsRequest) -> dict[str, Any]:
     _require_supabase_credentials(settings)
     with _client(settings) as client:
-        access = _resolve_access(client, settings, request.class_id, request.user_id)
+        access = _resolve_access(
+            client, settings, request.class_id, request.user_id)
         if not access["is_member"]:
-            raise ChatWorkspaceError("Class access required.", "class_access_required", 403)
+            raise ChatWorkspaceError(
+                "Class access required.", "class_access_required", 403)
         if not access["is_teacher"]:
             raise ChatWorkspaceError(
                 "Teacher access is required to monitor student chats.",
@@ -159,9 +161,11 @@ def list_participants(settings: Settings, request: ChatWorkspaceParticipantsRequ
 def list_sessions(settings: Settings, request: ChatWorkspaceSessionsListRequest) -> dict[str, Any]:
     _require_supabase_credentials(settings)
     with _client(settings) as client:
-        access = _resolve_access(client, settings, request.class_id, request.user_id)
+        access = _resolve_access(
+            client, settings, request.class_id, request.user_id)
         if not access["is_member"]:
-            raise ChatWorkspaceError("Class access required.", "class_access_required", 403)
+            raise ChatWorkspaceError(
+                "Class access required.", "class_access_required", 403)
 
         owner_user_id = _resolve_owner_user_id(
             client=client,
@@ -192,9 +196,11 @@ def list_sessions(settings: Settings, request: ChatWorkspaceSessionsListRequest)
 def create_session(settings: Settings, request: ChatWorkspaceSessionCreateRequest) -> dict[str, Any]:
     _require_supabase_credentials(settings)
     with _client(settings) as client:
-        access = _resolve_access(client, settings, request.class_id, request.user_id)
+        access = _resolve_access(
+            client, settings, request.class_id, request.user_id)
         if not access["is_member"]:
-            raise ChatWorkspaceError("Class access required.", "class_access_required", 403)
+            raise ChatWorkspaceError(
+                "Class access required.", "class_access_required", 403)
 
         normalized_title = (request.title or "").strip() or "New chat"
         safe_title = normalized_title[:120]
@@ -216,13 +222,16 @@ def create_session(settings: Settings, request: ChatWorkspaceSessionCreateReques
 def rename_session(settings: Settings, request: ChatWorkspaceSessionRenameRequest) -> dict[str, Any]:
     _require_supabase_credentials(settings)
     with _client(settings) as client:
-        access = _resolve_access(client, settings, request.class_id, request.user_id)
+        access = _resolve_access(
+            client, settings, request.class_id, request.user_id)
         if not access["is_member"]:
-            raise ChatWorkspaceError("Class access required.", "class_access_required", 403)
+            raise ChatWorkspaceError(
+                "Class access required.", "class_access_required", 403)
 
         normalized_title = request.title.strip()
         if not normalized_title:
-            raise ChatWorkspaceError("Session title is required.", "validation_error", 400)
+            raise ChatWorkspaceError(
+                "Session title is required.", "validation_error", 400)
 
         updated = _update_and_return_single(
             client,
@@ -244,9 +253,11 @@ def rename_session(settings: Settings, request: ChatWorkspaceSessionRenameReques
 def archive_session(settings: Settings, request: ChatWorkspaceSessionArchiveRequest) -> dict[str, Any]:
     _require_supabase_credentials(settings)
     with _client(settings) as client:
-        access = _resolve_access(client, settings, request.class_id, request.user_id)
+        access = _resolve_access(
+            client, settings, request.class_id, request.user_id)
         if not access["is_member"]:
-            raise ChatWorkspaceError("Class access required.", "class_access_required", 403)
+            raise ChatWorkspaceError(
+                "Class access required.", "class_access_required", 403)
 
         _update_and_return_single(
             client,
@@ -268,9 +279,11 @@ def archive_session(settings: Settings, request: ChatWorkspaceSessionArchiveRequ
 def list_messages(settings: Settings, request: ChatWorkspaceMessagesListRequest) -> dict[str, Any]:
     _require_supabase_credentials(settings)
     with _client(settings) as client:
-        access = _resolve_access(client, settings, request.class_id, request.user_id)
+        access = _resolve_access(
+            client, settings, request.class_id, request.user_id)
         if not access["is_member"]:
-            raise ChatWorkspaceError("Class access required.", "class_access_required", 403)
+            raise ChatWorkspaceError(
+                "Class access required.", "class_access_required", 403)
 
         owner_user_id = _resolve_owner_user_id(
             client=client,
@@ -294,7 +307,8 @@ def list_messages(settings: Settings, request: ChatWorkspaceMessagesListRequest)
             failure_message="Failed to load chat session.",
         )
         if not session:
-            raise ChatWorkspaceError("Chat session not found.", "session_not_found", 404)
+            raise ChatWorkspaceError(
+                "Chat session not found.", "session_not_found", 404)
         if session.get("owner_user_id") != owner_user_id:
             raise ChatWorkspaceError(
                 "Chat session does not belong to the selected user.",
@@ -328,14 +342,16 @@ def list_messages(settings: Settings, request: ChatWorkspaceMessagesListRequest)
             failure_message="Failed to load chat messages.",
         )
         normalized = [row for row in rows if isinstance(row, dict)]
-        normalized.sort(key=lambda item: (str(item.get("created_at") or ""), str(item.get("id") or "")))
+        normalized.sort(key=lambda item: (
+            str(item.get("created_at") or ""), str(item.get("id") or "")))
         descending = list(reversed(normalized))
         page_slice = descending[:page_size]
         has_more = len(descending) > page_size
         oldest_in_page = page_slice[-1] if page_slice else None
 
         messages = list(reversed(page_slice))
-        next_cursor = _encode_cursor(oldest_in_page) if has_more and oldest_in_page else None
+        next_cursor = _encode_cursor(
+            oldest_in_page) if has_more and oldest_in_page else None
 
         return {
             "session": session,
@@ -350,9 +366,11 @@ def list_messages(settings: Settings, request: ChatWorkspaceMessagesListRequest)
 def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -> dict[str, Any]:
     _require_supabase_credentials(settings)
     with _client(settings) as client:
-        access = _resolve_access(client, settings, request.class_id, request.user_id)
+        access = _resolve_access(
+            client, settings, request.class_id, request.user_id)
         if not access["is_member"]:
-            raise ChatWorkspaceError("Class access required.", "class_access_required", 403)
+            raise ChatWorkspaceError(
+                "Class access required.", "class_access_required", 403)
 
         session = _query_maybe_single(
             client,
@@ -367,7 +385,8 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
             failure_message="Failed to load chat session.",
         )
         if not session:
-            raise ChatWorkspaceError("Chat session not found.", "session_not_found", 404)
+            raise ChatWorkspaceError(
+                "Chat session not found.", "session_not_found", 404)
         if session.get("owner_user_id") != request.user_id:
             raise ChatWorkspaceError(
                 "You can only send messages in your own chat sessions.",
@@ -388,10 +407,12 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
             settings=settings,
             failure_message="Failed to load chat context.",
         )
-        chronological_messages = _normalize_messages_chronological(context_rows)
+        chronological_messages = _normalize_messages_chronological(
+            context_rows)
         cleaned_message = request.message.strip()
         if not cleaned_message:
-            raise ChatWorkspaceError("Message is invalid.", "validation_error", 400)
+            raise ChatWorkspaceError(
+                "Message is invalid.", "validation_error", 400)
 
         compaction_row = _query_maybe_single(
             client,
@@ -426,7 +447,8 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
                 effective_compaction = compaction_result["summary"]
                 context_compacted = True
                 compaction_reason = str(compaction_decision["reason"])
-                compacted_at = str(effective_compaction.get("generatedAt") or "") or None
+                compacted_at = str(effective_compaction.get(
+                    "generatedAt") or "") or None
                 summary_payload = {
                     "session_id": request.session_id,
                     "class_id": request.class_id,
@@ -448,7 +470,8 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
                     if compaction_row:
                         _update_rows(
                             client,
-                            _rest_url(settings, "class_chat_session_compactions"),
+                            _rest_url(
+                                settings, "class_chat_session_compactions"),
                             payload=summary_payload,
                             filters={
                                 "session_id": f"eq.{request.session_id}",
@@ -461,7 +484,8 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
                     else:
                         _insert_rows(
                             client,
-                            _rest_url(settings, "class_chat_session_compactions"),
+                            _rest_url(
+                                settings, "class_chat_session_compactions"),
                             payload=[summary_payload],
                             settings=settings,
                             failure_message="Failed to insert class chat compaction summary.",
@@ -477,8 +501,10 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
                         },
                     )
 
-        transcript = _messages_to_transcript(chronological_messages, CHAT_CONTEXT_RECENT_TURNS)
-        compacted_memory_context = _build_compaction_memory_text(effective_compaction)
+        transcript = _messages_to_transcript(
+            chronological_messages, CHAT_CONTEXT_RECENT_TURNS)
+        compacted_memory_context = _build_compaction_memory_text(
+            effective_compaction)
 
         blueprint_context = _load_published_blueprint_context(
             client=client,
@@ -527,7 +553,8 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
 
         now_iso = datetime.now(UTC).isoformat()
         author_kind = "teacher" if access.get("is_teacher") else "student"
-        payload = chat_result.payload if isinstance(chat_result.payload, dict) else {}
+        payload = chat_result.payload if isinstance(
+            chat_result.payload, dict) else {}
         answer = str(payload.get("answer") or "").strip()
         if not answer:
             raise ChatWorkspaceError(
@@ -701,7 +728,8 @@ def _resolve_owner_user_id(
 
 def _normalize_messages_chronological(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     normalized = [row for row in rows if isinstance(row, dict)]
-    normalized.sort(key=lambda item: (str(item.get("created_at") or ""), str(item.get("id") or "")))
+    normalized.sort(key=lambda item: (
+        str(item.get("created_at") or ""), str(item.get("id") or "")))
     return normalized
 
 
@@ -746,7 +774,8 @@ def _load_published_blueprint_context(
         failure_message="Failed to load published blueprint context.",
     )
     if not blueprint:
-        raise RuntimeError("A published blueprint is required before using AI chat.")
+        raise RuntimeError(
+            "A published blueprint is required before using AI chat.")
 
     canonical = _parse_canonical_blueprint(blueprint.get("content_json"))
     if canonical:
@@ -767,7 +796,8 @@ def _load_published_blueprint_context(
         settings=settings,
         failure_message="Failed to load blueprint topics.",
     )
-    topic_ids = [str(topic.get("id") or "").strip() for topic in topics if str(topic.get("id") or "").strip()]
+    topic_ids = [str(topic.get("id") or "").strip()
+                 for topic in topics if str(topic.get("id") or "").strip()]
     objectives: list[dict[str, Any]] = []
     if topic_ids:
         objectives = _query_list(
@@ -803,7 +833,8 @@ def _load_published_blueprint_context(
         for objective in objectives_by_topic.get(topic_id, []):
             level = objective.get("level") or ""
             if level:
-                objective_lines.append(f"  - {objective['statement']} ({level})")
+                objective_lines.append(
+                    f"  - {objective['statement']} ({level})")
             else:
                 objective_lines.append(f"  - {objective['statement']}")
 
@@ -814,9 +845,11 @@ def _load_published_blueprint_context(
             parts.append("Objectives:\n" + "\n".join(objective_lines))
         topic_lines.append("\n".join(parts))
 
-    summary = str(blueprint.get("summary") or "").strip() or "No summary provided."
+    summary = str(blueprint.get("summary")
+                  or "").strip() or "No summary provided."
     return "\n\n".join(
-        [f"{BLUEPRINT_SOURCE_LABEL} | Published blueprint context", f"Summary: {summary}", *topic_lines]
+        [f"{BLUEPRINT_SOURCE_LABEL} | Published blueprint context",
+            f"Summary: {summary}", *topic_lines]
     )
 
 
@@ -868,7 +901,8 @@ def _build_canonical_blueprint_context(payload: dict[str, Any]) -> str:
 
         prereq_line = ""
         if isinstance(prerequisites, list):
-            flattened = [str(item or "").strip() for item in prerequisites if str(item or "").strip()]
+            flattened = [str(item or "").strip()
+                         for item in prerequisites if str(item or "").strip()]
             if flattened:
                 prereq_line = f"Prerequisites: {', '.join(flattened)}"
 
@@ -890,15 +924,20 @@ def _build_canonical_blueprint_context(payload: dict[str, Any]) -> str:
     assumptions_block = ""
     uncertainty_block = ""
     if isinstance(assumptions, list):
-        values = [str(item or "").strip() for item in assumptions if str(item or "").strip()]
+        values = [str(item or "").strip()
+                  for item in assumptions if str(item or "").strip()]
         if values:
-            assumptions_block = "Assumptions:\n" + "\n".join([f"- {item}" for item in values])
+            assumptions_block = "Assumptions:\n" + \
+                "\n".join([f"- {item}" for item in values])
     if isinstance(uncertainty_notes, list):
-        values = [str(item or "").strip() for item in uncertainty_notes if str(item or "").strip()]
+        values = [str(item or "").strip()
+                  for item in uncertainty_notes if str(item or "").strip()]
         if values:
-            uncertainty_block = "Uncertainty notes:\n" + "\n".join([f"- {item}" for item in values])
+            uncertainty_block = "Uncertainty notes:\n" + \
+                "\n".join([f"- {item}" for item in values])
 
-    summary = str(payload.get("summary") or "").strip() or "No summary provided."
+    summary = str(payload.get("summary")
+                  or "").strip() or "No summary provided."
     parts = [
         f"{BLUEPRINT_SOURCE_LABEL} | Published blueprint context",
         f"Summary: {summary}",
@@ -937,7 +976,8 @@ def _retrieve_material_context(
     )
     payload = _safe_json(response)
     if response.status_code >= 400:
-        message = _extract_error_message(payload) or "Failed to retrieve material context."
+        message = _extract_error_message(
+            payload) or "Failed to retrieve material context."
         raise RuntimeError(message)
 
     rows = payload if isinstance(payload, list) else []
@@ -956,7 +996,8 @@ def _retrieve_material_context(
         if not text:
             continue
         token_count_raw = chunk.get("token_count")
-        token_count = _coerce_token_count(token_count_raw) or _estimate_token_count(text)
+        token_count = _coerce_token_count(
+            token_count_raw) or _estimate_token_count(text)
         if used_tokens + token_count > DEFAULT_RAG_CONTEXT_TOKENS:
             break
 
@@ -1033,9 +1074,12 @@ def _normalize_compaction_summary(row: dict[str, Any] | None) -> dict[str, Any] 
     if not isinstance(compacted_through, dict):
         return None
     generated_at = str(summary.get("generatedAt") or "").strip()
-    created_at = str(row.get("compacted_through_created_at") or compacted_through.get("createdAt") or "").strip()
-    message_id = str(row.get("compacted_through_message_id") or compacted_through.get("messageId") or "").strip()
-    turn_count = _coerce_token_count(row.get("compacted_turn_count") or compacted_through.get("turnCount"))
+    created_at = str(row.get("compacted_through_created_at")
+                     or compacted_through.get("createdAt") or "").strip()
+    message_id = str(row.get("compacted_through_message_id")
+                     or compacted_through.get("messageId") or "").strip()
+    turn_count = _coerce_token_count(
+        row.get("compacted_turn_count") or compacted_through.get("turnCount"))
     if not generated_at or not created_at or not message_id:
         return None
 
@@ -1055,11 +1099,14 @@ def _build_compaction_decision(
     existing_summary: dict[str, Any] | None,
     pending_user_message: str,
 ) -> dict[str, Any]:
-    candidates = _collect_compaction_candidates(messages, CHAT_CONTEXT_RECENT_TURNS, existing_summary)
+    candidates = _collect_compaction_candidates(
+        messages, CHAT_CONTEXT_RECENT_TURNS, existing_summary)
     estimated_prompt_tokens = _estimate_token_count(
-        "\n".join([pending_user_message, *[str(item.get("content") or "") for item in messages]])
+        "\n".join([pending_user_message, *[str(item.get("content") or "")
+                  for item in messages]])
     )
-    usable_budget = max(1, CHAT_CONTEXT_WINDOW_TOKENS - CHAT_OUTPUT_TOKEN_RESERVE)
+    usable_budget = max(1, CHAT_CONTEXT_WINDOW_TOKENS -
+                        CHAT_OUTPUT_TOKEN_RESERVE)
     pressure_ratio = estimated_prompt_tokens / usable_budget
 
     if len(messages) < CHAT_COMPACTION_TRIGGER_TURNS:
@@ -1109,7 +1156,8 @@ def _build_compaction_result(
     existing_summary: dict[str, Any] | None,
     latest_user_message: str,
 ) -> dict[str, Any] | None:
-    candidates = _collect_compaction_candidates(messages, CHAT_CONTEXT_RECENT_TURNS, existing_summary)
+    candidates = _collect_compaction_candidates(
+        messages, CHAT_CONTEXT_RECENT_TURNS, existing_summary)
     if not candidates:
         return None
     latest_terms = _extract_terms(latest_user_message)
@@ -1140,7 +1188,8 @@ def _build_compaction_result(
         ),
         -1,
     )
-    compacted_turn_delta = compacted_index + 1 if compacted_index >= 0 else len(candidates)
+    compacted_turn_delta = compacted_index + \
+        1 if compacted_index >= 0 else len(candidates)
     summary = _merge_summary(
         existing_summary=existing_summary,
         selected=selected,
@@ -1162,7 +1211,8 @@ def _build_compaction_memory_text(summary: dict[str, Any] | None) -> str:
     if isinstance(timeline, dict):
         highlights = timeline.get("highlights")
         if isinstance(highlights, list):
-            normalized = [str(item or "").strip() for item in highlights if str(item or "").strip()]
+            normalized = [str(item or "").strip()
+                          for item in highlights if str(item or "").strip()]
             if normalized:
                 lines.append(f"Timeline highlights: {' | '.join(normalized)}")
 
@@ -1184,11 +1234,13 @@ def _build_compaction_memory_text(summary: dict[str, Any] | None) -> str:
     ]:
         value = summary.get(field_name)
         if isinstance(value, list):
-            normalized = [str(item or "").strip() for item in value if str(item or "").strip()]
+            normalized = [str(item or "").strip()
+                          for item in value if str(item or "").strip()]
             if normalized:
                 lines.append(f"{label}: {' | '.join(normalized)}")
 
-    lines.append("If this memory conflicts with recent transcript turns, prefer the recent transcript.")
+    lines.append(
+        "If this memory conflicts with recent transcript turns, prefer the recent transcript.")
     return "\n".join(lines)
 
 
@@ -1199,8 +1251,10 @@ def _collect_compaction_candidates(
 ) -> list[dict[str, Any]]:
     if len(chronological_messages) <= recent_turns:
         return []
-    compactable = chronological_messages[: len(chronological_messages) - recent_turns]
-    anchor = existing_summary.get("compactedThrough") if isinstance(existing_summary, dict) else None
+    compactable = chronological_messages[: len(
+        chronological_messages) - recent_turns]
+    anchor = existing_summary.get("compactedThrough") if isinstance(
+        existing_summary, dict) else None
     if not isinstance(anchor, dict):
         return compactable
     anchor_created_at = str(anchor.get("createdAt") or "").strip()
@@ -1229,14 +1283,16 @@ def _score_turn(
     content = str(message.get("content") or "")
     lower = content.lower()
     message_terms = _extract_terms(content)
-    overlap_count = len([term for term in message_terms if term in latest_query_terms])
+    overlap_count = len(
+        [term for term in message_terms if term in latest_query_terms])
     recency_factor = (index + 1) / max(1, total)
     author_kind = str(message.get("author_kind") or "")
     asks_question = "?" in content
     has_confusion_signal = bool(
         re.search(r"(stuck|confused|not sure|don't understand|help)", lower)
     )
-    has_resolution_signal = bool(re.search(r"(therefore|so the answer|this means|remember)", lower))
+    has_resolution_signal = bool(
+        re.search(r"(therefore|so the answer|this means|remember)", lower))
     citations = message.get("citations")
     citation_count = len(citations) if isinstance(citations, list) else 0
 
@@ -1255,7 +1311,8 @@ def _score_turn(
 
 def _select_chronological_highlights(scored_turns: list[dict[str, Any]]) -> list[dict[str, Any]]:
     selected_count = min(18, len(scored_turns))
-    top = sorted(scored_turns, key=lambda item: float(item.get("score") or 0), reverse=True)[:selected_count]
+    top = sorted(scored_turns, key=lambda item: float(
+        item.get("score") or 0), reverse=True)[:selected_count]
     top.sort(
         key=lambda item: (
             str((item.get("message") or {}).get("created_at") or ""),
@@ -1295,13 +1352,16 @@ def _merge_summary(
 
     latest_query_set = set(latest_query_terms)
     for message in selected:
-        created_at = str(message.get("created_at") or "").strip() or generated_at
+        created_at = str(message.get("created_at")
+                         or "").strip() or generated_at
         for term in _extract_terms(str(message.get("content") or "")):
             if term not in latest_query_set and len(term) < 4:
                 continue
             existing = merged_terms.get(term)
-            previous_weight = float(existing.get("weight") or 0.0) if existing else 0.0
-            previous_occurrences = _coerce_token_count(existing.get("occurrences")) if existing else 0
+            previous_weight = float(existing.get(
+                "weight") or 0.0) if existing else 0.0
+            previous_occurrences = _coerce_token_count(
+                existing.get("occurrences")) if existing else 0
             merged_terms[term] = {
                 "weight": previous_weight + 1.0,
                 "occurrences": previous_occurrences + 1,
@@ -1318,7 +1378,8 @@ def _merge_summary(
             }
             for term, value in merged_terms.items()
         ],
-        key=lambda item: (-cast(float, item["weight"]), -cast(int, item["occurrences"])),
+        key=lambda item: (-cast(float,
+                          item["weight"]), -cast(int, item["occurrences"])),
     )[:MAX_KEY_TERMS]
 
     resolved_facts = _uniq(
@@ -1358,21 +1419,26 @@ def _merge_summary(
 
     previous_timeline_raw = previous.get("timeline")
     previous_timeline: dict[str, Any] = (
-        cast(dict[str, Any], previous_timeline_raw) if isinstance(previous_timeline_raw, dict) else {}
+        cast(dict[str, Any], previous_timeline_raw) if isinstance(
+            previous_timeline_raw, dict) else {}
     )
     highlights = _uniq(
         [
             *(_as_string_list(previous_timeline.get("highlights"))),
-            *[_compact_line(str(message.get("content") or "")) for message in selected],
+            *[_compact_line(str(message.get("content") or ""))
+              for message in selected],
         ]
     )[-MAX_HIGHLIGHTS:]
 
-    compacted_through_created_at = str(compacted_through.get("created_at") or "").strip() or generated_at
-    compacted_through_message_id = str(compacted_through.get("id") or "").strip()
+    compacted_through_created_at = str(compacted_through.get(
+        "created_at") or "").strip() or generated_at
+    compacted_through_message_id = str(
+        compacted_through.get("id") or "").strip()
     prior_turn_count = 0
     prior_compacted = previous.get("compactedThrough")
     if isinstance(prior_compacted, dict):
-        prior_turn_count = _coerce_token_count(prior_compacted.get("turnCount"))
+        prior_turn_count = _coerce_token_count(
+            prior_compacted.get("turnCount"))
 
     return {
         "version": "v1",
@@ -1442,7 +1508,8 @@ def _as_string_list(value: Any) -> list[str]:
 
 def _require_supabase_credentials(settings: Settings) -> None:
     if not settings.supabase_url or not settings.supabase_service_role_key:
-        raise RuntimeError("Supabase service credentials are not configured on Python backend.")
+        raise RuntimeError(
+            "Supabase service credentials are not configured on Python backend.")
 
 
 def _client(settings: Settings) -> httpx.Client:
@@ -1451,7 +1518,8 @@ def _client(settings: Settings) -> httpx.Client:
 
 def _rest_url(settings: Settings, table: str) -> str:
     if not settings.supabase_url:
-        raise RuntimeError("Supabase service URL is not configured on Python backend.")
+        raise RuntimeError(
+            "Supabase service URL is not configured on Python backend.")
     return f"{settings.supabase_url.rstrip('/')}/rest/v1/{table}"
 
 
@@ -1474,7 +1542,8 @@ def _query_list(
     settings: Settings,
     failure_message: str,
 ) -> list[dict[str, Any]]:
-    response = client.get(url, headers=_service_headers(settings), params=params)
+    response = client.get(
+        url, headers=_service_headers(settings), params=params)
     payload = _safe_json(response)
     if response.status_code >= 400:
         message = _extract_error_message(payload) or failure_message
@@ -1492,7 +1561,8 @@ def _query_maybe_single(
     settings: Settings,
     failure_message: str,
 ) -> dict[str, Any] | None:
-    rows = _query_list(client, url, params=params, settings=settings, failure_message=failure_message)
+    rows = _query_list(client, url, params=params,
+                       settings=settings, failure_message=failure_message)
     if not rows:
         return None
     return rows[0]
@@ -1617,7 +1687,7 @@ def _decode_cursor(cursor: str | None) -> dict[str, str] | None:
     if split_index <= 0 or split_index >= len(cursor) - 1:
         return None
     created_at = cursor[:split_index].strip()
-    message_id = cursor[split_index + 1 :].strip()
+    message_id = cursor[split_index + 1:].strip()
     if not created_at or not message_id:
         return None
     return {"created_at": created_at, "id": message_id}

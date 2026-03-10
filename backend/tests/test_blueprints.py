@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import path_setup  # noqa: F401
+import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import unittest
 from unittest.mock import patch
@@ -50,7 +50,8 @@ class BlueprintsTests(unittest.TestCase):
             provider="openrouter",
             model="or-model",
             content='{"summary":"S","topics":[{"key":"limits","title":"Limits","sequence":1,"prerequisites":[],"objectives":[{"statement":"Define limit","level":"understand","evidence":[]}],"assessmentIdeas":["Quiz"],"evidence":[]}]}',
-            usage=AiUsage(prompt_tokens=1, completion_tokens=2, total_tokens=3),
+            usage=AiUsage(prompt_tokens=1,
+                          completion_tokens=2, total_tokens=3),
             latency_ms=100,
         )
         with patch("app.blueprints.generate_with_fallback", return_value=provider_result):
