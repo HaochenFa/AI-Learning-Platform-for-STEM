@@ -397,6 +397,42 @@ describe("workspace chat actions", () => {
     });
   });
 
+  it("does not fall back to local insert when python session creation times out", async () => {
+    vi.mocked(resolvePythonBackendEnabled).mockReturnValue(true);
+    vi.mocked(resolvePythonBackendStrict).mockReturnValue(false);
+    vi.mocked(createWorkspaceSessionViaPython).mockRejectedValue(
+      Object.assign(new Error("Python workspace request timed out after 45000ms."), {
+        code: "timeout",
+      }),
+    );
+
+    const supabaseFromMock = vi.fn();
+    vi.mocked(requireAuthenticatedUser).mockResolvedValue({
+      supabase: { from: supabaseFromMock },
+      user: { id: "student-1" },
+      profile: { id: "student-1", account_type: "student" },
+      isEmailVerified: true,
+      authError: null,
+      accessToken: "session-token",
+    } as never);
+    vi.mocked(getClassAccess).mockResolvedValue({
+      found: true,
+      isTeacher: false,
+      isMember: true,
+      classTitle: "Calculus",
+      classOwnerId: "teacher-1",
+    });
+
+    const result = await createClassChatSession("class-1", "New chat");
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Python workspace request timed out after 45000ms.",
+    });
+    expect(createWorkspaceSessionViaPython).toHaveBeenCalledTimes(1);
+    expect(supabaseFromMock).not.toHaveBeenCalled();
+  });
+
   it("routes message sending through python workspace when enabled", async () => {
     vi.mocked(resolvePythonBackendEnabled).mockReturnValue(true);
     vi.mocked(sendWorkspaceMessageViaPython).mockResolvedValue({

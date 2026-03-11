@@ -627,6 +627,55 @@ describe("class actions", () => {
     });
   });
 
+  it("keeps uploaded material when python dispatch fails in strict mode", async () => {
+    process.env.PYTHON_BACKEND_MODE = "python_only";
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+
+    const file = new File([Buffer.from("hello")], "lecture.pdf", {
+      type: "application/pdf",
+    });
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("title", "Lecture 1");
+
+    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
+    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      json: async () => ({ ok: false, error: { message: "python down" } }),
+    } as Response);
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: { id: "class-1", owner_id: "u1" },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({ data: { id: "m1" }, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    await expectRedirect(
+      () => uploadMaterial("class-1", formData),
+      `/classes/class-1?error=${encodeURIComponent("Failed to queue material processing: python down")}`,
+    );
+
+    const materialsCalls = supabaseFromMock.mock.calls.filter((call) => call[0] === "materials");
+    expect(materialsCalls).toHaveLength(1);
+    expect(supabaseStorageMock.from).toHaveBeenCalledTimes(1);
+    expect(supabaseRpcMock).not.toHaveBeenCalledWith(
+      "enqueue_material_job",
+      expect.anything(),
+    );
+  });
+
   it("blocks class creation for student accounts", async () => {
     vi.mocked(requireVerifiedUser).mockImplementationOnce(async () => {
       redirect(

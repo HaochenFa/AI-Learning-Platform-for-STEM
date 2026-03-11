@@ -529,6 +529,7 @@ async function uploadMaterialMutationInternal(
   if (processingStatus === "processing") {
     const workerBackend = resolveMaterialWorkerBackend();
     let jobError: { message: string } | null = null;
+    let shouldRollbackMaterialOnJobFailure = true;
 
     if (workerBackend === "python") {
       try {
@@ -537,6 +538,9 @@ async function uploadMaterialMutationInternal(
           materialId: materialRow.id,
         });
       } catch (error) {
+        // Python dispatch can enqueue before failing to trigger a worker, so we
+        // cannot safely assume the material was not queued.
+        shouldRollbackMaterialOnJobFailure = false;
         if (isPythonBackendStrict()) {
           jobError = { message: error instanceof Error ? error.message : "Python dispatch failed." };
         } else {
@@ -565,8 +569,10 @@ async function uploadMaterialMutationInternal(
 
     if (jobError) {
       jobFailed = true;
-      await supabase.from("materials").delete().eq("id", materialRow.id);
-      await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
+      if (shouldRollbackMaterialOnJobFailure) {
+        await supabase.from("materials").delete().eq("id", materialRow.id);
+        await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
+      }
       return { ok: false, error: `Failed to queue material processing: ${jobError.message}` };
     }
   }

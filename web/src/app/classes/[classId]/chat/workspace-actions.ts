@@ -526,12 +526,12 @@ export async function createClassChatSession(
         data,
       };
     } catch (error) {
-      if (isPythonBackendStrict()) {
-        return {
-          ok: false,
-          error: toFriendlyPythonWorkspaceError(error),
-        };
-      }
+      // Creating a session is mutating and non-idempotent. If the Python request
+      // times out after commit, falling back to a local insert can duplicate sessions.
+      return {
+        ok: false,
+        error: toFriendlyPythonWorkspaceError(error),
+      };
     }
   }
 
