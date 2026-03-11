@@ -238,33 +238,25 @@ describe("generateGroundedChatResponse", () => {
     );
   });
 
-  it("falls back to local chat generation when python backend fails and strict mode is disabled", async () => {
-    process.env.PYTHON_BACKEND_ENABLED = "true";
-    process.env.PYTHON_BACKEND_CHAT_ENABLED = "true";
-    process.env.PYTHON_BACKEND_STRICT = "false";
+  it("throws when python backend chat fails while python routing is active", async () => {
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
     generateChatViaPythonBackend.mockRejectedValue(new Error("Python backend chat request failed with 502."));
-    generateTextWithFallback.mockResolvedValue({
-      provider: "openai",
-      model: "gpt-5-mini",
-      content: "{}",
-      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-      latencyMs: 12,
-    });
 
-    await generateGroundedChatResponse({
-      classId: "class-1",
-      classTitle: "Physics",
-      userId: "student-1",
-      userMessage: "Can we review kinematics?",
-      transcript: [],
-      purpose: "student_chat_open_v2",
-    });
+    await expect(
+      generateGroundedChatResponse({
+        classId: "class-1",
+        classTitle: "Physics",
+        userId: "student-1",
+        userMessage: "Can we review kinematics?",
+        transcript: [],
+        purpose: "student_chat_open_v2",
+      }),
+    ).rejects.toThrow("Python backend chat request failed with 502.");
 
     expect(generateChatViaPythonBackend).toHaveBeenCalledTimes(1);
-    expect(generateTextWithFallback).toHaveBeenCalledTimes(1);
-    expect(parseChatModelResponse).toHaveBeenCalledTimes(1);
+    expect(generateTextWithFallback).not.toHaveBeenCalled();
+    expect(parseChatModelResponse).not.toHaveBeenCalled();
   });
 
   it("uses a default max token budget above other generators", async () => {

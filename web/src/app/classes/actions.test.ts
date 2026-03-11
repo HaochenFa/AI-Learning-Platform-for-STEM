@@ -598,10 +598,9 @@ describe("class actions", () => {
     expect(supabaseFromMock).not.toHaveBeenCalledWith("material_processing_jobs");
   });
 
-  it("falls back to supabase enqueue when python dispatch fails and strict mode is disabled", async () => {
+  it("returns an upload error when python dispatch fails", async () => {
     process.env.MATERIAL_WORKER_BACKEND = "python";
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-    process.env.PYTHON_BACKEND_STRICT = "false";
 
     const file = new File([Buffer.from("hello")], "lecture.pdf", {
       type: "application/pdf",
@@ -617,8 +616,6 @@ describe("class actions", () => {
       status: 502,
       json: async () => ({ ok: false, error: { message: "python down" } }),
     } as Response);
-    supabaseRpcMock.mockResolvedValueOnce({ data: "job-1", error: null });
-
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
@@ -637,12 +634,9 @@ describe("class actions", () => {
 
     await expectRedirect(
       () => uploadMaterial("class-1", formData),
-      "/classes/class-1?uploaded=processing",
+      `/classes/class-1?error=${encodeURIComponent("Failed to queue material processing: python down")}`,
     );
-    expect(supabaseRpcMock).toHaveBeenCalledWith("enqueue_material_job", {
-      p_material_id: "m1",
-      p_class_id: "class-1",
-    });
+    expect(supabaseRpcMock).not.toHaveBeenCalledWith("enqueue_material_job", expect.anything());
   });
 
   it("keeps uploaded material when python dispatch fails in strict mode", async () => {

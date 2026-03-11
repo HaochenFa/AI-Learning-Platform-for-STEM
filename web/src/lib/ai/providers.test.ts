@@ -237,12 +237,9 @@ describe("generateTextWithFallback", () => {
     expect(result.usage?.totalTokens).toBe(12);
   });
 
-  it("falls back to local provider when python backend fails and strict mode is disabled", async () => {
+  it("throws when python backend fails while python routing is active", async () => {
     process.env.PYTHON_BACKEND_ENABLED = "true";
-    process.env.PYTHON_BACKEND_STRICT = "false";
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-    process.env.OPENAI_API_KEY = "oa-key";
-    process.env.OPENAI_MODEL = "oa-model";
 
     const fetchMock = vi.spyOn(global, "fetch");
     fetchMock.mockResolvedValueOnce(
@@ -254,25 +251,13 @@ describe("generateTextWithFallback", () => {
         false,
       ),
     );
-    fetchMock.mockResolvedValueOnce(
-      makeJsonResponse({
-        choices: [
-          {
-            message: {
-              content: '{"summary":"local-fallback","topics":[]}',
-            },
-          },
-        ],
+    await expect(
+      generateTextWithFallback({
+        system: "sys",
+        user: "user",
       }),
-    );
-
-    const result = await generateTextWithFallback({
-      system: "sys",
-      user: "user",
-    });
-
-    expect(result.provider).toBe("openai");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    ).rejects.toThrow("backend unavailable");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("throws when python backend fails in strict mode", async () => {

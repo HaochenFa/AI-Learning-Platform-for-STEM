@@ -11,7 +11,7 @@ export function resolvePythonBackendEnabled() {
 }
 
 export function resolvePythonBackendStrict() {
-  return normalizeBooleanEnv(process.env.PYTHON_BACKEND_STRICT, false);
+  return resolvePythonBackendEnabled();
 }
 
 export function normalizeBooleanEnv(value: string | undefined, fallback: boolean) {
