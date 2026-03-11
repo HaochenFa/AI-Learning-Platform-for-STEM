@@ -141,7 +141,7 @@ Student Flow
 - OpenAI, Google Gemini, OpenRouter via a provider adapter interface.
 - Provider orchestration can run in either:
   - Next server runtime (`web/src/lib/ai/providers.ts`)
-  - Python backend runtime (`backend/app/providers.py`) when `PYTHON_BACKEND_ENABLED=true`
+  - Python backend runtime (`backend/app/providers.py`) when `PYTHON_BACKEND_URL` is configured
 - Provider selection stored per class or per request.
 - All prompts and outputs are logged with metadata.
 

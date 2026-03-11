@@ -48,10 +48,6 @@ describe("generateGroundedChatResponse", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.CHAT_GENERATION_MAX_TOKENS;
-    delete process.env.PYTHON_BACKEND_ENABLED;
-    delete process.env.PYTHON_BACKEND_CHAT_ENABLED;
-    delete process.env.PYTHON_BACKEND_STRICT;
-    delete process.env.PYTHON_BACKEND_MODE;
     delete process.env.PYTHON_BACKEND_URL;
     delete process.env.PYTHON_BACKEND_CHAT_ENGINE;
     delete process.env.PYTHON_BACKEND_CHAT_TOOL_MODE;
@@ -85,8 +81,6 @@ describe("generateGroundedChatResponse", () => {
   });
 
   it("routes grounded chat generation through python backend when enabled", async () => {
-    process.env.PYTHON_BACKEND_ENABLED = "true";
-    process.env.PYTHON_BACKEND_CHAT_ENABLED = "true";
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
     generateChatViaPythonBackend.mockResolvedValue({
@@ -131,9 +125,7 @@ describe("generateGroundedChatResponse", () => {
     expect(parseChatModelResponse).not.toHaveBeenCalled();
   });
 
-  it("keeps grounded chat on local generation when only PYTHON_BACKEND_ENABLED is set", async () => {
-    process.env.PYTHON_BACKEND_ENABLED = "true";
-
+  it("keeps grounded chat on local generation when python backend url is missing", async () => {
     generateTextWithFallback.mockResolvedValue({
       provider: "openai",
       model: "gpt-5-mini",
@@ -156,8 +148,7 @@ describe("generateGroundedChatResponse", () => {
     expect(parseChatModelResponse).toHaveBeenCalledTimes(1);
   });
 
-  it("routes grounded chat generation through python backend when mode is python_only", async () => {
-    process.env.PYTHON_BACKEND_MODE = "python_only";
+  it("routes grounded chat generation through python backend when url is configured", async () => {
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
     generateChatViaPythonBackend.mockResolvedValue({
@@ -192,8 +183,6 @@ describe("generateGroundedChatResponse", () => {
   });
 
   it("passes langgraph engine and tool mode hints to python chat adapter when configured", async () => {
-    process.env.PYTHON_BACKEND_ENABLED = "true";
-    process.env.PYTHON_BACKEND_CHAT_ENABLED = "true";
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
     process.env.PYTHON_BACKEND_CHAT_ENGINE = "langgraph_v1";
     process.env.PYTHON_BACKEND_CHAT_TOOL_MODE = "plan";

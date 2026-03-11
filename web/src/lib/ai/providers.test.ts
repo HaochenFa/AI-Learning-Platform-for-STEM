@@ -9,7 +9,6 @@ const ORIGINAL_ENV = { ...process.env };
 
 beforeEach(() => {
   process.env = { ...ORIGINAL_ENV };
-  delete process.env.PYTHON_BACKEND_MODE;
   vi.restoreAllMocks();
 });
 
@@ -183,7 +182,6 @@ describe("generateTextWithFallback", () => {
   });
 
   it("routes generation through python backend when enabled", async () => {
-    process.env.PYTHON_BACKEND_ENABLED = "true";
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
@@ -210,8 +208,7 @@ describe("generateTextWithFallback", () => {
     expect(result.usage?.totalTokens).toBe(3);
   });
 
-  it("routes generation through python backend when mode is python_only", async () => {
-    process.env.PYTHON_BACKEND_MODE = "python_only";
+  it("routes generation through python backend when url is configured", async () => {
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
@@ -238,7 +235,6 @@ describe("generateTextWithFallback", () => {
   });
 
   it("throws when python backend fails while python routing is active", async () => {
-    process.env.PYTHON_BACKEND_ENABLED = "true";
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
     const fetchMock = vi.spyOn(global, "fetch");
@@ -260,9 +256,7 @@ describe("generateTextWithFallback", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("throws when python backend fails in strict mode", async () => {
-    process.env.PYTHON_BACKEND_ENABLED = "true";
-    process.env.PYTHON_BACKEND_STRICT = "true";
+  it("throws when python backend returns an error", async () => {
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
@@ -286,7 +280,6 @@ describe("generateTextWithFallback", () => {
 
 describe("generateEmbeddingsWithFallback", () => {
   it("routes embeddings through python backend when enabled", async () => {
-    process.env.PYTHON_BACKEND_ENABLED = "true";
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
     vi.spyOn(global, "fetch").mockResolvedValueOnce(

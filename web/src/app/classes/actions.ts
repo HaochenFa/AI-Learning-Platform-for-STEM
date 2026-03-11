@@ -11,11 +11,6 @@ import {
   detectMaterialKind,
   sanitizeFilename,
 } from "@/lib/materials/extract-text";
-import {
-  isPythonOnlyMode,
-  resolvePythonBackendEnabled,
-  resolvePythonBackendStrict,
-} from "@/lib/ai/python-migration";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireVerifiedUser } from "@/lib/auth/session";
 
@@ -49,25 +44,6 @@ type PythonClassApiError = Error & {
 type PythonMaterialDispatchError = Error & {
   safeToRollbackMaterial?: boolean;
 };
-
-function shouldUsePythonClassesBackend() {
-  return resolvePythonBackendEnabled();
-}
-
-function resolveMaterialWorkerBackend() {
-  if (isPythonOnlyMode()) {
-    return "python";
-  }
-  const configured = (process.env.MATERIAL_WORKER_BACKEND ?? "").trim().toLowerCase();
-  if (configured === "python" || configured === "supabase" || configured === "legacy") {
-    return configured;
-  }
-  return "supabase";
-}
-
-function isPythonBackendStrict() {
-  return resolvePythonBackendStrict();
-}
 
 function resolvePythonBackendTimeoutMs() {
   const parsed = Number(process.env.PYTHON_BACKEND_MATERIAL_TIMEOUT_MS ?? "15000");
@@ -352,57 +328,33 @@ export async function createClass(formData: FormData) {
     redirectWithError("/classes/new", "Class title is required");
   }
 
-  const { supabase, user, accessToken } = await requireVerifiedUser({ accountType: "teacher" });
+  const { user, accessToken } = await requireVerifiedUser({ accountType: "teacher" });
 
   let newClassId: string | null = null;
 
   for (let attempt = 0; attempt < MAX_JOIN_CODE_ATTEMPTS; attempt += 1) {
     const joinCode = generateJoinCode();
-    if (shouldUsePythonClassesBackend()) {
-      try {
-        const sessionAccessToken = requireAccessTokenOrRedirect("/classes/new", accessToken);
-        newClassId = await createClassViaPythonBackend({
-          userId: user.id,
-          accessToken: sessionAccessToken,
-          title,
-          description: description || null,
-          subject: subject || null,
-          level: level || null,
-          joinCode,
-        });
-        break;
-      } catch (error) {
-        if (isRedirectError(error)) {
-          throw error;
-        }
-        const pythonError = error as PythonClassApiError;
-        if (pythonError.code === "join_code_conflict") {
-          continue;
-        }
-        redirectWithError("/classes/new", pythonError.message || "Failed to create class.");
-      }
-    } else {
-      const { data, error } = await supabase.rpc("create_class", {
-        p_title: title,
-        p_description: description || null,
-        p_subject: subject || null,
-        p_level: level || null,
-        p_join_code: joinCode,
+    try {
+      const sessionAccessToken = requireAccessTokenOrRedirect("/classes/new", accessToken);
+      newClassId = await createClassViaPythonBackend({
+        userId: user.id,
+        accessToken: sessionAccessToken,
+        title,
+        description: description || null,
+        subject: subject || null,
+        level: level || null,
+        joinCode,
       });
-
-      if (!error && data) {
-        newClassId = data;
-        break;
+      break;
+    } catch (error) {
+      if (isRedirectError(error)) {
+        throw error;
       }
-
-      if (error) {
-        if (error.code !== "23505") {
-          redirectWithError("/classes/new", error.message);
-        }
+      const pythonError = error as PythonClassApiError;
+      if (pythonError.code === "join_code_conflict") {
         continue;
       }
-
-      redirectWithError("/classes/new", "Unexpected response from database");
+      redirectWithError("/classes/new", pythonError.message || "Failed to create class.");
     }
   }
 
@@ -420,42 +372,29 @@ export async function joinClass(formData: FormData) {
     redirectWithError("/join", "Join code is required");
   }
 
-  const { supabase, user, accessToken } = await requireVerifiedUser({ accountType: "student" });
+  const { user, accessToken } = await requireVerifiedUser({ accountType: "student" });
 
-  if (shouldUsePythonClassesBackend()) {
-    try {
-      const sessionAccessToken = requireAccessTokenOrRedirect("/join", accessToken);
-      const classId = await joinClassViaPythonBackend({
-        userId: user.id,
-        accessToken: sessionAccessToken,
-        joinCode,
-      });
-      redirect(`/classes/${classId}`);
-      return;
-    } catch (error) {
-      if (isRedirectError(error)) {
-        throw error;
-      }
-      const pythonError = error as PythonClassApiError;
-      if (pythonError.code === "class_not_found") {
-        redirectWithError("/join", "Invalid join code");
-        return;
-      }
-      redirectWithError("/join", pythonError.message || "Unable to join class.");
+  try {
+    const sessionAccessToken = requireAccessTokenOrRedirect("/join", accessToken);
+    const classId = await joinClassViaPythonBackend({
+      userId: user.id,
+      accessToken: sessionAccessToken,
+      joinCode,
+    });
+    redirect(`/classes/${classId}`);
+    return;
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    const pythonError = error as PythonClassApiError;
+    if (pythonError.code === "class_not_found") {
+      redirectWithError("/join", "Invalid join code");
       return;
     }
-  }
-
-  const { data: classId, error } = await supabase.rpc("join_class_by_code", {
-    code: joinCode,
-  });
-
-  if (error || !classId) {
-    redirectWithError("/join", "Invalid join code");
+    redirectWithError("/join", pythonError.message || "Unable to join class.");
     return;
   }
-
-  redirect(`/classes/${classId}`);
 }
 
 export type UploadMaterialMutationResult =
@@ -558,45 +497,20 @@ async function uploadMaterialMutationInternal(
 
   let jobFailed = false;
   if (processingStatus === "processing") {
-    const workerBackend = resolveMaterialWorkerBackend();
     let jobError: { message: string } | null = null;
     let shouldRollbackMaterialOnJobFailure = true;
 
-    if (workerBackend === "python") {
-      try {
-        await dispatchMaterialJobViaPythonBackend({
-          classId,
-          materialId: materialRow.id,
-        });
-      } catch (error) {
-        // Only keep the material when dispatch failure is ambiguous (for
-        // example, timeout/5xx after potential enqueue). Deterministic
-        // pre-enqueue failures should roll back the upload.
-        shouldRollbackMaterialOnJobFailure = canRollbackMaterialAfterPythonDispatchFailure(error);
-        if (isPythonBackendStrict()) {
-          jobError = { message: error instanceof Error ? error.message : "Python dispatch failed." };
-        } else {
-          const fallback = await supabase.rpc("enqueue_material_job", {
-            p_material_id: materialRow.id,
-            p_class_id: classId,
-          });
-          jobError = fallback.error ? { message: fallback.error.message } : null;
-        }
-      }
-    } else if (workerBackend === "supabase") {
-      const result = await supabase.rpc("enqueue_material_job", {
-        p_material_id: materialRow.id,
-        p_class_id: classId,
+    try {
+      await dispatchMaterialJobViaPythonBackend({
+        classId,
+        materialId: materialRow.id,
       });
-      jobError = result.error ? { message: result.error.message } : null;
-    } else {
-      const result = await supabase.from("material_processing_jobs").insert({
-        material_id: materialRow.id,
-        class_id: classId,
-        status: "pending",
-        stage: "queued",
-      });
-      jobError = result.error ? { message: result.error.message } : null;
+    } catch (error) {
+      // Only keep the material when dispatch failure is ambiguous (for
+      // example, timeout/5xx after potential enqueue). Deterministic
+      // pre-enqueue failures should roll back the upload.
+      shouldRollbackMaterialOnJobFailure = canRollbackMaterialAfterPythonDispatchFailure(error);
+      jobError = { message: error instanceof Error ? error.message : "Python dispatch failed." };
     }
 
     if (jobError) {
