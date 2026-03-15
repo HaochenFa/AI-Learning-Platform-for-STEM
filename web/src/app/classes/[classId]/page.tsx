@@ -5,6 +5,7 @@ import MaterialUploadForm from "./MaterialUploadForm";
 import AuthHeader from "@/app/components/AuthHeader";
 import StudentClassExperience from "@/app/classes/[classId]/StudentClassExperience";
 import MaterialProcessingAutoRefresh from "@/app/classes/[classId]/_components/MaterialProcessingAutoRefresh";
+import { MaterialActionsMenu } from "@/app/classes/[classId]/_components/MaterialActionsMenu";
 import TeacherChatMonitorPanel from "@/app/classes/[classId]/chat/TeacherChatMonitorPanel";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Button } from "@/components/ui/button";
@@ -100,7 +101,7 @@ export default async function ClassOverviewPage({
     isTeacher
       ? supabase
           .from("materials")
-          .select("id,title,status,created_at,mime_type,size_bytes,metadata")
+          .select("id,title,status,created_at,mime_type,size_bytes,metadata,storage_path")
           .eq("class_id", classId)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: null }),
@@ -717,6 +718,16 @@ export default async function ClassOverviewPage({
                           {material.status === "processing" ? (
                             <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
                           ) : null}
+                          <MaterialActionsMenu
+                            classId={classRow.id}
+                            material={{
+                              id: material.id,
+                              title: material.title,
+                              mime_type: material.mime_type ?? null,
+                              status: material.status ?? null,
+                              storage_path: material.storage_path,
+                            }}
+                          />
                         </div>
                       </div>
                       <p className="text-xs text-ui-muted">
