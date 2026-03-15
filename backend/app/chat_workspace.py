@@ -4,7 +4,7 @@ import math
 import re
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from urllib.parse import quote
 from uuid import uuid4
@@ -551,7 +551,10 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
                 502,
             ) from error
 
-        now_iso = datetime.now(UTC).isoformat()
+        user_ts = datetime.now(UTC)
+        assistant_ts = user_ts + timedelta(milliseconds=1)
+        user_ts_iso = user_ts.isoformat()
+        assistant_ts_iso = assistant_ts.isoformat()
         author_kind = "teacher" if access.get("is_teacher") else "student"
         payload = chat_result.payload if isinstance(
             chat_result.payload, dict) else {}
@@ -583,7 +586,7 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
             "completion_tokens": None,
             "total_tokens": None,
             "latency_ms": None,
-            "created_at": now_iso,
+            "created_at": user_ts_iso,
         }
         assistant_row = {
             "id": str(uuid4()),
@@ -600,7 +603,7 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
             "completion_tokens": usage.completion_tokens if usage else None,
             "total_tokens": usage.total_tokens if usage else None,
             "latency_ms": chat_result.latency_ms,
-            "created_at": now_iso,
+            "created_at": assistant_ts_iso,
         }
 
         _insert_rows(
@@ -613,7 +616,7 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
         _update_rows(
             client,
             _rest_url(settings, "class_chat_sessions"),
-            payload={"last_message_at": now_iso},
+            payload={"last_message_at": assistant_ts_iso},
             filters={
                 "id": f"eq.{request.session_id}",
                 "class_id": f"eq.{request.class_id}",
@@ -729,7 +732,9 @@ def _resolve_owner_user_id(
 def _normalize_messages_chronological(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     normalized = [row for row in rows if isinstance(row, dict)]
     normalized.sort(key=lambda item: (
-        str(item.get("created_at") or ""), str(item.get("id") or "")))
+        str(item.get("created_at") or ""),
+        1 if str(item.get("author_kind") or "") == "assistant" else 0,  # 0 = human turn (student or teacher), 1 = assistant — ensures human-before-assistant on same timestamp
+        str(item.get("id") or "")))
     return normalized
 
 
