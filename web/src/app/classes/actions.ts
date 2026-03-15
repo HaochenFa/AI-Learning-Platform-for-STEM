@@ -1,7 +1,8 @@
 "use server";
 
 import crypto from "node:crypto";
-import { redirect, revalidatePath } from "next/navigation";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { generateJoinCode } from "@/lib/join-code";
 import {

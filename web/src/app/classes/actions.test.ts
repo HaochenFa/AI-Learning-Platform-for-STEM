@@ -23,6 +23,11 @@ vi.mock("next/navigation", () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+}));
+
 vi.mock("@/lib/join-code", () => ({
   generateJoinCode: vi.fn(),
 }));
@@ -663,7 +668,7 @@ describe("getMaterialSignedUrl", () => {
     );
     const result = await getMaterialSignedUrl("class-1", "mat-1");
     expect(result.ok).toBe(false);
-    expect(result.error).toBe("Material not found.");
+    expect(result).toMatchObject({ error: "Material not found." });
   });
 
   it("returns error when createSignedUrl fails", async () => {
@@ -673,7 +678,7 @@ describe("getMaterialSignedUrl", () => {
     bucketMock.createSignedUrl.mockResolvedValueOnce({ data: null, error: { message: "storage error" } });
     const result = await getMaterialSignedUrl("class-1", "mat-1");
     expect(result.ok).toBe(false);
-    expect(result.error).toBe("storage error");
+    expect(result).toMatchObject({ error: "storage error" });
   });
 
   it("returns signed URL on success", async () => {
@@ -712,7 +717,7 @@ describe("deleteMaterial", () => {
       .mockReturnValueOnce(makeBuilder({ data: null, error: { message: "Not found" } }));
     const result = await deleteMaterial("class-1", "mat-1");
     expect(result.ok).toBe(false);
-    expect(result.error).toBe("Material not found.");
+    expect(result).toMatchObject({ error: "Material not found." });
   });
 
   it("returns error when material status is 'processing'", async () => {
@@ -721,7 +726,7 @@ describe("deleteMaterial", () => {
       .mockReturnValueOnce(makeBuilder({ data: { id: "mat-1", storage_path: "classes/c1/m1/file.pdf", status: "processing" }, error: null }));
     const result = await deleteMaterial("class-1", "mat-1");
     expect(result.ok).toBe(false);
-    expect(result.error).toBe("Cannot delete a material while it is processing.");
+    expect(result).toMatchObject({ error: "Cannot delete a material while it is processing." });
   });
 
   it("returns error when storage delete fails", async () => {
@@ -731,7 +736,7 @@ describe("deleteMaterial", () => {
     bucketMock.remove.mockResolvedValueOnce({ error: { message: "storage error" } });
     const result = await deleteMaterial("class-1", "mat-1");
     expect(result.ok).toBe(false);
-    expect(result.error).toBe("storage error");
+    expect(result).toMatchObject({ error: "storage error" });
   });
 
   it("deletes storage and DB row on success, returns ok:true", async () => {
@@ -753,6 +758,6 @@ describe("deleteMaterial", () => {
       .mockReturnValueOnce(makeBuilder({ error: { message: "db error" } }));
     const result = await deleteMaterial("class-1", "mat-1");
     expect(result.ok).toBe(false);
-    expect(result.error).toBe("db error");
+    expect(result).toMatchObject({ error: "db error" });
   });
 });
