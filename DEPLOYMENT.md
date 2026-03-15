@@ -152,7 +152,6 @@ Legacy fallback names (optional):
 - `PYTHON_BACKEND_API_KEY` (if Python service requires API key auth)
 - `PYTHON_BACKEND_MATERIAL_TIMEOUT_MS=15000` (web -> python material-dispatch timeout)
 - `PYTHON_BACKEND_CHAT_TIMEOUT_MS=45000` (web -> python chat workspace timeout)
-- Optional fallback-only route worker secret: `CRON_SECRET`
 
 ## 9. Deployment flow
 

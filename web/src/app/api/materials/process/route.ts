@@ -4,18 +4,6 @@ export const runtime = "nodejs";
 
 const JOB_BATCH_SIZE = Number(process.env.MATERIAL_WORKER_BATCH ?? 3);
 
-async function handleProcessRequest(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const provided = getCronSecretFromRequest(req);
-    if (provided !== secret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
-
-  return proxyMaterialProcessToPython();
-}
-
 async function proxyMaterialProcessToPython() {
   const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
   if (!baseUrl) {
@@ -109,24 +97,10 @@ async function safeJson(response: Response) {
   }
 }
 
-export async function GET(req: Request) {
-  return handleProcessRequest(req);
+export async function GET() {
+  return proxyMaterialProcessToPython();
 }
 
-export async function POST(req: Request) {
-  return handleProcessRequest(req);
-}
-
-function getCronSecretFromRequest(req: Request) {
-  const headerSecret = req.headers.get("x-cron-secret");
-  if (headerSecret) {
-    return headerSecret;
-  }
-
-  const authorization = req.headers.get("authorization");
-  if (!authorization) {
-    return null;
-  }
-  const match = authorization.match(/^Bearer\s+(.+?)\s*$/i);
-  return match?.[1]?.trim() ?? null;
+export async function POST() {
+  return proxyMaterialProcessToPython();
 }

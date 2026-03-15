@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 describe("/api/materials/process", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    delete process.env.CRON_SECRET;
     delete process.env.PYTHON_BACKEND_URL;
     delete process.env.PYTHON_BACKEND_API_KEY;
   });
@@ -63,59 +62,5 @@ describe("/api/materials/process", () => {
 
     expect(response.status).toBe(502);
     expect(payload.error).toBe("python failed");
-  });
-
-  it("accepts bearer auth for cron secret", async () => {
-    process.env.CRON_SECRET = "test-secret";
-    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-    vi.spyOn(global, "fetch").mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ ok: true, data: { processed: 0, succeeded: 0, failed: 0, retried: 0, errors: [] } }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
-    );
-
-    const { POST } = await import("@/app/api/materials/process/route");
-    const response = await POST(
-      new Request("http://localhost/api/materials/process", {
-        method: "POST",
-        headers: { Authorization: "Bearer test-secret" },
-      }),
-    );
-
-    expect(response.status).toBe(200);
-  });
-
-  it("accepts x-cron-secret header auth for cron secret", async () => {
-    process.env.CRON_SECRET = "test-secret";
-    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-    vi.spyOn(global, "fetch").mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ ok: true, data: { processed: 0, succeeded: 0, failed: 0, retried: 0, errors: [] } }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
-    );
-
-    const { POST } = await import("@/app/api/materials/process/route");
-    const response = await POST(
-      new Request("http://localhost/api/materials/process", {
-        method: "POST",
-        headers: { "x-cron-secret": "test-secret" },
-      }),
-    );
-
-    expect(response.status).toBe(200);
-  });
-
-  it("rejects unauthorized requests when cron secret is configured", async () => {
-    process.env.CRON_SECRET = "test-secret";
-    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-
-    const { POST } = await import("@/app/api/materials/process/route");
-    const response = await POST(new Request("http://localhost/api/materials/process", { method: "POST" }));
-    const payload = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(payload.error).toBe("Unauthorized");
   });
 });
