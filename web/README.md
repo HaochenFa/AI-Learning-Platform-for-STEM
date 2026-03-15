@@ -1,6 +1,6 @@
 # STEM Learning Platform (Web)
 
-This is the Next.js application for the STEM Learning Platform.
+This is the Next.js 16 (App Router) application for the STEM Learning Platform.
 
 ## Requirements
 
@@ -22,13 +22,16 @@ pnpm install
 pnpm dev
 ```
 
-## Core Features (WIP)
+## Core Features
 
-- Auth with Supabase
+- Auth with Supabase (email/password; immutable `teacher` or `student` account type)
 - Class creation and join code enrollment
 - Materials upload with PDF/DOCX/PPTX extraction
-- Course blueprint generation (AI powered)
-- AI powered learning activities
+- Course Blueprint generation and curation (AI powered; Draft → Overview → Published lifecycle)
+- AI powered learning activities: quiz, flashcards, homework help, exam review
+- AI chat grounded in blueprint and approved materials (with long-session memory)
+- Class chat workspace with teacher monitoring and session management
+- Tests written with Vitest
 
 ## Notes
 
@@ -44,10 +47,13 @@ pnpm dev
 - Disable Supabase phone auth provider (phone-based auth is intentionally out of scope).
 - Ensure the `materials` storage bucket exists for uploads.
 - Configure at least one AI provider with both a chat model and an embedding model.
-- Python backend is required for AI generation paths, class create/join, class chat workspace,
-  and material dispatch.
-- Configure `PYTHON_BACKEND_URL`, `PYTHON_BACKEND_API_KEY`, `PYTHON_BACKEND_CHAT_ENGINE`,
-  `PYTHON_BACKEND_CHAT_TOOL_MODE`, and `PYTHON_BACKEND_CHAT_TOOL_CATALOG`.
+- Python backend is required for all AI generation, class create/join, class chat workspace,
+  and material dispatch. Set `PYTHON_BACKEND_URL` (default: `http://localhost:8001` for local dev)
+  and `PYTHON_BACKEND_API_KEY`.
+- Configure `PYTHON_BACKEND_CHAT_ENGINE`, `PYTHON_BACKEND_CHAT_TOOL_MODE`,
+  and `PYTHON_BACKEND_CHAT_TOOL_CATALOG` for chat behaviour.
+- Copy `web/.env.example` to `web/.env.local` — required variables include
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SECRET_KEY`.
 - Supabase Cron dispatches the `material-worker` Edge Function (configured by migration and Vault secrets).
 - `POST /api/materials/process` proxies to Python `/v1/materials/process`.
 - For full staging + production rollout steps, see `../DEPLOYMENT.md`.

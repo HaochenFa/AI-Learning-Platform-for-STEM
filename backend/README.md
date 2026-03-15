@@ -10,12 +10,12 @@ fallback and deterministic response envelopes.
 - `POST /v1/llm/embeddings`
 - `POST /v1/materials/dispatch` (enqueue + optionally trigger Supabase `material-worker`)
 - `POST /v1/materials/process` (trigger Supabase `material-worker` batch processing run)
-- `POST /v1/classes/create` (class creation via Python backend orchestration)
-- `POST /v1/classes/join` (join by class code via Python backend orchestration)
+- `POST /v1/classes/create` (class creation; requires a valid user JWT in `Authorization: Bearer`)
+- `POST /v1/classes/join` (join by class code; requires a valid user JWT in `Authorization: Bearer`)
 - `POST /v1/blueprints/generate` (domain endpoint for blueprint AI generation)
 - `POST /v1/quiz/generate` (domain endpoint for quiz AI generation)
 - `POST /v1/flashcards/generate` (domain endpoint for flashcards AI generation)
-- `POST /v1/chat/generate` (domain endpoint for grounded chat AI generation)
+- `POST /v1/chat/generate` (domain endpoint for grounded chat AI generation; requires a valid user JWT)
   - requires `class_id` and `user_id` in request payload for tenant-safe memory/thread isolation
   - supports `direct_v1` and optional `langgraph_v1` orchestration via request hints
   - `langgraph_v1` uses LangChain `create_agent` + LangGraph short-term memory (checkpointer) + long-term memory (store tools)
@@ -42,7 +42,7 @@ Response envelope:
 
 ## Local Run
 
-1. Install dependencies:
+1. Install dependencies (Python 3.11+ required):
 
 ```bash
 pip install -r backend/requirements.txt

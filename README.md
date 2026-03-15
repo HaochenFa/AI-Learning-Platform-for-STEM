@@ -3,7 +3,7 @@
 Production-ready STEM learning platform where teachers transform class materials into a structured Course Blueprint that powers student activities. The system is subject-agnostic, keeps AI outputs editable and auditable, and centers teacher control.
 
 **Status**
-This repo is aligned to the roadmap in `ROADMAP.md`, with core services, blueprint workflows, AI chat, and quiz vertical slices implemented.
+This repo is aligned to the roadmap in `ROADMAP.md`, with core services, blueprint workflows, AI chat, quiz, and flashcard vertical slices implemented.
 
 **Key Workflows**
 
@@ -12,11 +12,12 @@ This repo is aligned to the roadmap in `ROADMAP.md`, with core services, bluepri
 
 **Architecture**
 
-- Next.js app for UI and role-based routing.
+- Next.js 16 (App Router) + TypeScript for UI and role-based routing.
 - API layer via server actions or API routes for all data writes.
-- Optional Python backend adapter (`backend/`) for AI orchestration migration slices.
+- Python FastAPI backend (`backend/`) — required for all AI generation (blueprints, quiz, flashcards, chat, embeddings), class create/join, and material dispatch.
 - AI orchestrator with provider adapters, prompt templates, and safety checks.
 - Supabase for Auth, Postgres, Storage, and RLS.
+- Tailwind CSS 4 for styling; Vitest for unit tests.
 
 **Blueprint Lifecycle**
 
@@ -34,28 +35,41 @@ This repo is aligned to the roadmap in `ROADMAP.md`, with core services, bluepri
 **Repository Layout**
 
 - `web/`: Next.js application.
-- `backend/`: FastAPI backend for optional AI-provider orchestration.
+- `backend/`: Python FastAPI backend for AI provider orchestration (required).
 - `supabase/`: database migrations and setup notes.
 
 **Requirements**
 
 - Node.js 20+
 - pnpm
+- Python 3.11+
 - Supabase project (URL, publishable key, secret key)
 
 **Setup**
 
 1. Copy `web/.env.example` to `web/.env.local` and fill in values.
-2. Install dependencies from the repo root:
+2. Install Node.js dependencies from the repo root:
 
 ```bash
 pnpm install
 ```
 
-3. Run the dev server from the repo root:
+3. Install Python backend dependencies:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+4. Run the dev server from the repo root:
 
 ```bash
 pnpm dev
+```
+
+5. Run the Python backend (separate terminal):
+
+```bash
+uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload
 ```
 
 **Scripts (Repo Root)**
@@ -63,8 +77,8 @@ pnpm dev
 - `pnpm dev`: run Next.js dev server.
 - `pnpm build`: build the web app.
 - `pnpm start`: run the production server.
-- `pnpm lint`: run linting.
-- `pnpm test`: run tests.
+- `pnpm lint`: run ESLint.
+- `pnpm test`: run Vitest unit tests.
 - `pnpm test:watch`: run tests in watch mode.
 
 **Git Remotes**
