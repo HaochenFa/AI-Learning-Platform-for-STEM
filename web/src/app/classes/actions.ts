@@ -1,7 +1,7 @@
 "use server";
 
 import crypto from "node:crypto";
-import { redirect } from "next/navigation";
+import { redirect, revalidatePath } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { generateJoinCode } from "@/lib/join-code";
 import {
@@ -561,4 +561,94 @@ export async function uploadMaterial(classId: string, formData: FormData) {
   }
 
   redirect(`/classes/${classId}?uploaded=${result.uploadNotice}`);
+}
+
+export type MaterialSignedUrlResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+export async function getMaterialSignedUrl(
+  classId: string,
+  materialId: string,
+): Promise<MaterialSignedUrlResult> {
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+
+  const access = await requireTeacherAccess(classId, user.id, supabase);
+  if (!access.allowed) {
+    return { ok: false, error: access.reason };
+  }
+
+  const { data: material, error: fetchError } = await supabase
+    .from("materials")
+    .select("id, storage_path")
+    .eq("id", materialId)
+    .eq("class_id", classId)
+    .single();
+
+  if (fetchError || !material) {
+    return { ok: false, error: "Material not found." };
+  }
+
+  const { data, error: signedError } = await supabase.storage
+    .from(MATERIALS_BUCKET)
+    .createSignedUrl(material.storage_path, 60);
+
+  if (signedError || !data?.signedUrl) {
+    return { ok: false, error: signedError?.message ?? "Failed to generate download link." };
+  }
+
+  return { ok: true, url: data.signedUrl };
+}
+
+export type DeleteMaterialResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function deleteMaterial(
+  classId: string,
+  materialId: string,
+): Promise<DeleteMaterialResult> {
+  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+
+  const access = await requireTeacherAccess(classId, user.id, supabase);
+  if (!access.allowed) {
+    return { ok: false, error: access.reason };
+  }
+
+  const { data: material, error: fetchError } = await supabase
+    .from("materials")
+    .select("id, storage_path, status")
+    .eq("id", materialId)
+    .eq("class_id", classId)
+    .single();
+
+  if (fetchError || !material) {
+    return { ok: false, error: "Material not found." };
+  }
+
+  if (material.status === "processing") {
+    return { ok: false, error: "Cannot delete a material while it is processing." };
+  }
+
+  // Delete storage first — if this fails, the DB row is preserved and user can retry.
+  // Reversing the order would leave orphaned storage objects invisible to the UI.
+  const { error: storageError } = await supabase.storage
+    .from(MATERIALS_BUCKET)
+    .remove([material.storage_path]);
+
+  if (storageError) {
+    return { ok: false, error: storageError.message };
+  }
+
+  const { error: deleteError } = await supabase
+    .from("materials")
+    .delete()
+    .eq("id", materialId);
+
+  if (deleteError) {
+    return { ok: false, error: deleteError.message };
+  }
+
+  revalidatePath(`/classes/${classId}`);
+  return { ok: true };
 }
