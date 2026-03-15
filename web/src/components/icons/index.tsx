@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ArrowRight,
+  BarChart2,
   BookOpen,
   Bot,
   Calendar,
@@ -39,6 +40,7 @@ export type AppIcon = LucideIcon;
 export const AppIcons = {
   arrowLeft: ArrowLeft,
   arrowRight: ArrowRight,
+  insights: BarChart2,
   back: ChevronLeft,
   forward: ChevronRight,
   dashboard: LayoutDashboard,

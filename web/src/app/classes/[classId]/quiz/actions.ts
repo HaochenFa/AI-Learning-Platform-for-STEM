@@ -150,6 +150,9 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
     return;
   }
 
+  // Optional topic scoping: filter blueprint context to a single topic when provided
+  const topicId = getFormString(formData, "topic_id") || null;
+
   const start = Date.now();
   let usedProvider = "unknown";
   let usedModel: string | null = null;
@@ -157,14 +160,47 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
   let usedLatencyMs: number | null = null;
 
   try {
-    const blueprintContext = await loadPublishedBlueprintContext(classId);
+    const fullBlueprintContext = await loadPublishedBlueprintContext(classId);
+    let blueprintContextStr = fullBlueprintContext.blueprintContext;
+
+    // When a topicId is provided, build a scoped context for that topic only
+    if (topicId) {
+      const { data: topicRow } = await supabase
+        .from("topics")
+        .select("id,title,description")
+        .eq("id", topicId)
+        .single();
+
+      if (topicRow) {
+        const { data: objectiveRows } = await supabase
+          .from("objectives")
+          .select("statement,level")
+          .eq("topic_id", topicId);
+
+        const objectiveLines = (objectiveRows ?? [])
+          .map((o) => (o.level ? `  - ${o.statement} (${o.level})` : `  - ${o.statement}`))
+          .join("\n");
+
+        blueprintContextStr = [
+          "Blueprint Context | Published blueprint context (topic-scoped)",
+          `Summary: ${fullBlueprintContext.summary}`,
+          "",
+          `Topic: ${topicRow.title}`,
+          topicRow.description ? `Description: ${topicRow.description}` : null,
+          objectiveLines ? `Objectives:\n${objectiveLines}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n");
+      }
+    }
+
     const retrievalQuery = `Generate ${questionCount} multiple choice quiz questions. ${instructions}`;
     const materialContext = await retrieveMaterialContext(classId, retrievalQuery);
     const pythonResult = await generateQuizViaPythonBackend({
       classTitle: role.classTitle,
       questionCount,
       instructions,
-      blueprintContext: blueprintContext.blueprintContext,
+      blueprintContext: blueprintContextStr,
       materialContext,
     });
     usedProvider = pythonResult.provider;
@@ -182,6 +218,7 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
       .insert({
         class_id: classId,
         blueprint_id: blueprintId,
+        topic_id: topicId ?? null,
         type: "quiz",
         title,
         status: "draft",

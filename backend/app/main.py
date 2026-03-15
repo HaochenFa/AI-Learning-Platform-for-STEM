@@ -9,6 +9,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.analytics import analytics_router
 from app.blueprints import generate_blueprint
 from app.chat import generate_chat
 from app.chat_workspace import (
@@ -50,6 +51,7 @@ from app.schemas import (
 )
 
 app = FastAPI(title="STEM Learning Python Backend", version="0.1.0")
+app.include_router(analytics_router)
 USER_TOKEN_VERIFY_TIMEOUT_SECONDS = 8.0
 UserBoundPayload = TypeVar("UserBoundPayload", bound=BaseModel)
 

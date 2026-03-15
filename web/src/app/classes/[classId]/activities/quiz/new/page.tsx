@@ -10,6 +10,7 @@ import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SearchParams = {
   error?: string;
+  topicId?: string;
 };
 
 export default async function NewQuizDraftPage({
@@ -50,6 +51,21 @@ export default async function NewQuizDraftPage({
   const errorMessage =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
 
+  const topicId =
+    typeof resolvedSearchParams?.topicId === "string" && resolvedSearchParams.topicId.trim()
+      ? resolvedSearchParams.topicId.trim()
+      : null;
+
+  let topicTitle: string | null = null;
+  if (topicId) {
+    const { data: topicRow } = await supabase
+      .from("topics")
+      .select("title")
+      .eq("id", topicId)
+      .single();
+    topicTitle = topicRow?.title ?? null;
+  }
+
   return (
     <HeaderPageShell
       activeNav="dashboard"
@@ -74,7 +90,14 @@ export default async function NewQuizDraftPage({
         <TransientFeedbackAlert variant="error" message={errorMessage} className="mb-6" />
       ) : null}
 
+      {topicTitle ? (
+        <div className="mb-6 rounded-xl border border-accent bg-accent-soft px-4 py-3 text-sm">
+          Generating quiz for: <strong>{topicTitle}</strong>
+        </div>
+      ) : null}
+
       <form action={generateQuizDraft.bind(null, classId)} className="space-y-6">
+        {topicId ? <input type="hidden" name="topic_id" value={topicId} /> : null}
         <div className="space-y-2">
           <Label htmlFor="title">Quiz title</Label>
           <Input
