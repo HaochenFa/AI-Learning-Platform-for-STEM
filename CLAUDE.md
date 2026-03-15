@@ -153,6 +153,11 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 - UI refactor handoff and current progress are tracked in `UI_REFACTOR_SESSION_CATCHUP.md`.
 - High-level phase tracker remains in `UI_REFACTOR_TRACKER.md`.
 
+## Plans and Trackers
+
+- Store all implementation plans, session trackers, and working notes under `.claude/plans/` — not in `docs/` or the repo root.
+- `.claude/` is gitignored-safe for local-only files and avoids branch noise for plan files that don't belong in PR diffs.
+
 ## Important Notes
 
 - Email/password auth only; `profiles.account_type` is immutable (teacher or student)
