@@ -4,7 +4,7 @@ import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import unittest
 
-from app.chat_workspace import _normalize_messages_chronological
+from app.chat_workspace import _decode_cursor, _encode_cursor, _normalize_messages_chronological
 
 
 class MessageOrderingTests(unittest.TestCase):
@@ -41,3 +41,36 @@ class MessageOrderingTests(unittest.TestCase):
         result = _normalize_messages_chronological([assistant_row, user_row])
         self.assertEqual(result[0]["author_kind"], "student")
         self.assertEqual(result[1]["author_kind"], "assistant")
+
+
+class CursorValidationTests(unittest.TestCase):
+    def test_valid_cursor_round_trips(self) -> None:
+        row = {
+            "created_at": "2026-03-15T10:00:00.000000+00:00",
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+        }
+        cursor = _encode_cursor(row)
+        assert cursor is not None
+        decoded = _decode_cursor(cursor)
+        self.assertIsNotNone(decoded)
+        assert decoded is not None
+        self.assertEqual(decoded["created_at"], row["created_at"])
+        self.assertEqual(decoded["id"], row["id"])
+
+    def test_malformed_id_rejected(self) -> None:
+        # Cursor with valid-looking timestamp but injected text in id segment
+        cursor = "2026-03-15T10:00:00+00:00|not-a-uuid),class_id.neq.x"
+        self.assertIsNone(_decode_cursor(cursor))
+
+    def test_malformed_timestamp_rejected(self) -> None:
+        cursor = "not-a-timestamp|550e8400-e29b-41d4-a716-446655440000"
+        self.assertIsNone(_decode_cursor(cursor))
+
+    def test_empty_cursor_returns_none(self) -> None:
+        self.assertIsNone(_decode_cursor(None))
+        self.assertIsNone(_decode_cursor(""))
+        self.assertIsNone(_decode_cursor("   "))
+
+    def test_timestamp_with_injected_suffix_rejected(self) -> None:
+        cursor = "2026-03-15T10:00:00),class_id.neq.x|550e8400-e29b-41d4-a716-446655440000"
+        self.assertIsNone(_decode_cursor(cursor))

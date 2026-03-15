@@ -43,6 +43,13 @@ DEFAULT_RAG_CONTEXT_TOKENS = 24000
 DEFAULT_RAG_MATCH_COUNT = 24
 DEFAULT_RAG_MAX_PER_MATERIAL = 6
 BLUEPRINT_SOURCE_LABEL = "Blueprint Context"
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+_ISO_TS_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$",
+)
 STOP_WORDS = {
     "a",
     "an",
@@ -1686,7 +1693,7 @@ def _extract_error_message(payload: Any) -> str | None:
 
 
 def _decode_cursor(cursor: str | None) -> dict[str, str] | None:
-    if not cursor:
+    if not cursor or not cursor.strip():
         return None
     split_index = cursor.rfind("|")
     if split_index <= 0 or split_index >= len(cursor) - 1:
@@ -1694,6 +1701,10 @@ def _decode_cursor(cursor: str | None) -> dict[str, str] | None:
     created_at = cursor[:split_index].strip()
     message_id = cursor[split_index + 1:].strip()
     if not created_at or not message_id:
+        return None
+    if not _ISO_TS_RE.match(created_at):
+        return None
+    if not _UUID_RE.match(message_id):
         return None
     return {"created_at": created_at, "id": message_id}
 
