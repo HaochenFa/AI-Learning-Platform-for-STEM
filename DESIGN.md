@@ -97,6 +97,32 @@ Student Flow
 
 - Next.js App: UI, routing, and role based layouts.
 - API Layer: server actions or API routes for all data writes.
+- Python Backend: internal AI and workflow orchestration service (`backend/`) with
+  deterministic envelopes (`{ ok, data, error, meta }`) consumed by Next.
+  - Auth posture:
+    - Python backend fails closed when `PYTHON_BACKEND_API_KEY` is missing, unless explicitly
+      overridden by `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS=true` for local-only use.
+  - Current domain endpoint slices:
+    - class creation (`POST /v1/classes/create`)
+    - class join-by-code (`POST /v1/classes/join`)
+    - blueprint generation (`POST /v1/blueprints/generate`)
+    - quiz generation (`POST /v1/quiz/generate`)
+    - flashcards generation (`POST /v1/flashcards/generate`)
+    - grounded chat generation (`POST /v1/chat/generate`)
+      - includes orchestration fields (`tool_mode`, `tool_catalog`, `orchestration_hints`)
+        and runtime metadata for LangGraph migration without changing frontend contracts
+      - phase 7 introduces optional `langgraph_v1` engine with safe fallback to `direct_v1`
+      - phase 8 upgrades `langgraph_v1` to full LangChain/LangGraph agent flow:
+        short-term memory (checkpointer), long-term memory (store + tools), and context-engineered
+        tool usage (`grounding_context.read`, `memory.search`, `memory.save`)
+      - thread and long-term memory namespaces are scoped by `class_id + user_id` to prevent
+        cross-user/class memory bleed
+    - class chat workspace orchestration
+      - participants (`POST /v1/chat/workspace/participants`)
+      - sessions list/create/rename/archive (`POST /v1/chat/workspace/sessions/*`)
+      - message history listing (`POST /v1/chat/workspace/messages/list`)
+      - message send + persistence (`POST /v1/chat/workspace/messages/send`)
+    - material worker trigger (`POST /v1/materials/process`)
 - AI Orchestrator: provider adapters, prompt templates, safety checks.
 - Supabase: Auth, Postgres, Storage, Row Level Security.
 
@@ -113,6 +139,9 @@ Student Flow
 **AI Provider Support**
 
 - OpenAI, Google Gemini, OpenRouter via a provider adapter interface.
+- Provider orchestration can run in either:
+  - Next server runtime (`web/src/lib/ai/providers.ts`)
+  - Python backend runtime (`backend/app/providers.py`) when `PYTHON_BACKEND_URL` is configured
 - Provider selection stored per class or per request.
 - All prompts and outputs are logged with metadata.
 
@@ -129,6 +158,7 @@ Student Flow
 - Background processing is queue-driven on Supabase (`pgmq` + Supabase Cron + Edge Function worker).
 - Worker flow: upload -> enqueue -> process -> chunk -> embed -> status update (`ready` / `failed`).
 - Processing is text-only for RAG ingestion: extract text from PDF/DOCX/PPTX, then chunk and embed.
+- `POST /api/materials/process` in Next proxies to Python `POST /v1/materials/process`.
 - Blueprint generation retrieves top-ranked chunks with source metadata instead of raw concatenation.
 - Prompt quality and grounding behavior are environment-tunable (`AI_PROMPT_QUALITY_PROFILE`,
   `AI_GROUNDING_MODE`) for safe rollout.

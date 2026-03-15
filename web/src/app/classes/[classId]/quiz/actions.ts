@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { generateTextWithFallback } from "@/lib/ai/providers";
+import { generateQuizViaPythonBackend } from "@/lib/ai/python-quiz";
 import {
   createWholeClassAssignment,
   loadStudentAssignmentContext,
@@ -19,7 +19,6 @@ import type { QuizAttemptSubmissionContent } from "@/lib/activities/types";
 import { loadPublishedBlueprintContext } from "@/lib/chat/context";
 import { retrieveMaterialContext } from "@/lib/materials/retrieval";
 import { gradeQuizAttempt } from "@/lib/quiz/grading";
-import { buildQuizGenerationPrompt, parseQuizGenerationResponse } from "@/lib/quiz/generation";
 import {
   DEFAULT_QUIZ_QUESTION_COUNT,
   parseDueAt,
@@ -153,30 +152,26 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
 
   const start = Date.now();
   let usedProvider = "unknown";
+  let usedModel: string | null = null;
+  let usedUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined;
+  let usedLatencyMs: number | null = null;
 
   try {
     const blueprintContext = await loadPublishedBlueprintContext(classId);
     const retrievalQuery = `Generate ${questionCount} multiple choice quiz questions. ${instructions}`;
     const materialContext = await retrieveMaterialContext(classId, retrievalQuery);
-
-    const prompt = buildQuizGenerationPrompt({
+    const pythonResult = await generateQuizViaPythonBackend({
       classTitle: role.classTitle,
       questionCount,
       instructions,
       blueprintContext: blueprintContext.blueprintContext,
       materialContext,
     });
-
-    const result = await generateTextWithFallback({
-      system: prompt.system,
-      user: prompt.user,
-      temperature: 0.2,
-      maxTokens: 8000,
-    });
-    usedProvider = result.provider;
-
-    const payload = parseQuizGenerationResponse(result.content);
-    const trimmedQuestions = payload.questions.slice(0, questionCount);
+    usedProvider = pythonResult.provider;
+    usedModel = pythonResult.model;
+    usedUsage = pythonResult.usage;
+    usedLatencyMs = pythonResult.latencyMs;
+    const trimmedQuestions = pythonResult.payload.questions.slice(0, questionCount);
 
     if (trimmedQuestions.length === 0) {
       throw new Error("The quiz generator returned no valid questions.");
@@ -239,13 +234,13 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
       supabase,
       classId,
       userId: user.id,
-      provider: result.provider,
-      model: result.model,
+      provider: usedProvider,
+      model: usedModel,
       status: "success",
-      latencyMs: result.latencyMs,
-      promptTokens: result.usage?.promptTokens,
-      completionTokens: result.usage?.completionTokens,
-      totalTokens: result.usage?.totalTokens,
+      latencyMs: usedLatencyMs ?? Date.now() - start,
+      promptTokens: usedUsage?.promptTokens,
+      completionTokens: usedUsage?.completionTokens,
+      totalTokens: usedUsage?.totalTokens,
     });
 
     redirect(`/classes/${classId}/activities/quiz/${activity.id}/edit?created=1`);

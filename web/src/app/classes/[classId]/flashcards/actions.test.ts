@@ -104,6 +104,8 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 describe("flashcards actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    delete process.env.PYTHON_BACKEND_API_KEY;
     getClassAccess.mockResolvedValue({
       found: true,
       isTeacher: true,
@@ -115,14 +117,6 @@ describe("flashcards actions", () => {
       blueprintContext: "Limits and derivatives",
     });
     retrieveMaterialContext.mockResolvedValue("Material context");
-    buildFlashcardsGenerationPrompt.mockReturnValue({ system: "system", user: "user" });
-    generateTextWithFallback.mockResolvedValue({
-      provider: "openai",
-      model: "gpt-5-mini",
-      content: "{}",
-      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-      latencyMs: 12,
-    });
   });
 
   it("redirects to edit page after successfully generating a draft", async () => {
@@ -131,14 +125,25 @@ describe("flashcards actions", () => {
       supabase: { from: supabaseFromMock },
       user: { id: "teacher-1" },
     });
-    parseFlashcardsGenerationResponse.mockReturnValue({
-      cards: [
-        {
-          front: "What is 1 + 1?",
-          back: "2",
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse({
+        ok: true,
+        data: {
+          payload: {
+            cards: [
+              {
+                front: "What is 1 + 1?",
+                back: "2",
+              },
+            ],
+          },
+          provider: "openai",
+          model: "gpt-5-mini",
+          usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+          latency_ms: 12,
         },
-      ],
-    });
+      }),
+    );
 
     const activityInsertBuilder = makeBuilder({ data: { id: "activity-1" }, error: null });
     const cardsInsertBuilder = makeBuilder({ error: null });
@@ -173,8 +178,114 @@ describe("flashcards actions", () => {
         class_id: "class-1",
         user_id: "teacher-1",
         provider: "openai",
+        model: "gpt-5-mini",
         status: "success",
       }),
+    );
+  });
+
+  it("routes flashcards generation through python backend when enabled", async () => {
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    process.env.PYTHON_BACKEND_API_KEY = "secret";
+
+    const supabaseFromMock = vi.fn();
+    requireAuthenticatedUser.mockResolvedValue({
+      supabase: { from: supabaseFromMock },
+      user: { id: "teacher-1" },
+    });
+
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse({
+        ok: true,
+        data: {
+          payload: {
+            cards: [
+              {
+                front: "What is 1 + 1?",
+                back: "The sum equals 2.",
+              },
+            ],
+          },
+          provider: "openrouter",
+          model: "or-model",
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
+          latency_ms: 30,
+        },
+      }),
+    );
+
+    const activityInsertBuilder = makeBuilder({ data: { id: "activity-1" }, error: null });
+    const cardsInsertBuilder = makeBuilder({ error: null });
+    const aiRequestsBuilder = makeBuilder({ error: null });
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "activities") {
+        return activityInsertBuilder;
+      }
+      if (table === "flashcards") {
+        return cardsInsertBuilder;
+      }
+      if (table === "ai_requests") {
+        return aiRequestsBuilder;
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Generated Flashcards");
+    formData.set("instructions", "Use only class notes.");
+    formData.set("card_count", "1");
+
+    await expectRedirect(
+      () => generateFlashcardsDraft("class-1", formData),
+      "/classes/class-1/activities/flashcards/activity-1/edit?created=1",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(buildFlashcardsGenerationPrompt).not.toHaveBeenCalled();
+    expect(generateTextWithFallback).not.toHaveBeenCalled();
+    expect(parseFlashcardsGenerationResponse).not.toHaveBeenCalled();
+    expect(aiRequestsBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "openrouter",
+        model: "or-model",
+      }),
+    );
+    fetchMock.mockRestore();
+  });
+
+  it("returns a configuration error when python backend url is missing", async () => {
+    delete process.env.PYTHON_BACKEND_URL;
+    const supabaseFromMock = vi.fn();
+    requireAuthenticatedUser.mockResolvedValue({
+      supabase: { from: supabaseFromMock },
+      user: { id: "teacher-1" },
+    });
+
+    const activityInsertBuilder = makeBuilder({ data: { id: "activity-1" }, error: null });
+    const cardsInsertBuilder = makeBuilder({ error: null });
+    const aiRequestsBuilder = makeBuilder({ error: null });
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "activities") {
+        return activityInsertBuilder;
+      }
+      if (table === "flashcards") {
+        return cardsInsertBuilder;
+      }
+      if (table === "ai_requests") {
+        return aiRequestsBuilder;
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Generated Flashcards");
+    formData.set("instructions", "Use only class notes.");
+    formData.set("card_count", "1");
+
+    await expectRedirect(
+      () => generateFlashcardsDraft("class-1", formData),
+      "/classes/class-1/activities/flashcards/new?error=PYTHON_BACKEND_URL%20is%20not%20configured.",
     );
   });
 
@@ -184,9 +295,15 @@ describe("flashcards actions", () => {
       supabase: { from: supabaseFromMock },
       user: { id: "teacher-1" },
     });
-    parseFlashcardsGenerationResponse.mockImplementation(() => {
-      throw new Error("NEXT_REDIRECT");
-    });
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse(
+        {
+          ok: false,
+          error: { message: "NEXT_REDIRECT" },
+        },
+        false,
+      ),
+    );
 
     const aiRequestsBuilder = makeBuilder({ error: null });
 
@@ -215,3 +332,10 @@ describe("flashcards actions", () => {
     );
   });
 });
+
+function makeJsonResponse(payload: unknown, ok = true) {
+  return {
+    ok,
+    json: async () => payload,
+  } as Response;
+}

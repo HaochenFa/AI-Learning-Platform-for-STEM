@@ -143,15 +143,27 @@ Legacy fallback names (optional):
 - `OPENROUTER_APP_NAME`
 - `OPENROUTER_BASE_URL` (optional; defaults to OpenRouter API)
 
-### Material processing backend
+### Required Python backend integration
 
-- `MATERIAL_WORKER_BACKEND=supabase` (default recommended)
-- Optional fallback-only route worker secret: `CRON_SECRET`
+- `PYTHON_BACKEND_CHAT_ENGINE=direct_v1` (`direct_v1` or `langgraph_v1` for Python chat orchestration)
+- `PYTHON_BACKEND_CHAT_TOOL_MODE=off` (`off`, `plan`, or `auto` tool-planning mode forwarded to Python chat domain)
+- `PYTHON_BACKEND_CHAT_TOOL_CATALOG=grounding_context.read,memory.search,memory.save` (comma-separated tools exposed to chat orchestration)
+- `PYTHON_BACKEND_URL` (for example `https://python-backend.example.com`)
+- `PYTHON_BACKEND_API_KEY` (if Python service requires API key auth)
+- `PYTHON_BACKEND_MATERIAL_TIMEOUT_MS=15000` (web -> python material-dispatch timeout)
+- `PYTHON_BACKEND_CHAT_TIMEOUT_MS=45000` (web -> python chat workspace timeout)
 
 ## 9. Deployment flow
 
 - Pull requests -> Preview deployment (staging env vars)
 - Merge to `main` -> Production deployment (production env vars)
+
+Ensure preview deployments point to a preview/staging Python backend URL instead of production.
+
+When `PYTHON_BACKEND_CHAT_ENGINE=langgraph_v1`:
+- backend dependencies must include `langchain`, `langgraph`, and `langchain-openai`
+- OpenRouter/OpenAI compatible model settings must be configured for Python backend
+- if LangChain/LangGraph runtime is unavailable, chat falls back to `direct_v1` unless strict mode is enabled
 
 ## 10. Configure Supabase Auth redirect URLs
 
@@ -180,4 +192,4 @@ For production, use:
 
 - App rollback: promote previous Vercel deployment
 - Database rollback: restore from Supabase backup/PITR or forward-fix with a new migration
-- Worker rollback: set `MATERIAL_WORKER_BACKEND=legacy` in Vercel and trigger `/api/materials/process` with `CRON_SECRET`
+- Worker rollback: rollback Python backend service deployment and re-run smoke tests

@@ -28,6 +28,7 @@ $RECYCLE.BIN/
 node_modules/
 .pnpm-store/
 pnpm-debug.log*
+.mypy_cache
 
 # Logs
 *.log
@@ -39,6 +40,8 @@ output/
 dist/
 build/
 tmp/
+__pycache__/
+.pytest_cache/
 
 # Misc
 *.tsbuildinfo

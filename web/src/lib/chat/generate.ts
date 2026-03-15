@@ -1,9 +1,8 @@
 import "server-only";
 
-import { generateTextWithFallback } from "@/lib/ai/providers";
-import { buildChatPrompt, loadPublishedBlueprintContext } from "@/lib/chat/context";
+import { generateChatViaPythonBackend } from "@/lib/ai/python-chat";
+import { loadPublishedBlueprintContext } from "@/lib/chat/context";
 import type { ChatModelResponse, ChatTurn } from "@/lib/chat/types";
-import { parseChatModelResponse } from "@/lib/chat/validation";
 import { retrieveMaterialContext } from "@/lib/materials/retrieval";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -14,18 +13,6 @@ export type GroundedChatPurpose =
   | "student_chat_assignment_v2"
   | "student_chat_always_on_v1"
   | "teacher_chat_always_on_v1";
-
-function resolveOpenRouterTransforms() {
-  const raw = process.env.OPENROUTER_CHAT_TRANSFORMS;
-  if (!raw) {
-    return undefined;
-  }
-  const transforms = raw
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  return transforms.length > 0 ? transforms : undefined;
-}
 
 async function logChatAiRequest(input: {
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
@@ -99,6 +86,34 @@ function resolveChatMaxTokens() {
   return Math.floor(parsed);
 }
 
+function resolvePythonChatEngine() {
+  const value = process.env.PYTHON_BACKEND_CHAT_ENGINE?.trim().toLowerCase();
+  if (value === "langgraph_v1") {
+    return "langgraph_v1";
+  }
+  return "direct_v1";
+}
+
+function resolvePythonChatToolMode() {
+  const value = process.env.PYTHON_BACKEND_CHAT_TOOL_MODE?.trim().toLowerCase();
+  if (value === "plan" || value === "auto") {
+    return value;
+  }
+  return "off";
+}
+
+function resolvePythonChatToolCatalog() {
+  const raw = process.env.PYTHON_BACKEND_CHAT_TOOL_CATALOG;
+  if (!raw) {
+    return ["grounding_context.read", "memory.search", "memory.save"];
+  }
+  const catalog = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return catalog.length > 0 ? catalog : ["grounding_context.read", "memory.search", "memory.save"];
+}
+
 function toFriendlyChatGenerationError(error: unknown) {
   if (!(error instanceof Error)) {
     return "Unable to generate a chat response right now. Please try again.";
@@ -112,7 +127,11 @@ function toFriendlyChatGenerationError(error: unknown) {
     return "Chat response generation timed out. Please try again.";
   }
 
-  if (/no json object found|not valid json|model response payload is invalid/i.test(error.message)) {
+  if (
+    /no json object found|not valid json|model response payload is invalid|invalid chat json/i.test(
+      error.message,
+    )
+  ) {
     return "The AI response was incomplete. Please ask again.";
   }
 
@@ -133,6 +152,9 @@ export async function generateGroundedChatResponse(input: {
   const supabase = await createServerSupabaseClient();
   const startedAt = Date.now();
   let usedProvider = "unknown";
+  let usedModel: string | null = null;
+  let usedUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined;
+  let usedLatencyMs: number | null = null;
 
   try {
     const blueprintContext = await loadPublishedBlueprintContext(input.classId);
@@ -140,7 +162,22 @@ export async function generateGroundedChatResponse(input: {
       ? `${input.assignmentInstructions}\n\n${input.userMessage}`
       : input.userMessage;
     const materialContext = await retrieveMaterialContext(input.classId, retrievalQuery);
-    const prompt = buildChatPrompt({
+    const maxTokens = resolveChatMaxTokens();
+    const pythonChatEngine = resolvePythonChatEngine();
+    const pythonChatToolMode = resolvePythonChatToolMode();
+    const pythonChatToolCatalog = resolvePythonChatToolCatalog();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      throw new Error("User session token is missing.");
+    }
+
+    const pythonResult = await generateChatViaPythonBackend({
+      classId: input.classId,
+      userId: input.userId,
+      accessToken,
       classTitle: input.classTitle,
       userMessage: input.userMessage,
       transcript: input.transcript,
@@ -148,19 +185,23 @@ export async function generateGroundedChatResponse(input: {
       materialContext,
       compactedMemoryContext: input.compactedMemoryContext,
       assignmentInstructions: input.assignmentInstructions,
-    });
-
-    const result = await generateTextWithFallback({
-      system: prompt.system,
-      user: prompt.user,
-      temperature: 0.2,
-      maxTokens: resolveChatMaxTokens(),
+      purpose: input.purpose,
       sessionId: input.sessionId,
-      transforms: resolveOpenRouterTransforms(),
+      maxTokens,
+      toolMode: pythonChatToolMode,
+      toolCatalog: pythonChatToolCatalog,
+      orchestrationHints: {
+        phase: "phase_7_langgraph_orchestration",
+        engine: pythonChatEngine,
+        reserved_for: "langgraph_tool_calling",
+      },
     });
-    usedProvider = result.provider;
+    usedProvider = pythonResult.provider;
+    usedModel = pythonResult.model;
+    usedUsage = pythonResult.usage;
+    usedLatencyMs = pythonResult.latencyMs;
+    const parsed: ChatModelResponse = pythonResult.payload;
 
-    const parsed = parseChatModelResponse(result.content);
     const sourceLabels = collectSourceLabels(blueprintContext.blueprintContext, materialContext);
     const normalizedCitations = parsed.citations
       .map((citation) => ({
@@ -179,14 +220,14 @@ export async function generateGroundedChatResponse(input: {
       supabase,
       classId: input.classId,
       userId: input.userId,
-      provider: result.provider,
-      model: result.model,
+      provider: usedProvider,
+      model: usedModel,
       purpose: input.purpose,
       status: "success",
-      latencyMs: result.latencyMs,
-      promptTokens: result.usage?.promptTokens,
-      completionTokens: result.usage?.completionTokens,
-      totalTokens: result.usage?.totalTokens,
+      latencyMs: usedLatencyMs ?? Date.now() - startedAt,
+      promptTokens: usedUsage?.promptTokens,
+      completionTokens: usedUsage?.completionTokens,
+      totalTokens: usedUsage?.totalTokens,
     });
 
     return {

@@ -18,6 +18,11 @@ pnpm start         # Run production server
 pnpm lint          # Run ESLint
 pnpm test          # Run tests
 pnpm test:watch    # Run tests in watch mode
+
+# Python backend
+pip install -r backend/requirements.txt                                                          # Install Python deps
+uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload                      # Run backend locally
+python3 -m unittest discover -s backend/tests -p 'test_*.py'                                    # Run Python tests
 ```
 
 Run a single test file:
@@ -94,6 +99,7 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 **Monorepo Structure**:
 
 - `web/` - Next.js application with App Router
+- `backend/` - Python FastAPI service for AI provider orchestration
 - `supabase/` - Database migrations and Supabase configuration
 
 **Key Boundaries**:
@@ -117,12 +123,16 @@ mcp__supabase__execute_sql --sql "SELECT 1"
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SECRET_KEY`
    - At least one AI provider key: `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY`
+   - `PYTHON_BACKEND_URL` (default: `http://localhost:8001` for local dev)
+   - `PYTHON_BACKEND_API_KEY` (required when `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS=false`)
 
 ## Key Design Patterns
 
 **Blueprint Lifecycle**: Draft → Overview (Approved) → Published (read-only, student-facing)
 
 **AI Provider Policy**: Pluggable adapter interface supporting OpenAI, Gemini, OpenRouter. Configuration is environment-driven. Providers can be swapped without changing feature logic.
+
+**Python Backend**: All AI generation (blueprints, quiz, flashcards, chat, embeddings) routes through the FastAPI `backend/` service. Next.js server actions call `web/src/lib/ai/python-*.ts` adapters, which proxy to the backend. Never call AI providers directly from Next.js. Response envelope is always `{ ok, data, error, meta }`.
 
 **Security**: RLS enforced on all tables, input validation on every API route and server action, file uploads are size-limited and content-type checked. AI context restricted to approved materials and blueprint.
 
@@ -143,6 +153,11 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 - UI refactor handoff and current progress are tracked in `UI_REFACTOR_SESSION_CATCHUP.md`.
 - High-level phase tracker remains in `UI_REFACTOR_TRACKER.md`.
 
+## Plans and Trackers
+
+- Store all implementation plans, session trackers, and working notes under `.claude/plans/` — not in `docs/` or the repo root.
+- `.claude/` is gitignored-safe for local-only files and avoids branch noise for plan files that don't belong in PR diffs.
+
 ## Important Notes
 
 - Email/password auth only; `profiles.account_type` is immutable (teacher or student)
@@ -154,3 +169,6 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 
 - **Edge Function Secrets**: When using AI providers (like `OPENROUTER_*`) in Supabase Edge Functions, secrets must be set in **Edge Function Secrets** (in Supabase Dashboard → Edge Functions → Secrets), not in the Vault. Edge Functions cannot access Vault secrets.
 - **Vercel + Supabase Integration**: While the Vercel + Supabase integration plugin allows Vercel to access Supabase secrets, the reverse is not true—Supabase Edge Functions cannot access secrets stored in Vercel. All secrets required by Edge Functions must be configured directly in Supabase.
+- **httpx trust_env**: All `httpx.Client(...)` calls in the Python backend must include `trust_env=False` to avoid picking up proxy env vars in production; omitting it causes silent connection failures in certain deploy environments.
+- **Cursor pagination validation**: Cursor tokens passed to PostgREST must be validated as UUID + ISO-8601 format before string interpolation to prevent injection. See `backend/app/chat_workspace.py`.
+- **Message timestamp ordering**: When persisting user + assistant message pairs, offset assistant timestamp by 1ms to guarantee correct ordering in queries that sort by `created_at`.

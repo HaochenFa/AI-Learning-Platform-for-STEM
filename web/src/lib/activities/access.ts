@@ -6,7 +6,7 @@ export async function requireAuthenticatedUser(options?: {
   accountType?: AccountType;
   requireVerifiedEmail?: boolean;
 }) {
-  const { supabase, user, profile, isEmailVerified } = await getAuthContext();
+  const { supabase, user, accessToken, profile, isEmailVerified } = await getAuthContext();
   const requiredRole = options?.accountType;
   const profileAccountType = profile?.account_type;
   const authError = !user
@@ -22,6 +22,7 @@ export async function requireAuthenticatedUser(options?: {
   return {
     supabase,
     user,
+    accessToken,
     profile,
     isEmailVerified,
     authError,

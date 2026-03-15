@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { generateTextWithFallback } from "@/lib/ai/providers";
+import { generateFlashcardsViaPythonBackend } from "@/lib/ai/python-flashcards";
 import {
   createWholeClassAssignment,
   loadStudentAssignmentContext,
@@ -18,10 +18,6 @@ import {
 import type { FlashcardsSessionSubmissionContent } from "@/lib/activities/types";
 import { loadPublishedBlueprintContext } from "@/lib/chat/context";
 import { parseDueAt, parseHighlights, parseOptionalScore } from "@/lib/chat/validation";
-import {
-  buildFlashcardsGenerationPrompt,
-  parseFlashcardsGenerationResponse,
-} from "@/lib/flashcards/generation";
 import {
   DEFAULT_FLASHCARD_COUNT,
   parseCardCount,
@@ -217,30 +213,26 @@ export async function generateFlashcardsDraft(classId: string, formData: FormDat
 
   const start = Date.now();
   let usedProvider = "unknown";
+  let usedModel: string | null = null;
+  let usedUsage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined;
+  let usedLatencyMs: number | null = null;
 
   try {
     const blueprintContext = await loadPublishedBlueprintContext(classId);
     const retrievalQuery = `Generate ${cardCount} flashcards. ${instructions}`;
     const materialContext = await retrieveMaterialContext(classId, retrievalQuery);
-
-    const prompt = buildFlashcardsGenerationPrompt({
+    const pythonResult = await generateFlashcardsViaPythonBackend({
       classTitle: role.classTitle,
       cardCount,
       instructions,
       blueprintContext: blueprintContext.blueprintContext,
       materialContext,
     });
-
-    const result = await generateTextWithFallback({
-      system: prompt.system,
-      user: prompt.user,
-      temperature: 0.2,
-      maxTokens: 8000,
-    });
-    usedProvider = result.provider;
-
-    const payload = parseFlashcardsGenerationResponse(result.content);
-    const trimmedCards = payload.cards.slice(0, cardCount);
+    usedProvider = pythonResult.provider;
+    usedModel = pythonResult.model;
+    usedUsage = pythonResult.usage;
+    usedLatencyMs = pythonResult.latencyMs;
+    const trimmedCards = pythonResult.payload.cards.slice(0, cardCount);
 
     if (trimmedCards.length === 0) {
       throw new Error("The flashcards generator returned no valid cards.");
@@ -299,13 +291,13 @@ export async function generateFlashcardsDraft(classId: string, formData: FormDat
       supabase,
       classId,
       userId: user.id,
-      provider: result.provider,
-      model: result.model,
+      provider: usedProvider,
+      model: usedModel,
       status: "success",
-      latencyMs: result.latencyMs,
-      promptTokens: result.usage?.promptTokens,
-      completionTokens: result.usage?.completionTokens,
-      totalTokens: result.usage?.totalTokens,
+      latencyMs: usedLatencyMs ?? Date.now() - start,
+      promptTokens: usedUsage?.promptTokens,
+      completionTokens: usedUsage?.completionTokens,
+      totalTokens: usedUsage?.totalTokens,
     });
 
     redirect(`/classes/${classId}/activities/flashcards/${activity.id}/edit?created=1`);

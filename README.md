@@ -14,6 +14,7 @@ This repo is aligned to the roadmap in `ROADMAP.md`, with core services, bluepri
 
 - Next.js app for UI and role-based routing.
 - API layer via server actions or API routes for all data writes.
+- Optional Python backend adapter (`backend/`) for AI orchestration migration slices.
 - AI orchestrator with provider adapters, prompt templates, and safety checks.
 - Supabase for Auth, Postgres, Storage, and RLS.
 
@@ -33,6 +34,7 @@ This repo is aligned to the roadmap in `ROADMAP.md`, with core services, bluepri
 **Repository Layout**
 
 - `web/`: Next.js application.
+- `backend/`: FastAPI backend for optional AI-provider orchestration.
 - `supabase/`: database migrations and setup notes.
 
 **Requirements**
@@ -90,7 +92,7 @@ git push org HEAD
 - Material ingestion is queue-driven on Supabase (`pgmq` + Supabase Cron + Edge Function worker) to avoid Vercel Cron plan limits.
 - Set Vault secrets `project_url` and `material_worker_token` in Supabase for worker dispatch auth.
 - Configure provider-specific embedding models so background material processing can complete.
-- `POST /api/materials/process` remains available as a legacy fallback path when `MATERIAL_WORKER_BACKEND=legacy`.
+- `POST /api/materials/process` routes through Python backend `/v1/materials/process`.
 
 **Docs**
 
