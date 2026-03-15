@@ -38,6 +38,10 @@
   ],
   "exclude": [
     "node_modules",
+    // Exclude generated dev-mode type stubs to prevent tsc from re-checking them
+    // on every incremental build. The glob is also listed under "include" above
+    // (from the Next.js default template), but TypeScript's "exclude" takes
+    // precedence — keeping both avoids breaking setups that rely on the include.
     ".next/dev/types/**/*.ts"
   ]
 }

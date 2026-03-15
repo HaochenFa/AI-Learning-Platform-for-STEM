@@ -334,8 +334,11 @@ def list_messages(settings: Settings, request: ChatWorkspaceMessagesListRequest)
             "order": "created_at.desc,id.desc",
             "limit": str(query_limit),
         }
-        cursor = _decode_cursor(request.before_cursor)
-        if cursor:
+        if request.before_cursor:
+            cursor = _decode_cursor(request.before_cursor)
+            if cursor is None:
+                raise ChatWorkspaceError(
+                    "Invalid pagination cursor.", "invalid_cursor", 400)
             params["or"] = (
                 f"(created_at.lt.{cursor['created_at']},"
                 f"and(created_at.eq.{cursor['created_at']},id.lt.{cursor['id']}))"
