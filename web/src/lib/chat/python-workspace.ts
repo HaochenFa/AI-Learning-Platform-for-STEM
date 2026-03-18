@@ -384,6 +384,11 @@ type WorkspaceModelResponse = {
     rationale?: string;
     snippet?: string;
   }>;
+  canvas_hint?: {
+    type: "chart" | "diagram" | "wave" | "vector";
+    concept: string;
+    title: string;
+  };
 };
 
 function normalizeSessionRow(row: WorkspaceSessionRow): ClassChatSession {
@@ -421,6 +426,7 @@ function normalizeModelResponse(raw: WorkspaceModelResponse): ChatModelResponse 
         };
       })
       .filter((citation) => citation.sourceLabel.length > 0 && citation.rationale.length > 0),
+    ...(raw.canvas_hint ? { canvas_hint: raw.canvas_hint } : {}),
   };
 }
 

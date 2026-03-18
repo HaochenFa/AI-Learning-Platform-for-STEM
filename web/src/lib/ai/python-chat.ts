@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { ChatModelResponse, ChatTurn } from "@/lib/chat/types";
+import type { CanvasHint, CanvasSpec, ChatModelResponse, ChatTurn } from "@/lib/chat/types";
 
 export type PythonChatGenerateRequest = {
   classId: string;
@@ -128,6 +128,60 @@ export async function generateChatViaPythonBackend(
     latencyMs: payload.data.latency_ms ?? timeoutMs,
     orchestration: payload.data.orchestration,
   };
+}
+
+export async function generateChatCanvas(
+  classId: string,
+  hint: CanvasHint,
+  context: { studentQuestion: string; aiAnswer: string },
+): Promise<CanvasSpec> {
+  const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
+  if (!baseUrl) {
+    throw new Error("PYTHON_BACKEND_URL is not configured.");
+  }
+
+  const apiKey = process.env.PYTHON_BACKEND_API_KEY?.trim();
+  const response = await fetchWithTimeout(
+    `${baseUrl.replace(/\/+$/, "")}/v1/chat/canvas`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { "x-api-key": apiKey } : {}),
+      },
+      body: JSON.stringify({
+        class_id: classId,
+        canvas_hint: {
+          type: hint.type,
+          concept: hint.concept,
+          title: hint.title,
+        },
+        student_question: context.studentQuestion,
+        ai_answer: context.aiAnswer,
+      }),
+    },
+    30000,
+    "Python backend canvas request",
+  );
+
+  const payload = (await safeJson(response)) as {
+    ok?: boolean;
+    data?: {
+      spec?: CanvasSpec;
+    };
+    error?: {
+      message?: string;
+    };
+  } | null;
+
+  if (!response.ok || !payload?.ok) {
+    throw new Error(payload?.error?.message ?? "Canvas generation failed.");
+  }
+
+  if (!payload.data?.spec) {
+    throw new Error("Canvas generation response missing spec.");
+  }
+  return payload.data.spec as CanvasSpec;
 }
 
 function normalizeUsage(usage?: {

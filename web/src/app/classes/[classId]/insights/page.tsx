@@ -11,6 +11,7 @@ import BloomRadarChart from "./BloomRadarChart";
 import StudentEngagementScatter from "./StudentEngagementScatter";
 import InterventionSuggestions from "./InterventionSuggestions";
 import StudentOverviewTable from "./StudentOverviewTable";
+import DataQueryPanel from "./DataQueryPanel";
 
 export default async function ClassInsightsPage({
   params,
@@ -96,7 +97,7 @@ export default async function ClassInsightsPage({
             <InsightsSummaryCards summary={result.data.class_summary} />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <AIInsightPanel narrative={result.data.ai_narrative} />
+              <AIInsightPanel narrative={result.data.ai_narrative} classId={classId} />
               {result.data.ai_narrative?.interventions.length ? (
                 <InterventionSuggestions
                   classId={classId}
@@ -113,6 +114,7 @@ export default async function ClassInsightsPage({
             <StudentEngagementScatter students={result.data.students} />
 
             <StudentOverviewTable students={result.data.students} />
+            <DataQueryPanel classId={classId} />
           </div>
         </>
       )}

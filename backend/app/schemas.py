@@ -252,3 +252,20 @@ class ApiEnvelope(BaseModel):
     data: Any | None = None
     error: ApiError | None = None
     meta: dict[str, Any] | None = None
+
+
+class CanvasHint(BaseModel):
+    type: Literal["chart", "diagram", "wave", "vector"]
+    concept: str
+    title: str
+
+
+class CanvasRequest(BaseModel):
+    class_id: str = Field(min_length=1)
+    canvas_hint: CanvasHint
+    student_question: str   # current round only — no history for speed
+    ai_answer: str          # current round only
+
+
+class CanvasResponse(BaseModel):
+    spec: dict  # validated against CanvasSpec union

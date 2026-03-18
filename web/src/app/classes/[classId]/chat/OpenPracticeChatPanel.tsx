@@ -1,12 +1,18 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { sendOpenPracticeMessage } from "@/app/classes/[classId]/chat/actions";
-import type { ChatTurn } from "@/lib/chat/types";
+import { useMemo, useRef, useState, useTransition } from "react";
+import { GenerativeCanvas } from "@/components/canvas";
+import { sendOpenPracticeMessage, generateCanvasAction } from "@/app/classes/[classId]/chat/actions";
+import type { CanvasSpec, ChatTurn } from "@/lib/chat/types";
 import { MAX_CHAT_MESSAGE_CHARS } from "@/lib/chat/validation";
 
 type OpenPracticeChatPanelProps = {
   classId: string;
+};
+
+type CanvasEntry = {
+  state: "loading" | "revealed" | "error";
+  spec: CanvasSpec | null;
 };
 
 function formatDate(value: string) {
@@ -22,6 +28,8 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [canvasMap, setCanvasMap] = useState<Map<number, CanvasEntry>>(new Map());
+  const canvasGenRef = useRef(0);
 
   const serializedTranscript = useMemo(() => JSON.stringify(transcript), [transcript]);
 
@@ -60,8 +68,47 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
         })),
       };
 
-      setTranscript((current) => [...current, studentTurn, assistantTurn]);
+      const nextTranscript = [...transcript, studentTurn, assistantTurn];
+      setTranscript(nextTranscript);
       setMessage("");
+
+      const canvasHint = result.response.canvas_hint;
+      if (canvasHint) {
+        // The assistant turn is at index nextTranscript.length - 1
+        const assistantIndex = nextTranscript.length - 1;
+        const gen = ++canvasGenRef.current;
+        setCanvasMap((current) => {
+          const next = new Map(current);
+          next.set(assistantIndex, { state: "loading", spec: null });
+          return next;
+        });
+
+        void (async () => {
+          try {
+            const canvasResult = await generateCanvasAction(classId, canvasHint, {
+              studentQuestion: trimmed,
+              aiAnswer: result.response.answer,
+            });
+            if (gen !== canvasGenRef.current) return; // Clear was hit, abandon
+            setCanvasMap((current) => {
+              const next = new Map(current);
+              if (canvasResult.ok) {
+                next.set(assistantIndex, { state: "revealed", spec: canvasResult.spec });
+              } else {
+                next.set(assistantIndex, { state: "error", spec: null });
+              }
+              return next;
+            });
+          } catch {
+            if (gen !== canvasGenRef.current) return; // Clear was hit, abandon
+            setCanvasMap((current) => {
+              const next = new Map(current);
+              next.set(assistantIndex, { state: "error", spec: null });
+              return next;
+            });
+          }
+        })();
+      }
     });
   };
 
@@ -107,6 +154,12 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
                   ))}
                 </ul>
               ) : null}
+              {turn.role === "assistant" && canvasMap.has(index) ? (
+                (() => {
+                  const entry = canvasMap.get(index);
+                  return entry ? <GenerativeCanvas state={entry.state} spec={entry.spec} /> : null;
+                })()
+              ) : null}
             </div>
           ))
         )}
@@ -134,7 +187,9 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
             <button
               type="button"
               onClick={() => {
+                canvasGenRef.current++; // cancel any in-flight canvas gen
                 setTranscript([]);
+                setCanvasMap(new Map());
                 setError(null);
               }}
               className="rounded-xl border border-default px-4 py-2 text-xs font-medium text-ui-muted hover:border-accent hover:bg-accent-soft"

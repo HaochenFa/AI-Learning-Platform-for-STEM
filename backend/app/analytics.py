@@ -585,3 +585,200 @@ async def class_insights_route(request: Request, payload: ClassInsightsRequest):
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )
+
+
+class DataQueryRequest(BaseModel):
+    user_id: str
+    class_id: str
+    query: str
+
+
+DATA_QUERY_SYSTEM_PROMPT = """You are an educational analytics assistant. Given aggregated class data and a teacher's natural language question, generate a chart specification in JSON.
+
+Return ONLY valid JSON matching this schema:
+{"type":"chart","chartType":"bar|line|pie|scatter","title":"string","data":[{"label":"string","value":number}],"xLabel":"string","yLabel":"string"}
+
+Rules:
+- chartType: use bar for category comparisons, line for trends, pie for proportions, scatter for correlations
+- data: 2-8 data points max, values should be meaningful numbers (scores as percentages 0-100, counts as integers)
+- If the question cannot be answered from the available data, return a bar chart with a single data point {"label":"No data available","value":0}
+- Do not invent data not present in the input"""
+
+
+def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> dict:
+    """Generate a chart spec from a natural language teacher query using available class insights data."""
+    _require_supabase_credentials(settings)
+    timeout_seconds = max(30, settings.ai_request_timeout_ms / 1000)
+    base_url = _supabase_base_url(settings)
+
+    with httpx.Client(timeout=timeout_seconds, trust_env=False) as client:
+        _check_teacher_enrollment(client, settings, request.user_id, request.class_id)
+
+        # Fetch topic performance data for this class
+        blueprint_url = (
+            f"{base_url}/rest/v1/blueprints"
+            f"?select=id&class_id=eq.{quote(request.class_id, safe='')}&status=eq.published&order=version.desc&limit=1"
+        )
+        bp_resp = client.get(blueprint_url, headers=_service_headers(settings))
+        bp_rows = _safe_json(bp_resp)
+        blueprint_id = bp_rows[0].get("id") if isinstance(bp_rows, list) and bp_rows and isinstance(bp_rows[0], dict) else None
+
+        topics_data: list[dict] = []
+        if blueprint_id:
+            topics_url = (
+                f"{base_url}/rest/v1/topics"
+                f"?select=id,title&blueprint_id=eq.{quote(blueprint_id, safe='')}&limit=100"
+            )
+            topics_resp = client.get(topics_url, headers=_service_headers(settings))
+            topics_rows = _safe_json(topics_resp)
+            if isinstance(topics_rows, list):
+                for t in topics_rows:
+                    if isinstance(t, dict) and isinstance(t.get("id"), str):
+                        topics_data.append({"id": t["id"], "title": t.get("title", "")})
+
+        # Fetch student scores summary
+        enrolled_url = (
+            f"{base_url}/rest/v1/enrollments"
+            f"?select=user_id&class_id=eq.{quote(request.class_id, safe='')}&role=eq.student&limit=500"
+        )
+        enrolled_resp = client.get(enrolled_url, headers=_service_headers(settings))
+        enrolled_rows = _safe_json(enrolled_resp)
+        student_count = len(enrolled_rows) if isinstance(enrolled_rows, list) else 0
+
+        # Fetch activities
+        activities_url = (
+            f"{base_url}/rest/v1/activities"
+            f"?select=id,title,type&class_id=eq.{quote(request.class_id, safe='')}&status=eq.published&limit=100"
+        )
+        acts_resp = client.get(activities_url, headers=_service_headers(settings))
+        acts_rows = _safe_json(acts_resp)
+        activities: list[dict] = []
+        if isinstance(acts_rows, list):
+            activities = [{"id": a["id"], "title": a.get("title", ""), "type": a.get("type", "")} for a in acts_rows if isinstance(a, dict) and isinstance(a.get("id"), str)]
+
+    # Try to use cached insights snapshot for richer numeric context
+    rich_context: dict | None = None
+    try:
+        with httpx.Client(timeout=timeout_seconds, trust_env=False) as cache_client:
+            rich_context = _get_cached_snapshot(cache_client, settings, request.class_id)
+    except Exception:
+        pass
+
+    if rich_context and not rich_context.get("class_summary", {}).get("is_empty"):
+        # Use the full insights snapshot for rich chart generation
+        class_summary = rich_context.get("class_summary", {})
+        topics_from_cache = rich_context.get("topics", [])
+        students_from_cache = rich_context.get("students", [])
+        bloom = rich_context.get("bloom_breakdown", {})
+
+        data_context = {
+            "class_summary": {
+                "student_count": class_summary.get("student_count", 0),
+                "avg_score_pct": round(class_summary.get("avg_score", 0) * 100, 1),
+                "completion_rate_pct": round(class_summary.get("completion_rate", 0) * 100, 1),
+                "at_risk_count": class_summary.get("at_risk_count", 0),
+                "avg_chat_messages": class_summary.get("avg_chat_messages", 0),
+            },
+            "topics": [
+                {
+                    "title": t.get("title", ""),
+                    "avg_score_pct": round(t.get("avg_score", 0) * 100, 1),
+                    "attempt_count": t.get("attempt_count", 0),
+                    "status": t.get("status", ""),
+                }
+                for t in topics_from_cache
+            ],
+            "students": [
+                {
+                    "name": s.get("display_name", ""),
+                    "avg_score_pct": round(s.get("avg_score", 0) * 100, 1),
+                    "completion_rate_pct": round(s.get("completion_rate", 0) * 100, 1),
+                    "chat_message_count": s.get("chat_message_count", 0),
+                    "risk_level": s.get("risk_level", ""),
+                }
+                for s in students_from_cache
+            ],
+            "bloom_breakdown": {
+                level: (round(score * 100, 1) if score is not None else None)
+                for level, score in bloom.items()
+            },
+        }
+    else:
+        # Fallback: lightweight context when no snapshot available
+        data_context = {
+            "student_count": student_count,
+            "topics": [{"title": t["title"]} for t in topics_data],
+            "activities": activities,
+            "note": "No detailed score data available yet. Students may not have submitted any assignments.",
+        }
+
+    user_prompt = "\n".join([
+        f"Teacher question: {request.query}",
+        "",
+        f"Available class data:\n{json.dumps(data_context, indent=2)}",
+        "",
+        "Generate a chart specification that answers the teacher's question using this data.",
+    ])
+
+    result = generate_with_fallback(
+        settings,
+        GenerateRequest(
+            system=DATA_QUERY_SYSTEM_PROMPT,
+            user=user_prompt,
+            temperature=0.2,
+            max_tokens=800,
+            timeout_ms=20000,
+        ),
+    )
+
+    raw = result.content.strip()
+    if not raw:
+        raise RuntimeError("Data query chart generation returned an empty response.")
+    if raw.startswith("```"):
+        lines = raw.split("\n")
+        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+
+    try:
+        spec = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Data query chart generation returned invalid JSON: {exc}") from exc
+
+    if not isinstance(spec, dict) or spec.get("type") != "chart":
+        raise RuntimeError(f"Data query chart generation returned unexpected type: {spec.get('type')}")
+
+    return spec
+
+
+@analytics_router.post("/data-query")
+async def data_query_route(request: Request, payload: DataQueryRequest):
+    from app.main import _authorize_request
+
+    settings, _, unauthorized = await _authorize_request(request)
+    if unauthorized:
+        return unauthorized
+
+    try:
+        spec = await run_in_threadpool(generate_data_query_chart, settings, payload)
+        return ApiEnvelope(
+            ok=True,
+            data={"spec": spec},
+            meta={"request_id": request.state.request_id},
+        ).model_dump()
+    except ClassDomainError as error:
+        return JSONResponse(
+            status_code=error.status_code,
+            content=ApiEnvelope(
+                ok=False,
+                error=ApiError(message=error.message, code=error.code),
+                meta={"request_id": request.state.request_id},
+            ).model_dump(),
+        )
+    except RuntimeError as error:
+        return JSONResponse(
+            status_code=502,
+            content=ApiEnvelope(
+                ok=False,
+                error=ApiError(message=str(error), code="data_query_error"),
+                meta={"request_id": request.state.request_id},
+            ).model_dump(),
+        )

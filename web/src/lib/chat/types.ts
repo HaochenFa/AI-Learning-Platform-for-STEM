@@ -12,6 +12,11 @@ export type ChatModelResponse = {
   citations: { sourceLabel: string; rationale: string }[];
   safety: "ok" | "refusal";
   confidence?: "low" | "medium" | "high";
+  canvas_hint?: {
+    type: "chart" | "diagram" | "wave" | "vector";
+    concept: string;   // e.g. "electromagnetic wave"
+    title: string;     // e.g. "Wave: Frequency vs. Wavelength"
+  };
 };
 
 export type ChatAssignmentSubmissionContent = {
@@ -89,3 +94,35 @@ export type ClassChatParticipant = {
   userId: string;
   displayName: string;
 };
+
+export type CanvasHint = {
+  type: "chart" | "diagram" | "wave" | "vector";
+  concept: string;
+  title: string;
+};
+
+export type ChartDataPoint = {
+  label: string;
+  value: number;
+  [key: string]: string | number;
+};
+
+export type WaveConfig = {
+  label: string;
+  amplitude: number;
+  frequency: number;
+  color: string;
+};
+
+export type VectorConfig = {
+  label: string;
+  magnitude: number;
+  angleDeg: number;
+  color: string;
+};
+
+export type CanvasSpec =
+  | { type: "chart"; chartType: "bar" | "line" | "pie" | "scatter"; title: string; data: ChartDataPoint[]; xLabel?: string; yLabel?: string }
+  | { type: "diagram"; diagramType: "flowchart" | "concept-map"; definition: string; title: string }
+  | { type: "wave"; title: string; waves: WaveConfig[] }
+  | { type: "vector"; title: string; vectors: VectorConfig[]; gridSize?: number };

@@ -9,7 +9,9 @@ import {
   listClassChatSessions,
   sendClassChatMessage,
 } from "@/app/classes/[classId]/chat/workspace-actions";
-import type { ClassChatMessage, ClassChatMessagesPageInfo, ClassChatSession } from "@/lib/chat/types";
+import { generateCanvasAction } from "@/app/classes/[classId]/chat/actions";
+import { GenerativeCanvas } from "@/components/canvas";
+import type { CanvasSpec, ClassChatMessage, ClassChatMessagesPageInfo, ClassChatSession } from "@/lib/chat/types";
 import { MAX_CHAT_MESSAGE_CHARS } from "@/lib/chat/validation";
 
 type ClassChatWorkspaceProps = {
@@ -17,6 +19,11 @@ type ClassChatWorkspaceProps = {
   ownerUserId?: string;
   readOnly?: boolean;
   heading?: string;
+};
+
+type CanvasEntry = {
+  state: "loading" | "revealed" | "error";
+  spec: CanvasSpec | null;
 };
 
 const CLIENT_COMPACTION_HINT_TURNS = 24;
@@ -59,13 +66,21 @@ export default function ClassChatWorkspace({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isSessionPending, startSessionTransition] = useTransition();
+  const [canvasMap, setCanvasMap] = useState<Map<string, CanvasEntry>>(new Map());
   const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
   const skipAutoScrollRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === selectedSessionId) ?? null,
     [sessions, selectedSessionId],
   );
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (skipAutoScrollRef.current) {
@@ -164,20 +179,14 @@ export default function ClassChatWorkspace({
         setError(result.error);
         return;
       }
-
-      setSessions((current) => {
-        const remainingSessions = current.filter((session) => session.id !== result.data.sessionId);
-        setSelectedSessionId((currentSelectedSessionId) => {
-          if (currentSelectedSessionId !== result.data.sessionId) {
-            return currentSelectedSessionId;
-          }
-          setMessages([]);
-          setPageInfo({ hasMore: false, nextCursor: null });
-          setStatusNotice(null);
-          return remainingSessions[0]?.id ?? null;
-        });
-        return remainingSessions;
-      });
+      const archivedId = result.data.sessionId;
+      setSessions((current) => current.filter((s) => s.id !== archivedId));
+      if (selectedSessionId === archivedId) {
+        setSelectedSessionId(null);
+        setMessages([]);
+        setPageInfo({ hasMore: false, nextCursor: null });
+        setStatusNotice(null);
+      }
     });
   };
 
@@ -267,6 +276,42 @@ export default function ClassChatWorkspace({
       }
       setShowCompactionStatus(false);
       setMessage("");
+
+      const canvasHint = result.data.response.canvas_hint;
+      if (canvasHint) {
+        const assistantMessageId = result.data.assistantMessage.id;
+        setCanvasMap((current) => {
+          const next = new Map(current);
+          next.set(assistantMessageId, { state: "loading", spec: null });
+          return next;
+        });
+
+        void (async () => {
+          try {
+            const canvasResult = await generateCanvasAction(classId, canvasHint, {
+              studentQuestion: trimmed,
+              aiAnswer: result.data.response.answer,
+            });
+            if (!mountedRef.current) return;
+            setCanvasMap((current) => {
+              const next = new Map(current);
+              if (canvasResult.ok) {
+                next.set(assistantMessageId, { state: "revealed", spec: canvasResult.spec });
+              } else {
+                next.set(assistantMessageId, { state: "error", spec: null });
+              }
+              return next;
+            });
+          } catch {
+            if (!mountedRef.current) return;
+            setCanvasMap((current) => {
+              const next = new Map(current);
+              next.set(assistantMessageId, { state: "error", spec: null });
+              return next;
+            });
+          }
+        })();
+      }
     });
   };
 
@@ -396,6 +441,12 @@ export default function ClassChatWorkspace({
                             </li>
                           ))}
                         </ul>
+                      ) : null}
+                      {canvasMap.has(turn.id) ? (
+                        (() => {
+                          const entry = canvasMap.get(turn.id);
+                          return entry ? <GenerativeCanvas state={entry.state} spec={entry.spec} /> : null;
+                        })()
                       ) : null}
                     </article>
                   ) : (

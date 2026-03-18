@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.analytics import analytics_router
 from app.blueprints import generate_blueprint
+from app.canvas import generate_canvas_spec
 from app.chat import generate_chat
 from app.chat_workspace import (
     ChatWorkspaceError,
@@ -42,6 +43,7 @@ from app.schemas import (
     ChatWorkspaceSessionRenameRequest,
     ChatWorkspaceSessionsListRequest,
     ChatGenerateRequest,
+    CanvasRequest,
     EmbeddingsRequest,
     FlashcardsGenerateRequest,
     GenerateRequest,
@@ -506,6 +508,33 @@ async def generate_chat_route(request: Request, payload: ChatGenerateRequest):
             content=ApiEnvelope(
                 ok=False,
                 error=ApiError(message=str(error), code="chat_error"),
+                meta={"request_id": request.state.request_id},
+            ).model_dump(),
+        )
+
+
+@app.post("/v1/chat/canvas")
+async def generate_canvas_route(request: Request, payload: CanvasRequest):
+    # API-key-only auth (no user JWT): canvas is called from server actions
+    # that are already user-authenticated. The route is stateless and does
+    # not store or attribute any data to a user.
+    settings, _, unauthorized = await _authorize_request(request)
+    if unauthorized:
+        return unauthorized
+
+    try:
+        spec = await run_in_threadpool(generate_canvas_spec, settings, payload)
+        return ApiEnvelope(
+            ok=True,
+            data={"spec": spec},
+            meta={"request_id": request.state.request_id},
+        ).model_dump()
+    except RuntimeError as error:
+        return JSONResponse(
+            status_code=502,
+            content=ApiEnvelope(
+                ok=False,
+                error=ApiError(message=str(error), code="canvas_error"),
                 meta={"request_id": request.state.request_id},
             ).model_dump(),
         )

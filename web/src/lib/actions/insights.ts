@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth/session";
+import type { CanvasSpec } from "@/lib/chat/types";
 
 export type BloomLevel = "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create";
 
@@ -117,6 +118,80 @@ export async function getClassInsights(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Failed to load class insights.",
+    };
+  }
+}
+
+export type DataQueryResult =
+  | { ok: true; spec: CanvasSpec }
+  | { ok: false; error: string };
+
+export async function queryClassData(
+  classId: string,
+  query: string,
+): Promise<DataQueryResult> {
+  const safeQuery = query.trim().slice(0, 500);
+  if (!safeQuery) {
+    return { ok: false, error: "Query cannot be empty." };
+  }
+
+  let userId: string;
+  try {
+    const auth = await requireVerifiedUser({ accountType: "teacher" });
+    userId = auth.user.id;
+  } catch {
+    redirect("/login");
+  }
+
+  const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
+  if (!baseUrl) {
+    return { ok: false, error: "Backend not configured." };
+  }
+
+  const apiKey = process.env.PYTHON_BACKEND_API_KEY?.trim();
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+
+  try {
+    const response = await fetch(
+      `${baseUrl.replace(/\/+$/, "")}/v1/analytics/data-query`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiKey ? { "x-api-key": apiKey } : {}),
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          class_id: classId,
+          query: safeQuery,
+        }),
+        signal: controller.signal,
+      },
+    );
+
+    clearTimeout(timer);
+
+    type Envelope = { ok?: boolean; data?: { spec?: CanvasSpec }; error?: { message?: string } };
+    const payload = (await response.json().catch(() => null)) as Envelope | null;
+
+    if (!response.ok || !payload?.ok || !payload.data?.spec) {
+      return {
+        ok: false,
+        error: payload?.error?.message ?? `Data query request failed (${response.status}).`,
+      };
+    }
+
+    return { ok: true, spec: payload.data.spec };
+  } catch (error) {
+    clearTimeout(timer);
+    if (error instanceof Error && error.name === "AbortError") {
+      return { ok: false, error: "Data query request timed out. Please try again." };
+    }
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to query class data.",
     };
   }
 }

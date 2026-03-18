@@ -600,6 +600,7 @@ def build_chat_prompt(
             "Return JSON only with this exact shape:",
             '{"safety":"ok|refusal","answer":"string","citations":[{"sourceLabel":"string","rationale":"string"}]}',
             "Each citation sourceLabel must exactly match one label from the provided context.",
+            "If your explanation would be significantly clearer with a visual aid, add a canvas_hint field to your JSON response: {\"canvas_hint\":{\"type\":\"chart|diagram|wave|vector\",\"concept\":\"specific concept name\",\"title\":\"descriptive visual title\"}}. Only include canvas_hint when a visual genuinely aids understanding (waves, forces, statistical relationships, multi-step processes are good candidates). Most responses should NOT include canvas_hint.",
         ]
     )
 
@@ -718,6 +719,19 @@ def validate_chat_payload(payload: Any) -> tuple[bool, dict[str, Any] | None, li
     if isinstance(confidence, str) and confidence in {"low", "medium", "high"}:
         normalized_confidence = confidence
 
+    canvas_hint = payload.get("canvas_hint")
+    normalized_canvas_hint: dict | None = None
+    if isinstance(canvas_hint, dict):
+        hint_type = canvas_hint.get("type")
+        hint_concept = normalize_text(canvas_hint.get("concept", ""))
+        hint_title = normalize_text(canvas_hint.get("title", ""))
+        if hint_type in {"chart", "diagram", "wave", "vector"} and hint_concept and hint_title:
+            normalized_canvas_hint = {
+                "type": hint_type,
+                "concept": hint_concept,
+                "title": hint_title,
+            }
+
     if errors:
         return False, None, errors
 
@@ -728,6 +742,8 @@ def validate_chat_payload(payload: Any) -> tuple[bool, dict[str, Any] | None, li
     }
     if normalized_confidence:
         normalized["confidence"] = normalized_confidence
+    if normalized_canvas_hint:
+        normalized["canvas_hint"] = normalized_canvas_hint
 
     return True, normalized, errors
 

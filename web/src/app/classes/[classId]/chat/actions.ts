@@ -10,7 +10,8 @@ import {
 import { getClassAccess, requireAuthenticatedUser } from "@/lib/activities/access";
 import { markRecipientStatus } from "@/lib/activities/submissions";
 import { generateGroundedChatResponse } from "@/lib/chat/generate";
-import type { ChatModelResponse, ChatTurn } from "@/lib/chat/types";
+import { generateChatCanvas } from "@/lib/ai/python-chat";
+import type { CanvasHint, CanvasSpec, ChatModelResponse, ChatTurn } from "@/lib/chat/types";
 import {
   buildChatAssignmentSubmissionContent,
   parseChatMessage,
@@ -32,6 +33,27 @@ type ChatActionResult =
     };
 
 const CHAT_GENERATION_ERROR_MESSAGE = "Unable to generate a chat response right now. Please try again.";
+
+export async function generateCanvasAction(
+  classId: string,
+  hint: CanvasHint,
+  context: { studentQuestion: string; aiAnswer: string },
+): Promise<{ ok: true; spec: CanvasSpec } | { ok: false; error: string }> {
+  try {
+    const { supabase, user } = await requireAuthenticatedUser();
+    const role = await getClassAccess(supabase, classId, user.id);
+    if (!role.found || !role.isMember) {
+      return { ok: false, error: "Class access required." };
+    }
+    const spec = await generateChatCanvas(classId, hint, context);
+    return { ok: true, spec };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Canvas generation failed.",
+    };
+  }
+}
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
