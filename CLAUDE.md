@@ -11,9 +11,9 @@ STEM Learning Platform with GenAI - A production-ready educational platform wher
 ## Common Commands
 
 ```bash
-pnpm install        # Install all dependencies
-pnpm dev           # Run Next.js development server
-pnpm build         # Build for production
+pnpm install        # Install all dependencies (from monorepo root)
+pnpm dev           # Run Next.js dev server (uses --webpack; required for Next.js 16 + React 19)
+pnpm build         # Build for production (--webpack required; turbopack not yet stable)
 pnpm start         # Run production server
 pnpm lint          # Run ESLint
 pnpm test          # Run tests
@@ -94,6 +94,18 @@ Apply migrations via MCP (if configured):
 mcp__supabase__execute_sql --sql "SELECT 1"
 ```
 
+## Key File Paths
+
+| Purpose | Path |
+|---------|------|
+| Supabase browser client | `web/src/lib/supabase/client.ts` |
+| Supabase server client | `web/src/lib/supabase/server.ts` |
+| AI adapter entry (Next.js → Python) | `web/src/lib/ai/python-backend.ts` |
+| Server actions (root) | `web/src/app/actions.ts` |
+| Activity access/assignments | `web/src/lib/activities/` |
+| Analytics/class insights | `backend/app/analytics.py` |
+| Global styles & design tokens | `web/src/app/globals.css` |
+
 ## Architecture
 
 **Monorepo Structure**:
@@ -125,6 +137,7 @@ mcp__supabase__execute_sql --sql "SELECT 1"
    - At least one AI provider key: `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY`
    - `PYTHON_BACKEND_URL` (default: `http://localhost:8001` for local dev)
    - `PYTHON_BACKEND_API_KEY` (required when `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS=false`)
+   - `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS` (set `true` for local dev without API key)
 
 ## Key Design Patterns
 
@@ -133,6 +146,10 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 **AI Provider Policy**: Pluggable adapter interface supporting OpenAI, Gemini, OpenRouter. Configuration is environment-driven. Providers can be swapped without changing feature logic.
 
 **Python Backend**: All AI generation (blueprints, quiz, flashcards, chat, embeddings) routes through the FastAPI `backend/` service. Next.js server actions call `web/src/lib/ai/python-*.ts` adapters, which proxy to the backend. Never call AI providers directly from Next.js. Response envelope is always `{ ok, data, error, meta }`.
+
+**Canvas / Generative Layout**: `backend/app/canvas.py` supports AI-driven layout generation for the student chat view and teacher insights panel. Layouts are generated per-session using the blueprint as context.
+
+**Class Analytics**: `backend/app/analytics.py` + migration `0013_add_class_insights_snapshots.sql` persist aggregated class intelligence snapshots for the teacher dashboard.
 
 **Security**: RLS enforced on all tables, input validation on every API route and server action, file uploads are size-limited and content-type checked. AI context restricted to approved materials and blueprint.
 
@@ -147,11 +164,6 @@ mcp__supabase__execute_sql --sql "SELECT 1"
   - global provider: `web/src/components/providers/motion-provider.tsx`
   - reusable variants/transitions: `web/src/lib/motion/presets.ts`
 - Preserve semantic warm tokens in `web/src/app/globals.css`; avoid introducing hardcoded color classes where token utilities exist.
-
-## Session Handoff
-
-- UI refactor handoff and current progress are tracked in `UI_REFACTOR_SESSION_CATCHUP.md`.
-- High-level phase tracker remains in `UI_REFACTOR_TRACKER.md`.
 
 ## Plans and Trackers
 
