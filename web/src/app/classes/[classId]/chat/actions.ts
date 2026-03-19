@@ -48,9 +48,10 @@ export async function generateCanvasAction(
     const spec = await generateChatCanvas(classId, hint, context);
     return { ok: true, spec };
   } catch (error) {
+    console.error("[generateCanvasAction]", error);
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Canvas generation failed.",
+      error: "Canvas generation failed.",
     };
   }
 }

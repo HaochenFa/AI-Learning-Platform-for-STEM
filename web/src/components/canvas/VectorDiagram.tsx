@@ -32,16 +32,16 @@ export default function VectorDiagram({ spec }: VectorDiagramProps) {
             {/* Grid lines */}
             {Array.from({ length: Math.floor(SVG_SIZE / gridSize) + 1 }, (_, i) => i * gridSize).map((pos) => (
               <g key={`grid-${pos}`}>
-                <line x1={pos} y1={0} x2={pos} y2={SVG_SIZE} stroke="#e5e7eb" strokeWidth={0.5} />
-                <line x1={0} y1={pos} x2={SVG_SIZE} y2={pos} stroke="#e5e7eb" strokeWidth={0.5} />
+                <line x1={pos} y1={0} x2={pos} y2={SVG_SIZE} stroke="var(--color-border)" strokeWidth={0.5} />
+                <line x1={0} y1={pos} x2={SVG_SIZE} y2={pos} stroke="var(--color-border)" strokeWidth={0.5} />
               </g>
             ))}
             {/* Axes */}
-            <line x1={CENTER} y1={4} x2={CENTER} y2={SVG_SIZE - 4} stroke="#9ca3af" strokeWidth={1} />
-            <line x1={4} y1={CENTER} x2={SVG_SIZE - 4} y2={CENTER} stroke="#9ca3af" strokeWidth={1} />
+            <line x1={CENTER} y1={4} x2={CENTER} y2={SVG_SIZE - 4} stroke="var(--color-muted-foreground)" strokeWidth={1} />
+            <line x1={4} y1={CENTER} x2={SVG_SIZE - 4} y2={CENTER} stroke="var(--color-muted-foreground)" strokeWidth={1} />
             {/* Axis labels */}
-            <text x={CENTER + 6} y={14} fontSize={9} fill="#9ca3af">+y</text>
-            <text x={SVG_SIZE - 14} y={CENTER - 4} fontSize={9} fill="#9ca3af">+x</text>
+            <text x={CENTER + 6} y={14} fontSize={9} fill="var(--color-muted-foreground)">+y</text>
+            <text x={SVG_SIZE - 14} y={CENTER - 4} fontSize={9} fill="var(--color-muted-foreground)">+x</text>
             {/* Vectors */}
             {vectors.map((vec) => {
               const rad = toRad(vec.angleDeg);

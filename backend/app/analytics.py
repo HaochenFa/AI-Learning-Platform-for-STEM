@@ -18,7 +18,8 @@ from pydantic import BaseModel
 from app.classes import ClassDomainError, _require_supabase_credentials, _safe_json, _service_headers, _supabase_base_url
 from app.config import Settings, get_settings
 from app.providers import generate_with_fallback
-from app.schemas import ApiEnvelope, ApiError, GenerateRequest
+from app.canvas import _strip_fence
+from app.schemas import ApiEnvelope, ApiError, DataQueryRequest, GenerateRequest
 
 logger = logging.getLogger(__name__)
 
@@ -587,11 +588,6 @@ async def class_insights_route(request: Request, payload: ClassInsightsRequest):
         )
 
 
-class DataQueryRequest(BaseModel):
-    user_id: str
-    class_id: str
-    query: str
-
 
 DATA_QUERY_SYSTEM_PROMPT = """You are an educational analytics assistant. Given aggregated class data and a teacher's natural language question, generate a chart specification in JSON.
 
@@ -661,8 +657,8 @@ def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> 
     try:
         with httpx.Client(timeout=timeout_seconds, trust_env=False) as cache_client:
             rich_context = _get_cached_snapshot(cache_client, settings, request.class_id)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Snapshot fetch failed for class %s: %s", request.class_id, exc)
 
     if rich_context and not rich_context.get("class_summary", {}).get("is_empty"):
         # Use the full insights snapshot for rich chart generation
@@ -731,12 +727,9 @@ def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> 
         ),
     )
 
-    raw = result.content.strip()
+    raw = _strip_fence(result.content.strip())
     if not raw:
         raise RuntimeError("Data query chart generation returned an empty response.")
-    if raw.startswith("```"):
-        lines = raw.split("\n")
-        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
 
     try:
         spec = json.loads(raw)
@@ -753,9 +746,11 @@ def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> 
 async def data_query_route(request: Request, payload: DataQueryRequest):
     from app.main import _authorize_request
 
-    settings, _, unauthorized = await _authorize_request(request)
+    settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
+    if actor_user_id:
+        payload.user_id = actor_user_id
 
     try:
         spec = await run_in_threadpool(generate_data_query_chart, settings, payload)

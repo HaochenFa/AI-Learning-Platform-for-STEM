@@ -19,10 +19,11 @@ export default function ChartCanvas({ spec }: ChartCanvasProps) {
   return (
     <div className="space-y-2">
       <p className="text-sm font-semibold text-ui-primary">{title}</p>
+      <div role="img" aria-label={title}>
       <ResponsiveContainer width="100%" height={220}>
         {chartType === "bar" ? (
           <BarChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <XAxis dataKey="label" tick={{ fontSize: 11 }} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -2, fontSize: 11 } : undefined} />
             <YAxis tick={{ fontSize: 11 }} label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", fontSize: 11 } : undefined} />
             <Tooltip contentStyle={{ fontSize: 12 }} />
@@ -34,7 +35,7 @@ export default function ChartCanvas({ spec }: ChartCanvasProps) {
           </BarChart>
         ) : chartType === "line" ? (
           <LineChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <XAxis dataKey="label" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
             <Tooltip contentStyle={{ fontSize: 12 }} />
@@ -51,7 +52,7 @@ export default function ChartCanvas({ spec }: ChartCanvasProps) {
           </PieChart>
         ) : (
           <ScatterChart margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <XAxis dataKey="x" type="number" tick={{ fontSize: 11 }} name={xLabel ?? "Index"} />
             <YAxis dataKey="value" type="number" tick={{ fontSize: 11 }} name={yLabel ?? "Value"} />
             <Tooltip
@@ -60,12 +61,13 @@ export default function ChartCanvas({ spec }: ChartCanvasProps) {
               formatter={(value: number, name: string, props) => [value, props.payload?.label ?? name]}
             />
             <Scatter
-              data={data.map((d, i) => ({ ...d, x: i }))}
+              data={data.map((d, i) => ({ ...d, x: d.x ?? i }))}
               fill={CHART_COLORS[0]}
             />
           </ScatterChart>
         )}
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

@@ -25,6 +25,14 @@ Rules: magnitude between 0.5 and 5.0. angleDeg between 0 and 360. color must be 
 }
 
 
+def _strip_fence(raw: str) -> str:
+    """Strip markdown code fences from a string if present."""
+    if raw.startswith("```"):
+        lines = raw.split("\n")
+        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+    return raw
+
+
 def generate_canvas_spec(settings: Settings, request: CanvasRequest) -> dict:
     canvas_type = request.canvas_hint.type
     system_prompt = CANVAS_SYSTEM_PROMPTS.get(canvas_type)
@@ -35,7 +43,7 @@ def generate_canvas_spec(settings: Settings, request: CanvasRequest) -> dict:
         f"Canvas type: {canvas_type}",
         f"Concept to visualize: {request.canvas_hint.concept}",
         f"Canvas title: {request.canvas_hint.title}",
-        f"Student question: {request.student_question}",
+        f"Student question: {request.student_question[:500]}",
         f"AI answer: {request.ai_answer[:1500]}",
         "",
         "Generate the JSON specification now.",
@@ -52,13 +60,9 @@ def generate_canvas_spec(settings: Settings, request: CanvasRequest) -> dict:
         ),
     )
 
-    raw = result.content.strip()
+    raw = _strip_fence(result.content.strip())
     if not raw:
         raise RuntimeError("Canvas spec generation returned an empty response from the provider.")
-    # Strip markdown code fences if present
-    if raw.startswith("```"):
-        lines = raw.split("\n")
-        raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
 
     try:
         spec = json.loads(raw)

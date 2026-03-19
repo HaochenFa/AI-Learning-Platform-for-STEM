@@ -95,6 +95,10 @@ export type ClassChatParticipant = {
   displayName: string;
 };
 
+/**
+ * Phase 1 intent signal returned alongside a chat response.
+ * Resolved into a full CanvasSpec by the /v1/chat/canvas endpoint (Phase 2).
+ */
 export type CanvasHint = {
   type: "chart" | "diagram" | "wave" | "vector";
   concept: string;

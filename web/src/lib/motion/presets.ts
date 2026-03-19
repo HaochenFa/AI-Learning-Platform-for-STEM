@@ -44,3 +44,10 @@ export const GENTLE_SCALE_VARIANTS: Variants = {
   enter: { opacity: 1, scale: 1, transition: STANDARD_TRANSITION },
   exit: { opacity: 0, scale: 0.98, transition: MICRO_TRANSITION },
 };
+
+export const CANVAS_SPRING_TRANSITION = {
+  type: "spring" as const,
+  stiffness: 300,
+  damping: 28,
+  mass: 0.8,
+};

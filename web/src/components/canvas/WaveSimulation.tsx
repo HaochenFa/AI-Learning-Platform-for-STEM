@@ -57,6 +57,8 @@ export default function WaveSimulation({ spec }: WaveSimulationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const phaseRef = useRef(0);
+  const wavesRef = useRef(spec.waves);
+  wavesRef.current = spec.waves;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -68,10 +70,16 @@ export default function WaveSimulation({ spec }: WaveSimulationProps) {
     canvas.width = width;
     canvas.height = CANVAS_HEIGHT;
 
+    const resizeObserver = new ResizeObserver(() => {
+      const newWidth = canvas.offsetWidth || CANVAS_WIDTH;
+      canvas.width = newWidth;
+    });
+    resizeObserver.observe(canvas);
+
     function animate() {
       if (!ctx || !canvas) return;
       phaseRef.current += 0.04;
-      drawWaves(ctx, spec.waves, phaseRef.current, canvas.width, canvas.height);
+      drawWaves(ctx, wavesRef.current, phaseRef.current, canvas.width, canvas.height);
       rafRef.current = requestAnimationFrame(animate);
     }
 
@@ -80,8 +88,9 @@ export default function WaveSimulation({ spec }: WaveSimulationProps) {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
       }
+      resizeObserver.disconnect();
     };
-  }, [spec.waves]);
+  }, []);
 
   return (
     <div className="space-y-2">

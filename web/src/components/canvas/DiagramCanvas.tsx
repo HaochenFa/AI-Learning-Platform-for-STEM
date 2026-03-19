@@ -7,9 +7,17 @@ type DiagramCanvasProps = {
   spec: Extract<CanvasSpec, { type: "diagram" }>;
 };
 
+let _mermaidInit = false;
+function ensureMermaidInit(mermaid: { initialize: (config: object) => void }) {
+  if (_mermaidInit) return;
+  mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "antiscript" });
+  _mermaidInit = true;
+}
+
 export default function DiagramCanvas({ spec }: DiagramCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isRendering, setIsRendering] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -19,10 +27,12 @@ export default function DiagramCanvas({ spec }: DiagramCanvasProps) {
 
       try {
         const mermaid = (await import("mermaid")).default;
-        mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "antiscript" });
+        ensureMermaidInit(mermaid);
 
         const id = `diagram-${Math.random().toString(36).slice(2)}`;
+        setIsRendering(true);
         const { svg } = await mermaid.render(id, spec.definition);
+        setIsRendering(false);
 
         if (!cancelled && containerRef.current) {
           // svg is trusted output from the mermaid library, not user-supplied HTML
@@ -31,6 +41,7 @@ export default function DiagramCanvas({ spec }: DiagramCanvasProps) {
         }
       } catch (err) {
         if (!cancelled) {
+          setIsRendering(false);
           setError("Could not render diagram. The definition may be invalid.");
           if (containerRef.current) {
             containerRef.current.innerHTML = "";
@@ -53,6 +64,8 @@ export default function DiagramCanvas({ spec }: DiagramCanvasProps) {
       <p className="text-sm font-semibold text-ui-primary">{spec.title}</p>
       {error ? (
         <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">{error}</p>
+      ) : isRendering ? (
+        <div className="min-h-24 animate-pulse rounded-xl border border-default bg-[var(--surface-muted)]" />
       ) : (
         <div
           ref={containerRef}

@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { CanvasSpec, ChatTurn } from "@/lib/chat/types";
 import { MAX_CHAT_MESSAGE_CHARS, MAX_REFLECTION_CHARS } from "@/lib/chat/validation";
 import { FADE_UP_VARIANTS, STAGGER_CONTAINER, STAGGER_ITEM } from "@/lib/motion/presets";
+import { formatDate } from "@/lib/chat/format";
 
 type AssignmentChatPanelProps = {
   classId: string;
@@ -30,14 +31,6 @@ type CanvasEntry = {
   state: "loading" | "revealed" | "error";
   spec: CanvasSpec | null;
 };
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
 
 export default function AssignmentChatPanel({
   classId,
@@ -116,7 +109,14 @@ export default function AssignmentChatPanel({
               studentQuestion: trimmed,
               aiAnswer: result.response.answer,
             });
-            if (gen !== canvasGenRef.current) return;
+            if (gen !== canvasGenRef.current) {
+              setCanvasMap((prev) => {
+                const next = new Map(prev);
+                next.set(assistantIndex, { state: "error", spec: null });
+                return next;
+              });
+              return;
+            }
             setCanvasMap((current) => {
               const next = new Map(current);
               if (canvasResult.ok) {
@@ -127,7 +127,14 @@ export default function AssignmentChatPanel({
               return next;
             });
           } catch {
-            if (gen !== canvasGenRef.current) return;
+            if (gen !== canvasGenRef.current) {
+              setCanvasMap((prev) => {
+                const next = new Map(prev);
+                next.set(assistantIndex, { state: "error", spec: null });
+                return next;
+              });
+              return;
+            }
             setCanvasMap((current) => {
               const next = new Map(current);
               next.set(assistantIndex, { state: "error", spec: null });

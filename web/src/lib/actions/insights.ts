@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth/session";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { CanvasSpec } from "@/lib/chat/types";
 
 export type BloomLevel = "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create";
@@ -67,6 +68,22 @@ export async function getClassInsights(
     userId = auth.user.id;
   } catch {
     redirect("/login");
+  }
+
+  // UUID format guard
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)) {
+    return { ok: false, error: "Invalid class." };
+  }
+  // Class ownership check
+  const supabase = await createServerSupabaseClient();
+  const { data: classRow, error: enrollmentError } = await supabase
+    .from("enrollments").select("role")
+    .eq("class_id", classId).eq("user_id", userId).maybeSingle();
+  if (enrollmentError) {
+    return { ok: false, error: "Failed to verify class access." };
+  }
+  if (!["teacher", "ta"].includes(classRow?.role ?? "")) {
+    return { ok: false, error: "Unauthorized." };
   }
 
   const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
@@ -143,6 +160,22 @@ export async function queryClassData(
     redirect("/login");
   }
 
+  // UUID format guard
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)) {
+    return { ok: false, error: "Invalid class." };
+  }
+  // Class ownership check
+  const supabase = await createServerSupabaseClient();
+  const { data: classRow, error: enrollmentError } = await supabase
+    .from("enrollments").select("role")
+    .eq("class_id", classId).eq("user_id", userId).maybeSingle();
+  if (enrollmentError) {
+    return { ok: false, error: "Failed to verify class access." };
+  }
+  if (!["teacher", "ta"].includes(classRow?.role ?? "")) {
+    return { ok: false, error: "Unauthorized." };
+  }
+
   const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
   if (!baseUrl) {
     return { ok: false, error: "Backend not configured." };
@@ -183,7 +216,12 @@ export async function queryClassData(
       };
     }
 
-    return { ok: true, spec: payload.data.spec };
+    const VALID_SPEC_TYPES = ["chart", "diagram", "wave", "vector"] as const;
+    const spec = payload.data.spec;
+    if (!(VALID_SPEC_TYPES as readonly string[]).includes(spec.type)) {
+      return { ok: false, error: "Invalid canvas response from server." };
+    }
+    return { ok: true, spec };
   } catch (error) {
     clearTimeout(timer);
     if (error instanceof Error && error.name === "AbortError") {

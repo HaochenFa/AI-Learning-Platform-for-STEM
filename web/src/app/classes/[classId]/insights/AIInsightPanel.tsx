@@ -94,10 +94,19 @@ export default function AIInsightPanel({ narrative, classId }: Props) {
         )}
 
         {canvasStatus === "revealed" && (
-          <p className="text-sm text-ui-muted">Visual generated</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleGenerateVisual}
+            disabled={isPending}
+            className="flex items-center gap-2"
+          >
+            <AppIcons.sparkles className="h-4 w-4" />
+            Regenerate Visual
+          </Button>
         )}
 
-        {isPending && canvasStatus === "loading" && (
+        {canvasStatus === "loading" && (
           <div className="flex items-center gap-2">
             <AppIcons.loading className="h-4 w-4 animate-spin text-ui-muted" />
             <span className="text-sm text-ui-muted">Generating visual…</span>

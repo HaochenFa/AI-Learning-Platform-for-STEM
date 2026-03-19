@@ -256,16 +256,22 @@ class ApiEnvelope(BaseModel):
 
 class CanvasHint(BaseModel):
     type: Literal["chart", "diagram", "wave", "vector"]
-    concept: str
-    title: str
+    concept: str = Field(max_length=200)
+    title: str = Field(max_length=200)
 
 
 class CanvasRequest(BaseModel):
     class_id: str = Field(min_length=1)
     canvas_hint: CanvasHint
-    student_question: str   # current round only — no history for speed
-    ai_answer: str          # current round only
+    student_question: str = Field(max_length=500)   # current round only — no history for speed
+    ai_answer: str = Field(max_length=2000)          # current round only
 
 
 class CanvasResponse(BaseModel):
     spec: dict  # validated against CanvasSpec union
+
+
+class DataQueryRequest(BaseModel):
+    user_id: str
+    class_id: str
+    query: str = Field(min_length=1, max_length=500)

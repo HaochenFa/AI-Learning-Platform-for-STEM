@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import type { CanvasSpec } from "@/lib/chat/types";
+import { CANVAS_SPRING_TRANSITION } from "@/lib/motion/presets";
 import ChartCanvas from "./ChartCanvas";
 import DiagramCanvas from "./DiagramCanvas";
 import WaveSimulation from "./WaveSimulation";
@@ -14,13 +15,6 @@ type GenerativeCanvasProps = {
   spec: CanvasSpec | null;
   title?: string;
   error?: string | null;
-};
-
-const SPRING_TRANSITION = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 28,
-  mass: 0.8,
 };
 
 export default function GenerativeCanvas({ state, spec, title, error }: GenerativeCanvasProps) {
@@ -68,7 +62,7 @@ export default function GenerativeCanvas({ state, spec, title, error }: Generati
       className="mt-3 overflow-hidden rounded-2xl border border-default bg-[var(--color-surface)]"
       initial={{ opacity: 0, y: 8, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={SPRING_TRANSITION}
+      transition={CANVAS_SPRING_TRANSITION}
     >
       <div className="px-4 pb-4 pt-3">
         <div className="mb-3 flex items-center gap-2">
@@ -92,7 +86,10 @@ function CanvasContent({ spec }: { spec: CanvasSpec }) {
       return <WaveSimulation spec={spec} />;
     case "vector":
       return <VectorDiagram spec={spec} />;
-    default:
+    default: {
+      const _exhaustive: never = spec;
+      void _exhaustive;
       return null;
+    }
   }
 }
