@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth/session";
+import { parseCanvasSpec } from "@/lib/canvas/spec";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { CanvasSpec } from "@/lib/chat/types";
 
@@ -153,11 +154,17 @@ export async function queryClassData(
   }
 
   let userId: string;
+  let accessToken: string | null = null;
   try {
     const auth = await requireVerifiedUser({ accountType: "teacher" });
     userId = auth.user.id;
+    accessToken = auth.accessToken;
   } catch {
     redirect("/login");
+  }
+
+  if (!accessToken) {
+    return { ok: false, error: "Your session has expired. Please sign in again." };
   }
 
   // UUID format guard
@@ -193,6 +200,7 @@ export async function queryClassData(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
           ...(apiKey ? { "x-api-key": apiKey } : {}),
         },
         body: JSON.stringify({
@@ -216,21 +224,8 @@ export async function queryClassData(
       };
     }
 
-    const VALID_SPEC_TYPES = ["chart", "diagram", "wave", "vector"] as const;
-    const spec = payload.data.spec;
-    if (!(VALID_SPEC_TYPES as readonly string[]).includes(spec.type)) {
-      return { ok: false, error: "Invalid canvas response from server." };
-    }
-    if (spec.type === "chart" && !Array.isArray(spec.data)) {
-      return { ok: false, error: "Invalid canvas response from server." };
-    }
-    if (spec.type === "wave" && !Array.isArray(spec.waves)) {
-      return { ok: false, error: "Invalid canvas response from server." };
-    }
-    if (spec.type === "vector" && !Array.isArray(spec.vectors)) {
-      return { ok: false, error: "Invalid canvas response from server." };
-    }
-    if (spec.type === "diagram" && typeof spec.definition !== "string") {
+    const spec = parseCanvasSpec(payload.data.spec);
+    if (!spec) {
       return { ok: false, error: "Invalid canvas response from server." };
     }
     return { ok: true, spec };

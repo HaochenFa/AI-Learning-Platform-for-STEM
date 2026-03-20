@@ -24,7 +24,8 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [canvasMap, setCanvasMap] = useState<Map<number, CanvasEntry>>(new Map());
-  const canvasGenRef = useRef(0);
+  const canvasRequestRef = useRef(new Map<number, number>());
+  const conversationVersionRef = useRef(0);
 
   const serializedTranscript = useMemo(() => JSON.stringify(transcript), [transcript]);
 
@@ -71,7 +72,9 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
       if (canvasHint) {
         // The assistant turn is at index nextTranscript.length - 1
         const assistantIndex = nextTranscript.length - 1;
-        const gen = ++canvasGenRef.current;
+        const requestId = (canvasRequestRef.current.get(assistantIndex) ?? 0) + 1;
+        const conversationVersion = conversationVersionRef.current;
+        canvasRequestRef.current.set(assistantIndex, requestId);
         setCanvasMap((current) => {
           const next = new Map(current);
           next.set(assistantIndex, { state: "loading", spec: null });
@@ -84,7 +87,12 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
               studentQuestion: trimmed,
               aiAnswer: result.response.answer,
             });
-            if (gen !== canvasGenRef.current) return;
+            if (
+              conversationVersion !== conversationVersionRef.current
+              || canvasRequestRef.current.get(assistantIndex) !== requestId
+            ) {
+              return;
+            }
             setCanvasMap((current) => {
               const next = new Map(current);
               if (canvasResult.ok) {
@@ -95,7 +103,12 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
               return next;
             });
           } catch {
-            if (gen !== canvasGenRef.current) return;
+            if (
+              conversationVersion !== conversationVersionRef.current
+              || canvasRequestRef.current.get(assistantIndex) !== requestId
+            ) {
+              return;
+            }
             setCanvasMap((current) => {
               const next = new Map(current);
               next.set(assistantIndex, { state: "error", spec: null });
@@ -184,7 +197,8 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
               size="sm"
               aria-label="Clear conversation"
               onClick={() => {
-                canvasGenRef.current++; // cancel any in-flight canvas gen
+                conversationVersionRef.current += 1;
+                canvasRequestRef.current = new Map();
                 setTranscript([]);
                 setCanvasMap(new Map());
                 setError(null);

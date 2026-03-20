@@ -2,7 +2,7 @@
 
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from "recharts";
 import type { CanvasSpec } from "@/lib/chat/types";

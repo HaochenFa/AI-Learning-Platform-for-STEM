@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from app.classes import ClassDomainError, _require_supabase_credentials, _safe_json, _service_headers, _supabase_base_url
 from app.config import Settings, get_settings
 from app.providers import generate_with_fallback
-from app.canvas import _strip_fence, CHART_SPEC_SCHEMA
+from app.canvas import _strip_fence, CHART_SPEC_SCHEMA, validate_canvas_spec
 from app.schemas import ApiEnvelope, ApiError, DataQueryRequest, GenerateRequest
 
 logger = logging.getLogger(__name__)
@@ -735,10 +735,7 @@ def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> 
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Data query chart generation returned invalid JSON: {exc}") from exc
 
-    if not isinstance(spec, dict) or spec.get("type") != "chart":
-        raise RuntimeError(f"Data query chart generation returned unexpected type: {spec.get('type')}")
-
-    return spec
+    return validate_canvas_spec(spec, expected_type="chart")
 
 
 @analytics_router.post("/data-query")

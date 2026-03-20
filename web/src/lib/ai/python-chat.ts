@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { CanvasHint, CanvasSpec, ChatModelResponse, ChatTurn } from "@/lib/chat/types";
+import { clipCanvasContext, parseCanvasSpec } from "@/lib/canvas/spec";
 
 export type PythonChatGenerateRequest = {
   classId: string;
@@ -141,6 +142,7 @@ export async function generateChatCanvas(
   }
 
   const apiKey = process.env.PYTHON_BACKEND_API_KEY?.trim();
+  const clippedContext = clipCanvasContext(context);
   const response = await fetchWithTimeout(
     `${baseUrl.replace(/\/+$/, "")}/v1/chat/canvas`,
     {
@@ -156,8 +158,8 @@ export async function generateChatCanvas(
           concept: hint.concept,
           title: hint.title,
         },
-        student_question: context.studentQuestion,
-        ai_answer: context.aiAnswer,
+        student_question: clippedContext.studentQuestion,
+        ai_answer: clippedContext.aiAnswer,
       }),
     },
     30000,
@@ -181,7 +183,13 @@ export async function generateChatCanvas(
   if (!payload.data?.spec) {
     throw new Error("Canvas generation response missing spec.");
   }
-  return payload.data.spec as CanvasSpec;
+
+  const spec = parseCanvasSpec(payload.data.spec);
+  if (!spec) {
+    throw new Error("Canvas generation response included an invalid spec.");
+  }
+
+  return spec;
 }
 
 function normalizeUsage(usage?: {

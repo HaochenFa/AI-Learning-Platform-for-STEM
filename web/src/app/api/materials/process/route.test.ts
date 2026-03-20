@@ -10,9 +10,7 @@ describe("/api/materials/process", () => {
   it("returns 500 when python backend URL is missing", async () => {
     const { POST } = await import("@/app/api/materials/process/route");
 
-    const response = await POST(
-      new Request("http://localhost/api/materials/process", { method: "POST" }),
-    );
+    const response = await POST();
     const payload = await response.json();
 
     expect(response.status).toBe(500);
@@ -38,7 +36,7 @@ describe("/api/materials/process", () => {
     );
 
     const { GET } = await import("@/app/api/materials/process/route");
-    const response = await GET(new Request("http://localhost/api/materials/process", { method: "GET" }));
+    const response = await GET();
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -57,7 +55,7 @@ describe("/api/materials/process", () => {
     );
 
     const { POST } = await import("@/app/api/materials/process/route");
-    const response = await POST(new Request("http://localhost/api/materials/process", { method: "POST" }));
+    const response = await POST();
     const payload = await response.json();
 
     expect(response.status).toBe(502);

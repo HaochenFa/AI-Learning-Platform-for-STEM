@@ -46,7 +46,7 @@ export default function AssignmentChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [canvasMap, setCanvasMap] = useState<Map<number, CanvasEntry>>(new Map());
-  const canvasGenRef = useRef(0);
+  const canvasRequestRef = useRef(new Map<number, number>());
 
   const serializedTranscript = useMemo(() => JSON.stringify(transcript), [transcript]);
 
@@ -96,7 +96,8 @@ export default function AssignmentChatPanel({
       const canvasHint = result.response.canvas_hint;
       if (canvasHint) {
         const assistantIndex = nextTranscript.length - 1;
-        const gen = ++canvasGenRef.current;
+        const requestId = (canvasRequestRef.current.get(assistantIndex) ?? 0) + 1;
+        canvasRequestRef.current.set(assistantIndex, requestId);
         setCanvasMap((current) => {
           const next = new Map(current);
           next.set(assistantIndex, { state: "loading", spec: null });
@@ -109,7 +110,7 @@ export default function AssignmentChatPanel({
               studentQuestion: trimmed,
               aiAnswer: result.response.answer,
             });
-            if (gen !== canvasGenRef.current) return;
+            if (canvasRequestRef.current.get(assistantIndex) !== requestId) return;
             setCanvasMap((current) => {
               const next = new Map(current);
               if (canvasResult.ok) {
@@ -120,7 +121,7 @@ export default function AssignmentChatPanel({
               return next;
             });
           } catch {
-            if (gen !== canvasGenRef.current) return;
+            if (canvasRequestRef.current.get(assistantIndex) !== requestId) return;
             setCanvasMap((current) => {
               const next = new Map(current);
               next.set(assistantIndex, { state: "error", spec: null });

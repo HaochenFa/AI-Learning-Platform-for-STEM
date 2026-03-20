@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from app.config import Settings
 from app.providers import generate_with_fallback
@@ -33,6 +34,82 @@ def _strip_fence(raw: str) -> str:
         lines = raw.split("\n")
         raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
     return raw
+
+
+def _require_non_empty_string(value: Any, field_name: str) -> None:
+    if not isinstance(value, str) or not value.strip():
+        raise RuntimeError(f"Canvas spec is missing required field: {field_name}")
+
+
+def _require_number(value: Any, field_name: str) -> None:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise RuntimeError(f"Canvas spec field {field_name} must be numeric.")
+
+
+def validate_canvas_spec(spec: Any, *, expected_type: str | None = None) -> dict[str, Any]:
+    if not isinstance(spec, dict):
+        raise RuntimeError("Canvas spec generation returned a non-object payload.")
+
+    spec_type = spec.get("type")
+    if not isinstance(spec_type, str):
+        raise RuntimeError("Canvas spec is missing required field: type")
+
+    if expected_type and spec_type != expected_type:
+        raise RuntimeError(f"Canvas spec type mismatch: expected {expected_type}, got {spec_type}")
+
+    _require_non_empty_string(spec.get("title"), "title")
+
+    if spec_type == "chart":
+        _require_non_empty_string(spec.get("chartType"), "chartType")
+        data = spec.get("data")
+        if not isinstance(data, list):
+            raise RuntimeError("Canvas spec is missing required field: data")
+        for index, point in enumerate(data):
+            if not isinstance(point, dict):
+                raise RuntimeError(f"Canvas spec field data[{index}] must be an object.")
+            _require_non_empty_string(point.get("label"), f"data[{index}].label")
+            _require_number(point.get("value"), f"data[{index}].value")
+        for optional_field in ("xLabel", "yLabel"):
+            value = spec.get(optional_field)
+            if value is not None and not isinstance(value, str):
+                raise RuntimeError(f"Canvas spec field {optional_field} must be a string.")
+        return spec
+
+    if spec_type == "diagram":
+        _require_non_empty_string(spec.get("diagramType"), "diagramType")
+        _require_non_empty_string(spec.get("definition"), "definition")
+        return spec
+
+    if spec_type == "wave":
+        waves = spec.get("waves")
+        if not isinstance(waves, list):
+            raise RuntimeError("Canvas spec is missing required field: waves")
+        for index, wave in enumerate(waves):
+            if not isinstance(wave, dict):
+                raise RuntimeError(f"Canvas spec field waves[{index}] must be an object.")
+            _require_non_empty_string(wave.get("label"), f"waves[{index}].label")
+            _require_number(wave.get("amplitude"), f"waves[{index}].amplitude")
+            _require_number(wave.get("frequency"), f"waves[{index}].frequency")
+            _require_non_empty_string(wave.get("color"), f"waves[{index}].color")
+        return spec
+
+    if spec_type == "vector":
+        vectors = spec.get("vectors")
+        if not isinstance(vectors, list):
+            raise RuntimeError("Canvas spec is missing required field: vectors")
+        for index, vector in enumerate(vectors):
+            if not isinstance(vector, dict):
+                raise RuntimeError(f"Canvas spec field vectors[{index}] must be an object.")
+            _require_non_empty_string(vector.get("label"), f"vectors[{index}].label")
+            _require_number(vector.get("magnitude"), f"vectors[{index}].magnitude")
+            _require_number(vector.get("angleDeg"), f"vectors[{index}].angleDeg")
+            _require_non_empty_string(vector.get("color"), f"vectors[{index}].color")
+        grid_size = spec.get("gridSize")
+        if grid_size is not None:
+            _require_number(grid_size, "gridSize")
+        return spec
+
+    raise RuntimeError(f"Unknown canvas spec type: {spec_type}")
 
 
 def generate_canvas_spec(settings: Settings, request: CanvasRequest) -> dict:
@@ -71,7 +148,4 @@ def generate_canvas_spec(settings: Settings, request: CanvasRequest) -> dict:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Canvas spec generation returned invalid JSON: {exc}") from exc
 
-    if not isinstance(spec, dict) or spec.get("type") != canvas_type:
-        raise RuntimeError(f"Canvas spec type mismatch: expected {canvas_type}, got {spec.get('type')}")
-
-    return spec
+    return validate_canvas_spec(spec, expected_type=canvas_type)

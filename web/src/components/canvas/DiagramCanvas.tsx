@@ -21,9 +21,10 @@ export default function DiagramCanvas({ spec }: DiagramCanvasProps) {
 
   useEffect(() => {
     let cancelled = false;
+    const container = containerRef.current;
 
     async function renderDiagram() {
-      if (!containerRef.current) return;
+      if (!container) return;
 
       try {
         const mermaid = (await import("mermaid")).default;
@@ -34,18 +35,16 @@ export default function DiagramCanvas({ spec }: DiagramCanvasProps) {
         const { svg } = await mermaid.render(id, spec.definition);
         setIsRendering(false);
 
-        if (!cancelled && containerRef.current) {
+        if (!cancelled) {
           // svg is trusted output from the mermaid library, not user-supplied HTML
-          containerRef.current.innerHTML = svg;
+          container.innerHTML = svg;
           setError(null);
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setIsRendering(false);
           setError("Could not render diagram. The definition may be invalid.");
-          if (containerRef.current) {
-            containerRef.current.innerHTML = "";
-          }
+          container.innerHTML = "";
         }
       }
     }
@@ -53,8 +52,8 @@ export default function DiagramCanvas({ spec }: DiagramCanvasProps) {
     renderDiagram();
     return () => {
       cancelled = true;
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
+      if (container) {
+        container.innerHTML = "";
       }
     };
   }, [spec.definition]);

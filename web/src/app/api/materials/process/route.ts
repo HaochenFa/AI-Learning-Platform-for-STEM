@@ -97,10 +97,10 @@ async function safeJson(response: Response) {
   }
 }
 
-export async function GET(_request: Request) {
+export async function GET() {
   return proxyMaterialProcessToPython();
 }
 
-export async function POST(_request: Request) {
+export async function POST() {
   return proxyMaterialProcessToPython();
 }
