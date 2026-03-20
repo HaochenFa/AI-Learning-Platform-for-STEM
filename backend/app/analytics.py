@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from app.classes import ClassDomainError, _require_supabase_credentials, _safe_json, _service_headers, _supabase_base_url
 from app.config import Settings, get_settings
 from app.providers import generate_with_fallback
-from app.canvas import _strip_fence
+from app.canvas import _strip_fence, CHART_SPEC_SCHEMA
 from app.schemas import ApiEnvelope, ApiError, DataQueryRequest, GenerateRequest
 
 logger = logging.getLogger(__name__)
@@ -589,15 +589,15 @@ async def class_insights_route(request: Request, payload: ClassInsightsRequest):
 
 
 
-DATA_QUERY_SYSTEM_PROMPT = """You are an educational analytics assistant. Given aggregated class data and a teacher's natural language question, generate a chart specification in JSON.
+DATA_QUERY_SYSTEM_PROMPT = f"""You are an educational analytics assistant. Given aggregated class data and a teacher's natural language question, generate a chart specification in JSON.
 
 Return ONLY valid JSON matching this schema:
-{"type":"chart","chartType":"bar|line|pie|scatter","title":"string","data":[{"label":"string","value":number}],"xLabel":"string","yLabel":"string"}
+{CHART_SPEC_SCHEMA}
 
 Rules:
 - chartType: use bar for category comparisons, line for trends, pie for proportions, scatter for correlations
 - data: 2-8 data points max, values should be meaningful numbers (scores as percentages 0-100, counts as integers)
-- If the question cannot be answered from the available data, return a bar chart with a single data point {"label":"No data available","value":0}
+- If the question cannot be answered from the available data, return a bar chart with a single data point {{"label":"No data available","value":0}}
 - Do not invent data not present in the input"""
 
 
@@ -652,13 +652,12 @@ def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> 
         if isinstance(acts_rows, list):
             activities = [{"id": a["id"], "title": a.get("title", ""), "type": a.get("type", "")} for a in acts_rows if isinstance(a, dict) and isinstance(a.get("id"), str)]
 
-    # Try to use cached insights snapshot for richer numeric context
-    rich_context: dict | None = None
-    try:
-        with httpx.Client(timeout=timeout_seconds, trust_env=False) as cache_client:
-            rich_context = _get_cached_snapshot(cache_client, settings, request.class_id)
-    except Exception as exc:
-        logger.warning("Snapshot fetch failed for class %s: %s", request.class_id, exc)
+        # Try to use cached insights snapshot for richer numeric context
+        rich_context: dict | None = None
+        try:
+            rich_context = _get_cached_snapshot(client, settings, request.class_id)
+        except Exception as exc:
+            logger.warning("Snapshot fetch failed for class %s: %s", request.class_id, exc)
 
     if rich_context and not rich_context.get("class_summary", {}).get("is_empty"):
         # Use the full insights snapshot for rich chart generation

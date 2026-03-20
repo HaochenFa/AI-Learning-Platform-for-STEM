@@ -6,9 +6,11 @@ from app.config import Settings
 from app.providers import generate_with_fallback
 from app.schemas import CanvasRequest, GenerateRequest
 
+CHART_SPEC_SCHEMA = '{"type":"chart","chartType":"bar|line|pie|scatter","title":"string","data":[{"label":"string","value":number}],"xLabel":"string","yLabel":"string"}'
+
 CANVAS_SYSTEM_PROMPTS = {
-    "chart": """Generate a precise JSON specification for a chart canvas. Return ONLY valid JSON.
-Schema: {"type":"chart","chartType":"bar|line|pie|scatter","title":"string","data":[{"label":"string","value":number}],"xLabel":"string","yLabel":"string"}
+    "chart": f"""Generate a precise JSON specification for a chart canvas. Return ONLY valid JSON.
+Schema: {CHART_SPEC_SCHEMA}
 Rules: chartType must match the data (bar for categories, line for trends, pie for proportions, scatter for correlations). Include 3-8 data points. xLabel and yLabel are optional.""",
 
     "diagram": """Generate a precise JSON specification for a diagram canvas. Return ONLY valid JSON.

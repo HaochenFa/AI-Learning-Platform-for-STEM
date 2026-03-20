@@ -221,6 +221,18 @@ export async function queryClassData(
     if (!(VALID_SPEC_TYPES as readonly string[]).includes(spec.type)) {
       return { ok: false, error: "Invalid canvas response from server." };
     }
+    if (spec.type === "chart" && !Array.isArray(spec.data)) {
+      return { ok: false, error: "Invalid canvas response from server." };
+    }
+    if (spec.type === "wave" && !Array.isArray(spec.waves)) {
+      return { ok: false, error: "Invalid canvas response from server." };
+    }
+    if (spec.type === "vector" && !Array.isArray(spec.vectors)) {
+      return { ok: false, error: "Invalid canvas response from server." };
+    }
+    if (spec.type === "diagram" && typeof spec.definition !== "string") {
+      return { ok: false, error: "Invalid canvas response from server." };
+    }
     return { ok: true, spec };
   } catch (error) {
     clearTimeout(timer);

@@ -41,6 +41,9 @@ export async function generateCanvasAction(
 ): Promise<{ ok: true; spec: CanvasSpec } | { ok: false; error: string }> {
   try {
     const { supabase, user } = await requireAuthenticatedUser();
+    if (!user) {
+      return { ok: false, error: "Please sign in." };
+    }
     const role = await getClassAccess(supabase, classId, user.id);
     if (!role.found || !role.isMember) {
       return { ok: false, error: "Class access required." };

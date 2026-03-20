@@ -73,6 +73,7 @@ export default function WaveSimulation({ spec }: WaveSimulationProps) {
     const resizeObserver = new ResizeObserver(() => {
       const newWidth = canvas.offsetWidth || CANVAS_WIDTH;
       canvas.width = newWidth;
+      drawWaves(ctx, wavesRef.current, phaseRef.current, newWidth, canvas.height);
     });
     resizeObserver.observe(canvas);
 

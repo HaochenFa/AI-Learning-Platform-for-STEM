@@ -84,14 +84,7 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
               studentQuestion: trimmed,
               aiAnswer: result.response.answer,
             });
-            if (gen !== canvasGenRef.current) {
-              setCanvasMap((prev) => {
-                const next = new Map(prev);
-                next.set(assistantIndex, { state: "error", spec: null });
-                return next;
-              });
-              return;
-            }
+            if (gen !== canvasGenRef.current) return;
             setCanvasMap((current) => {
               const next = new Map(current);
               if (canvasResult.ok) {
@@ -102,14 +95,7 @@ export default function OpenPracticeChatPanel({ classId }: OpenPracticeChatPanel
               return next;
             });
           } catch {
-            if (gen !== canvasGenRef.current) {
-              setCanvasMap((prev) => {
-                const next = new Map(prev);
-                next.set(assistantIndex, { state: "error", spec: null });
-                return next;
-              });
-              return;
-            }
+            if (gen !== canvasGenRef.current) return;
             setCanvasMap((current) => {
               const next = new Map(current);
               next.set(assistantIndex, { state: "error", spec: null });
