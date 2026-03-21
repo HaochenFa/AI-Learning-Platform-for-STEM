@@ -201,7 +201,7 @@ export default async function ClassOverviewPage({
           activityType: activity.type,
         } satisfies ActivityAssignmentSummary;
       })
-      .filter((v): v is ActivityAssignmentSummary => v !== null);
+      .filter((v): v is NonNullable<typeof v> => v !== null) as ActivityAssignmentSummary[];
 
     teacherChatAssignments = mappedAssignments.filter((a) => a.activityType === "chat");
     teacherQuizAssignments = mappedAssignments.filter((a) => a.activityType === "quiz");
@@ -312,7 +312,7 @@ export default async function ClassOverviewPage({
           status,
         } satisfies ActivityAssignmentSummary;
       })
-      .filter((v): v is ActivityAssignmentSummary => v !== null);
+      .filter((v): v is NonNullable<typeof v> => v !== null) as ActivityAssignmentSummary[];
 
     studentChatAssignments = mappedStudentAssignments.filter((a) => a.activityType === "chat");
     studentQuizAssignments = mappedStudentAssignments.filter((a) => a.activityType === "quiz");
