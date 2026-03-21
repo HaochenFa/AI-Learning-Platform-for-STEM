@@ -9,7 +9,7 @@ import BrandMark from "@/app/components/BrandMark";
 import { AppIcons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { STANDARD_EASE, SURFACE_TRANSITION } from "@/lib/motion/presets";
+import { STANDARD_EASE, STANDARD_TRANSITION } from "@/lib/motion/presets";
 import { cn } from "@/lib/utils";
 import type { AccountType } from "@/lib/auth/session";
 
@@ -154,10 +154,9 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
   return (
     <TooltipProvider delayDuration={0}>
       <motion.aside
-        layout
-        className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-default bg-background"
-        style={{ width: "var(--sidebar-width)" }}
-        transition={{ duration: SURFACE_TRANSITION.duration, ease: STANDARD_EASE }}
+        className="fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-default bg-background"
+        animate={{ width: isCompact ? "5rem" : "16rem" }}
+        transition={{ duration: STANDARD_TRANSITION.duration, ease: STANDARD_EASE }}
       >
       <div className={cn("flex h-16 items-center border-b border-default px-4", isCompact ? "justify-center" : "justify-between")}>
         {!isCompact && (
@@ -228,24 +227,69 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
         })}
       </nav>
 
-      {classId && !isCompact && (
-        <div className="border-t border-default px-4 py-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ui-muted">Current Class</p>
-          <Link
-            href={`/classes/${classId}`}
-            className="ui-motion-color flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ui-muted hover:bg-[var(--surface-muted)] hover:text-ui-primary"
-          >
-            <AppIcons.classFolder className="h-4 w-4" />
-            <span className="truncate">Back to class home</span>
-          </Link>
-          {accountType === "teacher" && (
+      {classId && (
+        <div className={cn(
+          "border-t border-default",
+          isCompact ? "flex flex-col items-center gap-2 px-0 py-4" : "px-4 py-4",
+        )}>
+          {!isCompact && (
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ui-muted">Current Class</p>
+          )}
+
+          {isCompact ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href={`/classes/${classId}`}
+                  className="ui-motion-color flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-ui-muted hover:bg-[var(--surface-muted)] hover:text-ui-primary"
+                  aria-label="Back to Class Home"
+                >
+                  <AppIcons.classFolder className="h-5 w-5" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Back to Class Home</TooltipContent>
+            </Tooltip>
+          ) : (
             <Link
-              href={`/classes/${classId}/insights`}
-              className={`ui-motion-color mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-[var(--surface-muted)] hover:text-ui-primary ${pathname.endsWith("/insights") ? "text-accent" : "text-ui-muted"}`}
+              href={`/classes/${classId}`}
+              className="ui-motion-color flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ui-muted hover:bg-[var(--surface-muted)] hover:text-ui-primary"
             >
-              <AppIcons.insights className="h-4 w-4" />
-              <span className="truncate">Insights</span>
+              <AppIcons.classFolder className="h-4 w-4" />
+              <span className="truncate">Back to Class Home</span>
             </Link>
+          )}
+
+          {accountType === "teacher" && (
+            isCompact ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={`/classes/${classId}/insights`}
+                    className={cn(
+                      "ui-motion-color flex h-10 w-10 items-center justify-center rounded-xl border",
+                      pathname.endsWith("/insights")
+                        ? "border-accent bg-accent-soft text-accent"
+                        : "border-transparent text-ui-muted hover:bg-[var(--surface-muted)] hover:text-ui-primary",
+                    )}
+                    aria-label="Insights"
+                  >
+                    <AppIcons.insights className="h-5 w-5" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">Insights</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Link
+                href={`/classes/${classId}/insights`}
+                className={cn(
+                  "ui-motion-color mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface-muted hover:text-ui-primary",
+                  pathname.endsWith("/insights") ? "text-accent" : "text-ui-muted",
+                )}
+              >
+                <AppIcons.insights className="h-4 w-4" />
+                <span className="truncate">Insights</span>
+              </Link>
+            )
           )}
         </div>
       )}

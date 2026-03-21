@@ -73,7 +73,7 @@ export default async function TeacherDashboardPage() {
       userDisplayName={profile.display_name}
     >
       <DashboardHashRedirect classesHref="/teacher/classes" />
-      <main className="mx-auto max-w-5xl p-6 pt-16">
+      <main className="mx-auto max-w-5xl p-6 pt-16 page-enter">
           <header className="flex flex-wrap items-center justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">
@@ -93,17 +93,17 @@ export default async function TeacherDashboardPage() {
           </header>
 
           <section className="mt-8 grid gap-4 sm:grid-cols-3">
-            <Card className="p-5">
+            <Card className="rounded-2xl p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Total classes</p>
               <p className="mt-3 text-3xl font-semibold text-ui-primary">{classes.length}</p>
               <p className="mt-2 text-sm text-ui-muted">Across all classes where you teach.</p>
             </Card>
-            <Card className="p-5">
+            <Card className="rounded-2xl p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Owner classes</p>
               <p className="mt-3 text-3xl font-semibold text-ui-primary">{ownedClassCount}</p>
               <p className="mt-2 text-sm text-ui-muted">Classes you created and manage.</p>
             </Card>
-            <Card className="p-5">
+            <Card className="rounded-2xl p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Assistant roles</p>
               <p className="mt-3 text-3xl font-semibold text-ui-primary">{assistantClassCount}</p>
               <p className="mt-2 text-sm text-ui-muted">Classes where you support as teacher or TA.</p>
