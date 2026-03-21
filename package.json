@@ -11,7 +11,7 @@
     "test:watch": "pnpm --dir web test:watch"
   },
   "devDependencies": {
-    "shadcn": "^3.8.5",
+    "shadcn": "^4.1.0",
     "supabase": "^2.75.3"
   }
 }
