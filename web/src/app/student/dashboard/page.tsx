@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { startServerTimer } from "@/lib/perf";
+import type { LucideIcon } from "lucide-react";
 
 type AssignmentWithMeta = {
   id: string;
@@ -65,6 +66,39 @@ function getActivityIcon(type: string) {
   if (type === "chat") return AppIcons.chat;
   if (type === "quiz") return AppIcons.quiz;
   return AppIcons.flashcards;
+}
+
+function MetricCard({
+  icon: Icon,
+  count,
+  label,
+  variant = "default",
+}: {
+  icon: LucideIcon;
+  count: number;
+  label: string;
+  variant?: "accent" | "default";
+}) {
+  const isAccent = variant === "accent";
+  return (
+    <Card
+      className={`rounded-2xl p-4 ${isAccent ? "bg-accent-soft" : "bg-surface-muted"}`}
+    >
+      <div className="flex items-center gap-2">
+        <div
+          className={`flex h-8 w-8 items-center justify-center rounded-lg ${isAccent ? "bg-accent-soft text-accent" : "bg-surface-muted text-ui-muted"}`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <span className={`text-2xl font-bold ${isAccent ? "text-accent" : "text-ui-primary"}`}>
+          {count}
+        </span>
+      </div>
+      <p className={`mt-2 text-sm font-medium ${isAccent ? "text-accent" : "text-ui-muted"}`}>
+        {label}
+      </p>
+    </Card>
+  );
 }
 
 export default async function StudentDashboardPage() {
@@ -149,7 +183,7 @@ export default async function StudentDashboardPage() {
       userDisplayName={profile.display_name}
     >
       <DashboardHashRedirect classesHref="/student/classes" />
-      <main className="mx-auto max-w-5xl p-6 pt-16">
+      <main className="mx-auto max-w-5xl p-6 pt-16 page-enter">
           <header className="flex flex-wrap items-center justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">
@@ -172,33 +206,9 @@ export default async function StudentDashboardPage() {
             <section className="mt-8">
               <h2 className="text-lg font-semibold text-ui-primary">Your Progress</h2>
               <div className="mt-4 grid grid-cols-3 gap-4">
-                <Card className="rounded-2xl bg-accent-soft p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">
-                      <AppIcons.clock className="h-4 w-4" />
-                    </div>
-                    <span className="text-2xl font-bold text-accent">{current.length}</span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-accent">Due Now</p>
-                </Card>
-                <Card className="rounded-2xl bg-[var(--surface-muted)] p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-ui-muted">
-                      <AppIcons.calendar className="h-4 w-4" />
-                    </div>
-                    <span className="text-2xl font-bold text-ui-primary">{upcoming.length}</span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-ui-muted">Upcoming</p>
-                </Card>
-                <Card className="rounded-2xl bg-[var(--surface-muted)] p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-ui-muted">
-                      <AppIcons.success className="h-4 w-4" />
-                    </div>
-                    <span className="text-2xl font-bold text-ui-primary">{completed.length}</span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-ui-muted">Completed</p>
-                </Card>
+                <MetricCard icon={AppIcons.clock} count={current.length} label="Due Now" variant="accent" />
+                <MetricCard icon={AppIcons.calendar} count={upcoming.length} label="Upcoming" />
+                <MetricCard icon={AppIcons.success} count={completed.length} label="Completed" />
               </div>
 
               {current.length > 0 && (

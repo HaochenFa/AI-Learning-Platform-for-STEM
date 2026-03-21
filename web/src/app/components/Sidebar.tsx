@@ -241,7 +241,10 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
           {accountType === "teacher" && (
             <Link
               href={`/classes/${classId}/insights`}
-              className={`ui-motion-color mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-[var(--surface-muted)] hover:text-ui-primary ${pathname.endsWith("/insights") ? "text-accent" : "text-ui-muted"}`}
+              className={cn(
+                "ui-motion-color mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface-muted hover:text-ui-primary",
+                pathname.endsWith("/insights") ? "text-accent" : "text-ui-muted",
+              )}
             >
               <AppIcons.insights className="h-4 w-4" />
               <span className="truncate">Insights</span>

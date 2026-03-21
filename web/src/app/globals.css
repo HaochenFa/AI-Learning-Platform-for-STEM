@@ -30,12 +30,13 @@
   --sidebar-width: 16rem;
   --sidebar-collapsed-width: 5rem;
 
-  --motion-fast: 160ms;
-  --motion-standard: 220ms;
-  --motion-slow: 320ms;
+  --motion-fast: 200ms;
+  --motion-standard: 320ms;
+  --motion-slow: 480ms;
 
   --accent-primary: #c06a4f;
   --accent-primary-strong: #a95339;
+  --accent-foreground-strong: #7d412f;
   --accent-soft: #fdf1ec;
   --accent-secondary: #4a5f84;
 }
@@ -152,16 +153,20 @@ h3 {
   background: var(--accent-soft);
 }
 
+.bg-surface-muted {
+  background: var(--surface-muted);
+}
+
 .text-accent {
-  color: #8b4631;
+  color: var(--accent-foreground);
 }
 
 .text-accent-strong {
-  color: #7d412f;
+  color: var(--accent-foreground-strong);
 }
 
 .hover\:text-accent:hover {
-  color: #8b4631;
+  color: var(--accent-foreground);
 }
 
 .sidebar-content {
@@ -170,11 +175,11 @@ h3 {
 }
 
 .link-warm {
-  color: #9d5038;
+  color: var(--accent-foreground);
 }
 
 .link-warm:hover {
-  color: #81412d;
+  color: var(--accent-foreground-strong);
 }
 
 .focus-ring-warm:focus {
@@ -216,7 +221,7 @@ h3 {
 
 .ui-motion-lift {
   transition:
-    transform var(--motion-standard) cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform var(--motion-standard) cubic-bezier(0.25, 0.46, 0.45, 0.94),
     color var(--motion-fast) ease,
     background-color var(--motion-fast) ease,
     border-color var(--motion-fast) ease,
@@ -281,9 +286,25 @@ h3 {
   }
 
   .animate-pulse,
-  .animate-spin {
+  .animate-spin,
+  .page-enter {
     animation: none !important;
   }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-enter var(--motion-slow) cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
 @media (max-width: 1024px) {
