@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +41,14 @@ export function MaterialActionsMenu({ classId, material }: MaterialActionsMenuPr
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const isProcessing = material.status === "processing";
   const canPreview = !isProcessing && PREVIEWABLE_MIME_TYPES.has(material.mime_type ?? "");
@@ -50,20 +57,41 @@ export function MaterialActionsMenu({ classId, material }: MaterialActionsMenuPr
     setError(null);
   }
 
+  const MAX_PREVIEW_BYTES = 50 * 1024 * 1024; // 50 MB
+
   async function handlePreview() {
     clearError();
     if (!canPreview) {
-      // Open dialog to show "not available" message without fetching URL
       setPreviewOpen(true);
       return;
     }
-    const result = await getMaterialSignedUrl(classId, material.id);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    setPreviewUrl(result.url);
+    setPreviewLoading(true);
     setPreviewOpen(true);
+    try {
+      const result = await getMaterialSignedUrl(classId, material.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      const res = await fetch(result.url);
+      if (!res.ok) {
+        setError("Failed to load file for preview.");
+        return;
+      }
+      // Guard against loading very large files into browser memory
+      const contentLength = res.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > MAX_PREVIEW_BYTES) {
+        setError("File is too large to preview in-browser. Use Download instead.");
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setPreviewUrl(blobUrl);
+    } catch {
+      setError("Failed to load file for preview.");
+    } finally {
+      setPreviewLoading(false);
+    }
   }
 
   async function handleDownload() {
@@ -131,18 +159,34 @@ export function MaterialActionsMenu({ classId, material }: MaterialActionsMenuPr
       </DropdownMenu>
 
       {/* Preview Dialog */}
-      <Dialog open={previewOpen} onOpenChange={(open) => { setPreviewOpen(open); if (!open) setPreviewUrl(null); }}>
+      <Dialog open={previewOpen} onOpenChange={(open) => {
+        setPreviewOpen(open);
+        if (!open) {
+          if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+          }
+          setPreviewUrl(null);
+          setPreviewLoading(false);
+        }
+      }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{material.title}</DialogTitle>
           </DialogHeader>
-          {previewUrl ? (
+          {previewLoading ? (
+            <div className="flex h-[65vh] w-full items-center justify-center">
+              <p className="text-sm text-ui-muted">Loading preview…</p>
+            </div>
+          ) : error ? (
+            <p className="py-6 text-center text-sm text-[var(--status-error-fg,#9f1239)]">
+              {error}
+            </p>
+          ) : previewUrl ? (
             <div className="h-[65vh] w-full overflow-hidden rounded-lg border border-default">
               <iframe
                 src={previewUrl}
                 title={material.title}
                 className="h-full w-full"
-                sandbox="allow-scripts allow-same-origin"
               />
             </div>
           ) : (
