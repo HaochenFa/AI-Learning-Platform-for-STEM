@@ -16,10 +16,15 @@ type Props = {
   topics: ClassInsightsPayload["topics"];
 };
 
+/* Recharts needs raw hex — pull from computed CSS vars at render time */
+const STATUS_CHART_COLORS = {
+  critical: "#f43e5e", /* matches --status-error-border base hue */
+  warning: "#f59e0b",  /* matches --status-warning-border base hue */
+  good: "#10b981",     /* matches --status-success-border base hue */
+} as const;
+
 function statusColor(status: "good" | "warning" | "critical") {
-  if (status === "critical") return "#ef4444";
-  if (status === "warning") return "#f59e0b";
-  return "#22c55e";
+  return STATUS_CHART_COLORS[status];
 }
 
 export default function TopicPerformanceChart({ topics }: Props) {
@@ -61,9 +66,9 @@ export default function TopicPerformanceChart({ topics }: Props) {
           </BarChart>
         </ResponsiveContainer>
         <div className="mt-2 flex gap-4 text-xs text-ui-muted">
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" />Good (&gt;75%)</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" />Warning (60–75%)</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" />Critical (&lt;60%)</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: STATUS_CHART_COLORS.good }} />Good (&gt;75%)</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: STATUS_CHART_COLORS.warning }} />Warning (60–75%)</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: STATUS_CHART_COLORS.critical }} />Critical (&lt;60%)</span>
         </div>
       </CardContent>
     </Card>

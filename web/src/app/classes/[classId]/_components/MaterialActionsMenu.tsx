@@ -81,7 +81,9 @@ export function MaterialActionsMenu({ classId, material }: MaterialActionsMenuPr
       // Guard against loading very large files into browser memory
       const contentLength = res.headers.get("content-length");
       if (contentLength && parseInt(contentLength, 10) > MAX_PREVIEW_BYTES) {
-        setError("File is too large to preview in-browser. Use Download instead.");
+        const fileSizeMB = (parseInt(contentLength, 10) / (1024 * 1024)).toFixed(1);
+        const limitMB = (MAX_PREVIEW_BYTES / (1024 * 1024)).toFixed(0);
+        setError(`File is ${fileSizeMB} MB — too large to preview in-browser (limit: ${limitMB} MB). Use Download instead.`);
         return;
       }
       const blob = await res.blob();

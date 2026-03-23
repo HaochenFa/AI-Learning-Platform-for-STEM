@@ -41,7 +41,7 @@ export default async function SettingsPage({
       userEmail={user.email ?? undefined}
       userDisplayName={profile.display_name}
     >
-      <main className="mx-auto max-w-5xl p-6 pt-16">
+      <main className="page-enter mx-auto max-w-5xl p-6 pt-16">
           <header className="mb-8 space-y-2">
             <p className="text-sm font-medium text-ui-muted">Account Settings</p>
             <h1 className="text-3xl font-semibold text-ui-primary">Settings</h1>
@@ -50,7 +50,7 @@ export default async function SettingsPage({
             </p>
           </header>
 
-          <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <section className="grid gap-6 stagger-children lg:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-6">
               <Card className="p-6">
                 <h2 className="text-lg font-semibold text-ui-primary">Account Information</h2>

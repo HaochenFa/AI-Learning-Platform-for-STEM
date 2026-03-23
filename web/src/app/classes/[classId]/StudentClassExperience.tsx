@@ -55,7 +55,7 @@ function formatAssignmentStatus(value: string | null | undefined) {
 function getStatusPillClass(status: string | undefined) {
   const s = status ?? "assigned";
   if (s === "submitted" || s === "reviewed")
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-fg)]";
   if (s === "in_progress") return "border-accent/30 bg-accent-soft text-accent";
   return "border-default bg-[var(--surface-muted)] text-ui-muted";
 }

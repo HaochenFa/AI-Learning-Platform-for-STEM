@@ -147,12 +147,12 @@ export default async function EditQuizDraftPage({
           </div>
         ) : null}
         {savedMessage ? (
-          <div className="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
             {savedMessage}
           </div>
         ) : null}
         {publishedMessage ? (
-          <div className="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
             {publishedMessage}
           </div>
         ) : null}
