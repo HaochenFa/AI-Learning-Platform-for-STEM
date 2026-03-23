@@ -365,10 +365,10 @@ export async function saveFlashcardsDraft(
     return;
   }
 
-  if (activity.status !== "draft") {
+  if (activity.status !== "draft" && activity.status !== "published") {
     redirectWithError(
       `/classes/${classId}/activities/flashcards/${activityId}/edit`,
-      "Only draft flashcards can be edited.",
+      "These flashcards cannot be edited.",
     );
     return;
   }

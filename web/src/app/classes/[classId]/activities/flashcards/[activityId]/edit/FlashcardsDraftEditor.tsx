@@ -30,6 +30,7 @@ type FlashcardsDraftEditorProps = {
   initialInstructions: string;
   initialCards: EditableCard[];
   isPublished: boolean;
+  hasSubmissions?: boolean;
 };
 
 function emptyCard(): EditableCard {
@@ -46,6 +47,7 @@ export default function FlashcardsDraftEditor({
   initialInstructions,
   initialCards,
   isPublished,
+  hasSubmissions = false,
 }: FlashcardsDraftEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [instructions, setInstructions] = useState(initialInstructions);
@@ -87,11 +89,18 @@ export default function FlashcardsDraftEditor({
 
   return (
     <div className="space-y-8">
-      {isPublished ? (
+      {isPublished && hasSubmissions ? (
         <Alert variant="warning">
+          <AlertTitle>Flashcards have student submissions</AlertTitle>
+          <AlertDescription>
+            Editing cards may affect review accuracy for existing submissions. Changes are saved immediately.
+          </AlertDescription>
+        </Alert>
+      ) : isPublished ? (
+        <Alert variant="accent">
           <AlertTitle>Flashcards are published</AlertTitle>
           <AlertDescription>
-            Card content is read-only after publish. Assignment creation remains available.
+            You can still edit cards before students submit.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -100,7 +109,7 @@ export default function FlashcardsDraftEditor({
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2">
             <AppIcons.flashcards className="h-5 w-5" />
-            Flashcards Draft
+            {isPublished ? "Flashcard Content" : "Flashcards Draft"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -113,7 +122,7 @@ export default function FlashcardsDraftEditor({
                 id="flashcards-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                disabled={isPublished}
+
               />
             </div>
 
@@ -124,7 +133,7 @@ export default function FlashcardsDraftEditor({
                 value={instructions}
                 onChange={(event) => setInstructions(event.target.value)}
                 rows={3}
-                disabled={isPublished}
+
               />
             </div>
 
@@ -145,7 +154,7 @@ export default function FlashcardsDraftEditor({
                           variant="destructive"
                           size="sm"
                           onClick={() => removeCard(cardIndex)}
-                          disabled={isPublished || cards.length === 1}
+                          disabled={cards.length === 1}
                         >
                           Remove
                         </Button>
@@ -164,7 +173,7 @@ export default function FlashcardsDraftEditor({
                             value={card.front}
                             onChange={(event) => updateCard(cardIndex, { front: event.target.value })}
                             rows={2}
-                            disabled={isPublished}
+            
                           />
                         </div>
 
@@ -180,7 +189,7 @@ export default function FlashcardsDraftEditor({
                             value={card.back}
                             onChange={(event) => updateCard(cardIndex, { back: event.target.value })}
                             rows={3}
-                            disabled={isPublished}
+            
                           />
                         </div>
                       </div>
@@ -190,19 +199,17 @@ export default function FlashcardsDraftEditor({
               ))}
             </motion.div>
 
-            {!isPublished ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" variant="outline" onClick={addCard}>
-                  <AppIcons.add className="h-4 w-4" />
-                  Add Card
-                </Button>
-                <PendingSubmitButton
-                  label="Save Draft"
-                  pendingLabel="Saving..."
-                  variant="warm"
-                />
-              </div>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="outline" onClick={addCard}>
+                <AppIcons.add className="h-4 w-4" />
+                Add Card
+              </Button>
+              <PendingSubmitButton
+                label={isPublished ? "Save Changes" : "Save Draft"}
+                pendingLabel={isPublished ? "Saving Changes..." : "Saving..."}
+                variant="warm"
+              />
+            </div>
           </form>
         </CardContent>
       </Card>

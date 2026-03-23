@@ -369,6 +369,24 @@ export default async function AssignmentReviewPage({
           </p>
         </header>
 
+        {(activity.type === "quiz" || activity.type === "flashcards") ? (
+          <Card className="mb-6 rounded-2xl">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-ui-muted">Activity Content</p>
+                <p className="text-sm text-ui-subtle">
+                  Review or edit the {activity.type === "quiz" ? "quiz questions" : "flashcard content"} for this assignment.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/classes/${classId}/activities/${activity.type}/${activity.id}/edit`}>
+                  View &amp; Edit Content
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {createdMessage ? (
           <Alert variant="accent" className="mb-6">
             <AlertTitle>Assignment created</AlertTitle>

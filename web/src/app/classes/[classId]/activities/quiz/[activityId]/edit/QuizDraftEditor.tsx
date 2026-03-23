@@ -32,6 +32,7 @@ type QuizDraftEditorProps = {
   initialInstructions: string;
   initialQuestions: EditableQuestion[];
   isPublished: boolean;
+  hasSubmissions?: boolean;
 };
 
 function emptyQuestion(): EditableQuestion {
@@ -50,6 +51,7 @@ export default function QuizDraftEditor({
   initialInstructions,
   initialQuestions,
   isPublished,
+  hasSubmissions = false,
 }: QuizDraftEditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [instructions, setInstructions] = useState(initialInstructions);
@@ -116,11 +118,18 @@ export default function QuizDraftEditor({
 
   return (
     <div className="space-y-8">
-      {isPublished ? (
+      {isPublished && hasSubmissions ? (
         <Alert variant="warning">
+          <AlertTitle>Quiz has student submissions</AlertTitle>
+          <AlertDescription>
+            Editing questions may affect grading accuracy for existing submissions. Changes are saved immediately.
+          </AlertDescription>
+        </Alert>
+      ) : isPublished ? (
+        <Alert variant="accent">
           <AlertTitle>Quiz is published</AlertTitle>
           <AlertDescription>
-            Draft content is now read-only. You can still create assignments.
+            You can still edit questions before students submit.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -129,7 +138,7 @@ export default function QuizDraftEditor({
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2">
             <AppIcons.quiz className="h-5 w-5" />
-            Quiz Draft
+            {isPublished ? "Quiz Content" : "Quiz Draft"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -142,7 +151,7 @@ export default function QuizDraftEditor({
                 id="quiz-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                disabled={isPublished}
+
               />
             </div>
 
@@ -153,7 +162,7 @@ export default function QuizDraftEditor({
                 value={instructions}
                 onChange={(event) => setInstructions(event.target.value)}
                 rows={3}
-                disabled={isPublished}
+
               />
             </div>
 
@@ -176,7 +185,7 @@ export default function QuizDraftEditor({
                           variant="destructive"
                           size="sm"
                           onClick={() => removeQuestion(questionIndex)}
-                          disabled={isPublished || questions.length === 1}
+                          disabled={questions.length === 1}
                         >
                           Remove
                         </Button>
@@ -192,7 +201,7 @@ export default function QuizDraftEditor({
                             })
                           }
                           rows={2}
-                          disabled={isPublished}
+          
                         />
                       </div>
 
@@ -207,7 +216,7 @@ export default function QuizDraftEditor({
                               onChange={(event) =>
                                 updateChoice(questionIndex, choiceIndex, event.target.value)
                               }
-                              disabled={isPublished}
+              
                             />
                           </div>
                         ))}
@@ -225,7 +234,7 @@ export default function QuizDraftEditor({
                                 answer: event.target.value,
                               })
                             }
-                            disabled={isPublished}
+            
                             className="flex h-10 w-full min-w-0 rounded-xl border border-default bg-[var(--surface-card,white)] px-3 py-2 text-sm text-ui-primary shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <option value="">Select a correct answer</option>
@@ -250,7 +259,7 @@ export default function QuizDraftEditor({
                               })
                             }
                             rows={2}
-                            disabled={isPublished}
+            
                           />
                         </div>
                       </div>
@@ -260,19 +269,17 @@ export default function QuizDraftEditor({
               ))}
             </motion.div>
 
-            {!isPublished ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" variant="outline" onClick={addQuestion}>
-                  <AppIcons.add className="h-4 w-4" />
-                  Add Question
-                </Button>
-                <PendingSubmitButton
-                  label="Save Draft"
-                  pendingLabel="Saving..."
-                  variant="warm"
-                />
-              </div>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="outline" onClick={addQuestion}>
+                <AppIcons.add className="h-4 w-4" />
+                Add Question
+              </Button>
+              <PendingSubmitButton
+                label={isPublished ? "Save Changes" : "Save Draft"}
+                pendingLabel={isPublished ? "Saving Changes..." : "Saving..."}
+                variant="warm"
+              />
+            </div>
           </form>
         </CardContent>
       </Card>

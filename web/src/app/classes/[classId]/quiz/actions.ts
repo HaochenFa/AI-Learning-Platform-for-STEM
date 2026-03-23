@@ -341,10 +341,10 @@ export async function saveQuizDraft(classId: string, activityId: string, formDat
     return;
   }
 
-  if (activity.status !== "draft") {
+  if (activity.status !== "draft" && activity.status !== "published") {
     redirectWithError(
       `/classes/${classId}/activities/quiz/${activityId}/edit`,
-      "Only draft quizzes can be edited.",
+      "This quiz cannot be edited.",
     );
     return;
   }

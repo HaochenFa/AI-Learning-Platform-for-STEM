@@ -63,6 +63,22 @@ export default async function FlashcardsDraftEditPage({
     .eq("activity_id", activityId)
     .order("order_index", { ascending: true });
 
+  /* Check whether any student submissions exist for this activity */
+  let hasSubmissions = false;
+  const { data: assignmentRows } = await supabase
+    .from("assignments")
+    .select("id")
+    .eq("activity_id", activityId)
+    .eq("class_id", classId);
+  if (assignmentRows && assignmentRows.length > 0) {
+    const assignmentIds = assignmentRows.map((a) => a.id);
+    const { count } = await supabase
+      .from("submissions")
+      .select("id", { count: "exact", head: true })
+      .in("assignment_id", assignmentIds);
+    hasSubmissions = (count ?? 0) > 0;
+  }
+
   const config =
     activity.config && typeof activity.config === "object"
       ? (activity.config as Record<string, unknown>)
@@ -100,7 +116,7 @@ export default async function FlashcardsDraftEditPage({
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: classRow.title, href: `/classes/${classRow.id}` },
-          { label: "Flashcards Draft" },
+          { label: activity.status === "published" ? "Edit Published Flashcards" : "Flashcards Draft" },
         ]}
       />
 
@@ -139,6 +155,7 @@ export default async function FlashcardsDraftEditPage({
           initialInstructions={initialInstructions}
           initialCards={initialCards}
           isPublished={activity.status === "published"}
+          hasSubmissions={hasSubmissions}
         />
       </div>
     </div>
