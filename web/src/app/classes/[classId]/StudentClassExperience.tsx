@@ -31,6 +31,7 @@ type StudentClassExperienceProps = {
   publishedBlueprint: boolean;
   errorMessage: string | null;
   uploadNotice: string | null;
+  totalAssignments: number;
   chatAssignments: ActivityAssignmentSummary[];
   quizAssignments: ActivityAssignmentSummary[];
   flashcardsAssignments: ActivityAssignmentSummary[];
@@ -107,6 +108,7 @@ export default function StudentClassExperience({
   publishedBlueprint,
   errorMessage,
   uploadNotice,
+  totalAssignments,
   chatAssignments,
   quizAssignments,
   flashcardsAssignments,
@@ -308,6 +310,29 @@ export default function StudentClassExperience({
           <p className="mt-1.5 text-sm text-ui-muted">
             {subject || "General"} · {level || "Mixed level"}
           </p>
+          {totalAssignments > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-ui-primary">
+                {totalAssignments} {totalAssignments === 1 ? "activity" : "activities"} assigned
+              </span>
+              <span className="text-ui-subtle">·</span>
+              {chatAssignments.length > 0 && (
+                <span className="pill-chat inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                  {chatAssignments.length} chat
+                </span>
+              )}
+              {quizAssignments.length > 0 && (
+                <span className="pill-quiz inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                  {quizAssignments.length} quiz
+                </span>
+              )}
+              {flashcardsAssignments.length > 0 && (
+                <span className="pill-flashcards inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                  {flashcardsAssignments.length} flash
+                </span>
+              )}
+            </div>
+          )}
         </header>
 
         {errorMessage ? (

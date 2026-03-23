@@ -17,7 +17,7 @@ export default function StudentDashboardLoading() {
       {/* Progress metrics — 3 col */}
       <section className="mt-8">
         <Skeleton className="h-3 w-28" />
-        <div className="mt-3 grid grid-cols-3 gap-4">
+        <div className="mt-3 grid grid-cols-3 gap-4 stagger-children">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={`metric-${i}`}

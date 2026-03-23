@@ -15,7 +15,7 @@ export default function TeacherDashboardLoading() {
       </header>
 
       {/* Stats — 3 col */}
-      <section className="mt-8 grid gap-4 sm:grid-cols-3">
+      <section className="mt-8 grid gap-4 sm:grid-cols-3 stagger-children">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={`stat-${i}`}

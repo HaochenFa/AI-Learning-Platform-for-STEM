@@ -335,6 +335,7 @@ export default async function ClassOverviewPage({
       studentChatAssignments.length + studentQuizAssignments.length + studentFlashcardsAssignments.length;
     timer.end({
       role: "student",
+      totalAssignments: totalStudentAssignments,
       chatAssignments: studentChatAssignments.length,
       quizAssignments: studentQuizAssignments.length,
       flashcardsAssignments: studentFlashcardsAssignments.length,
@@ -348,6 +349,7 @@ export default async function ClassOverviewPage({
         publishedBlueprint={Boolean(publishedBlueprint)}
         errorMessage={errorMessage}
         uploadNotice={uploadNotice}
+        totalAssignments={totalStudentAssignments}
         chatAssignments={studentChatAssignments}
         quizAssignments={studentQuizAssignments}
         flashcardsAssignments={studentFlashcardsAssignments}
@@ -427,8 +429,27 @@ export default async function ClassOverviewPage({
               </p>
             </div>
             <p className={cn("mt-3 text-sm font-semibold", totalAssignments > 0 ? "text-accent" : "text-ui-primary")}>
-              {totalAssignments} recent
+              {totalAssignments} total
             </p>
+            {totalAssignments > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {teacherChatAssignments.length > 0 && (
+                  <span className="pill-chat inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                    {teacherChatAssignments.length} chat
+                  </span>
+                )}
+                {teacherQuizAssignments.length > 0 && (
+                  <span className="pill-quiz inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                    {teacherQuizAssignments.length} quiz
+                  </span>
+                )}
+                {teacherFlashcardsAssignments.length > 0 && (
+                  <span className="pill-flashcards inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                    {teacherFlashcardsAssignments.length} flash
+                  </span>
+                )}
+              </div>
+            )}
           </Card>
           <Card className="rounded-2xl p-4">
             <div className="flex items-center gap-2.5">
