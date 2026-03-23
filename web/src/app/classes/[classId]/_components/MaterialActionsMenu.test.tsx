@@ -52,6 +52,10 @@ async function openPreview(user: ReturnType<typeof userEvent.setup>) {
 }
 
 // ---------- lifecycle ----------
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();

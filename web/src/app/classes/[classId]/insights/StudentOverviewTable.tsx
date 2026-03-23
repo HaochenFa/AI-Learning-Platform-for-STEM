@@ -19,9 +19,9 @@ type Props = {
 
 function RiskBadge({ level }: { level: "low" | "medium" | "high" }) {
   const classes = {
-    high: "bg-red-100 text-red-700",
-    medium: "bg-amber-100 text-amber-700",
-    low: "bg-green-100 text-green-700",
+    high: "bg-[var(--status-error-bg)] text-[var(--status-error-fg)]",
+    medium: "bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]",
+    low: "bg-[var(--status-success-bg)] text-[var(--status-success-fg)]",
   };
   return (
     <span

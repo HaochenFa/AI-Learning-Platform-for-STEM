@@ -135,12 +135,12 @@ export default async function FlashcardsDraftEditPage({
           </div>
         ) : null}
         {savedMessage ? (
-          <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+          <div className="mb-6 rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
             {savedMessage}
           </div>
         ) : null}
         {publishedMessage ? (
-          <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+          <div className="mb-6 rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
             {publishedMessage}
           </div>
         ) : null}

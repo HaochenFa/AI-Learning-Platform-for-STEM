@@ -8,6 +8,7 @@ import { AppIcons } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { STAGGER_CONTAINER, STAGGER_ITEM } from "@/lib/motion/presets";
 
@@ -63,6 +64,7 @@ export default function QuizAssignmentPanel({
   );
 
   const allAnswered = questions.every((question) => Boolean(answers[question.id]));
+  const answeredCount = questions.filter((question) => Boolean(answers[question.id])).length;
   const canSubmit = !readOnly && !dueLocked && attemptsRemaining > 0 && allAnswered;
 
   return (
@@ -94,6 +96,19 @@ export default function QuizAssignmentPanel({
           <p className="text-xs text-ui-muted">
             {dueLocked ? "Due date passed. New attempts are locked." : "Due date is still open."}
           </p>
+          {!readOnly && !dueLocked && attemptsRemaining > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-ui-muted">
+                  {answeredCount} of {questions.length} answered
+                </span>
+                <span className="font-medium text-ui-primary">
+                  {questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0}%
+                </span>
+              </div>
+              <Progress value={questions.length > 0 ? (answeredCount / questions.length) * 100 : 0} className="h-1.5" />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -108,7 +123,12 @@ export default function QuizAssignmentPanel({
         >
           {questions.map((question, questionIndex) => (
             <motion.section key={question.id} variants={STAGGER_ITEM}>
-              <Card className="rounded-2xl">
+              <Card
+                className={cn(
+                  "rounded-2xl transition-shadow duration-200",
+                  !answers[question.id] && answeredCount > 0 && "ring-1 ring-[var(--accent-primary)]/20",
+                )}
+              >
                 <CardContent className="p-4">
                   <p className="text-sm font-semibold text-ui-primary">
                     {questionIndex + 1}. {question.question}

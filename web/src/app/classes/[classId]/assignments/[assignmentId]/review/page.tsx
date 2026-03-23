@@ -627,7 +627,7 @@ export default async function AssignmentReviewPage({
                                       Selected: {answer.selectedChoice}
                                     </p>
                                     <p
-                                      className={`text-sm ${isCorrect ? "text-emerald-700" : "text-[var(--status-error-fg)]"}`}
+                                      className={`text-sm ${isCorrect ? "text-[var(--status-success-fg)]" : "text-[var(--status-error-fg)]"}`}
                                     >
                                       Correct answer: {question?.answer ?? "Unavailable"}
                                     </p>

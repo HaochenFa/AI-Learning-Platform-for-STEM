@@ -58,7 +58,7 @@ function FlashCard({
           Card {index + 1}
         </span>
         {status === "known" && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--status-success-fg)]">
             <AppIcons.success className="h-3 w-3" />
             Known
           </span>
@@ -90,7 +90,7 @@ function FlashCard({
           <Card
             className={cn(
               "absolute inset-0 rounded-2xl transition-shadow duration-200",
-              status === "known" && "border-emerald-200",
+              status === "known" && "border-[var(--status-success-border)]",
               status === "review" && "border-[color-mix(in_srgb,var(--accent-primary)_30%,transparent)]",
               !status && "border-default",
             )}
@@ -111,7 +111,7 @@ function FlashCard({
           <Card
             className={cn(
               "absolute inset-0 rounded-2xl",
-              status === "known" ? "border-emerald-200 bg-emerald-50" : "border-accent bg-accent-soft",
+              status === "known" ? "border-[var(--status-success-border)] bg-[var(--status-success-bg)]" : "border-accent bg-accent-soft",
             )}
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
           >
@@ -138,7 +138,7 @@ function FlashCard({
           onClick={() => onMark(card.id, "known")}
           className={cn(
             "flex-1 gap-1.5 transition-colors duration-150",
-            status === "known" && "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+            status === "known" && "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-fg)] hover:bg-[var(--status-success-hover-bg)]",
           )}
         >
           <AppIcons.success className="h-3.5 w-3.5" />

@@ -93,10 +93,10 @@ export default async function ClassInsightsPage({
       ) : (
         <>
           <InsightsHeader classId={classId} generatedAt={result.data.generated_at} />
-          <div className="space-y-6">
+          <div className="page-enter space-y-6">
             <InsightsSummaryCards summary={result.data.class_summary} />
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 stagger-children lg:grid-cols-2">
               <AIInsightPanel narrative={result.data.ai_narrative} classId={classId} />
               {result.data.ai_narrative?.interventions.length ? (
                 <InterventionSuggestions
@@ -106,7 +106,7 @@ export default async function ClassInsightsPage({
               ) : null}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 stagger-children lg:grid-cols-2">
               <TopicPerformanceChart topics={result.data.topics} />
               <BloomRadarChart bloom_breakdown={result.data.bloom_breakdown} />
             </div>

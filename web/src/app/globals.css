@@ -47,8 +47,15 @@
 
   /* Status color tokens */
   --status-error-fg: #9f1239;
+  --status-error-bg: rgba(244, 63, 94, 0.11);
+  --status-error-border: rgba(244, 63, 94, 0.34);
   --status-warning-fg: #8a4a16;
+  --status-warning-bg: rgba(245, 158, 11, 0.12);
+  --status-warning-border: rgba(217, 119, 6, 0.34);
   --status-success-fg: #0f5c47;
+  --status-success-bg: rgba(16, 185, 129, 0.1);
+  --status-success-border: rgba(16, 185, 129, 0.35);
+  --status-success-hover-bg: rgba(16, 185, 129, 0.18);
 }
 
 @theme inline {
@@ -217,21 +224,21 @@ h3 {
 }
 
 .status-warning {
-  border: 1px solid rgba(217, 119, 6, 0.34);
-  background: rgba(245, 158, 11, 0.12);
-  color: #8a4a16;
+  border: 1px solid var(--status-warning-border);
+  background: var(--status-warning-bg);
+  color: var(--status-warning-fg);
 }
 
 .status-success {
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.1);
-  color: #0f5c47;
+  border: 1px solid var(--status-success-border);
+  background: var(--status-success-bg);
+  color: var(--status-success-fg);
 }
 
 .status-error {
-  border: 1px solid rgba(244, 63, 94, 0.34);
-  background: rgba(244, 63, 94, 0.11);
-  color: #9f1239;
+  border: 1px solid var(--status-error-border);
+  background: var(--status-error-bg);
+  color: var(--status-error-fg);
 }
 
 /* ─── Motion utilities ─────────────────────────── */

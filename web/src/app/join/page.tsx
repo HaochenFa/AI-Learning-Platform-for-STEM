@@ -30,7 +30,7 @@ export default async function JoinClassPage({
         { label: "Join class" },
       ]}
     >
-      <header className="mb-10 space-y-2">
+      <header className="page-enter mb-10 space-y-2">
         <p className="text-sm font-medium text-ui-muted">Student Hub</p>
         <h1 className="text-3xl font-semibold text-ui-primary">Join a class</h1>
         <p className="text-sm text-ui-muted">
