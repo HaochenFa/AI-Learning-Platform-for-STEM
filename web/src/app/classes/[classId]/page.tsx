@@ -6,6 +6,7 @@ import AuthHeader from "@/app/components/AuthHeader";
 import StudentClassExperience from "@/app/classes/[classId]/StudentClassExperience";
 import MaterialProcessingAutoRefresh from "@/app/classes/[classId]/_components/MaterialProcessingAutoRefresh";
 import { MaterialActionsMenu } from "@/app/classes/[classId]/_components/MaterialActionsMenu";
+import { AdaptiveTeachingBriefWidget } from "@/app/classes/[classId]/_components/AdaptiveTeachingBriefWidget";
 import TeacherChatMonitorPanel from "@/app/classes/[classId]/chat/TeacherChatMonitorPanel";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { AppIcons } from "@/components/icons";
 import { startServerTimer } from "@/lib/perf";
 import { requireVerifiedUser } from "@/lib/auth/session";
+import { getClassTeachingBrief } from "@/lib/actions/teaching-brief";
 import { cn } from "@/lib/utils";
 
 type SearchParams = {
@@ -361,6 +363,7 @@ export default async function ClassOverviewPage({
 
   const totalAssignments =
     teacherChatAssignments.length + teacherQuizAssignments.length + teacherFlashcardsAssignments.length;
+  const teachingBriefState = await getClassTeachingBrief(classRow.id);
 
   timer.end({
     role: "teacher",
@@ -464,6 +467,13 @@ export default async function ClassOverviewPage({
               {materials?.length ?? 0} item{(materials?.length ?? 0) === 1 ? "" : "s"}
             </p>
           </Card>
+        </section>
+
+        <section className="mb-8">
+          <AdaptiveTeachingBriefWidget
+            classId={classRow.id}
+            state={teachingBriefState}
+          />
         </section>
 
         {/* ── Blueprint + Enrollment ── */}
