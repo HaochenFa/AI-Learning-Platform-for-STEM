@@ -13,7 +13,8 @@ create table if not exists public.guest_sandboxes (
   chat_messages_used integer not null default 0 check (chat_messages_used >= 0),
   quiz_generations_used integer not null default 0 check (quiz_generations_used >= 0),
   flashcard_generations_used integer not null default 0 check (flashcard_generations_used >= 0),
-  blueprint_regenerations_used integer not null default 0 check (blueprint_regenerations_used >= 0)
+  blueprint_regenerations_used integer not null default 0 check (blueprint_regenerations_used >= 0),
+  embedding_operations_used integer not null default 0 check (embedding_operations_used >= 0)
 );
 
 create unique index if not exists guest_sandboxes_user_active_idx
@@ -233,6 +234,7 @@ begin
          quiz_generations_used = quiz_generations_used + case when p_feature = 'quiz' then 1 else 0 end,
          flashcard_generations_used = flashcard_generations_used + case when p_feature = 'flashcards' then 1 else 0 end,
          blueprint_regenerations_used = blueprint_regenerations_used + case when p_feature = 'blueprint' then 1 else 0 end,
+         embedding_operations_used = embedding_operations_used + case when p_feature = 'embedding' then 1 else 0 end,
          last_seen_at = now(),
          updated_at = now()
    where id = p_sandbox_id

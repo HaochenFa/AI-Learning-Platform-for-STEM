@@ -35,7 +35,7 @@ class MainTests(unittest.TestCase):
             from app.main import _guest_sandbox_belongs_to_actor
 
             with patch("app.main.httpx.AsyncClient", return_value=_FailingClient()):
-                return await _guest_sandbox_belongs_to_actor(settings, "guest-user-1", "sandbox-1")
+                return await _guest_sandbox_belongs_to_actor(settings, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 
         result = __import__("asyncio").run(run_test())
         self.assertEqual(result, (False, True))

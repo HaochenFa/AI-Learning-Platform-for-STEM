@@ -159,7 +159,7 @@ async function logFlashcardsAiRequest(input: {
 }
 
 export async function generateFlashcardsDraft(classId: string, formData: FormData) {
-  const { supabase, user, authError, sandboxId } = await requireAuthenticatedUser({ accountType: "teacher" });
+  const { supabase, user, authError, sandboxId, accessToken } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
   }
@@ -227,7 +227,7 @@ export async function generateFlashcardsDraft(classId: string, formData: FormDat
       instructions,
       blueprintContext: blueprintContext.blueprintContext,
       materialContext,
-      accessToken: sandboxId ? null : undefined,
+      accessToken,
       sandboxId,
     });
     usedProvider = pythonResult.provider;

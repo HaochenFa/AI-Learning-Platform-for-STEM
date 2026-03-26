@@ -591,7 +591,7 @@ async function rollbackDraftCreation(
 
 export async function generateBlueprint(classId: string) {
   const startedAtMs = Date.now();
-  const { supabase, user, sandboxId } = await requireGuestOrVerifiedUser({ accountType: "teacher" });
+  const { supabase, user, sandboxId, accessToken } = await requireGuestOrVerifiedUser({ accountType: "teacher" });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
@@ -677,6 +677,7 @@ export async function generateBlueprint(classId: string) {
       materialCount: readyMaterials.length,
       materialText,
       timeoutMs: generationTimeoutMs,
+      accessToken,
       sandboxId,
     });
     const payload: BlueprintPayload = pythonResult.payload;

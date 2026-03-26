@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import re
 from typing import Any, TypeVar, cast
 from uuid import uuid4
 
@@ -60,6 +62,7 @@ from app.schemas import (
 
 app = FastAPI(title="STEM Learning Python Backend", version="0.1.0")
 app.include_router(analytics_router)
+logger = logging.getLogger(__name__)
 USER_TOKEN_VERIFY_TIMEOUT_SECONDS = 8.0
 UserBoundPayload = TypeVar("UserBoundPayload", bound=BaseModel)
 
@@ -245,6 +248,12 @@ async def _guest_sandbox_belongs_to_actor(
     if not supabase_url or not service_role_key:
         return False, True
 
+    _UUID_RE = re.compile(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
+    )
+    if not _UUID_RE.match(actor_user_id) or not _UUID_RE.match(sandbox_id):
+        return False, False
+
     sandbox_url = (
         f"{supabase_url.rstrip('/')}/rest/v1/guest_sandboxes"
         f"?select=id&user_id=eq.{actor_user_id}&id=eq.{sandbox_id}&status=eq.active&limit=1"
@@ -259,6 +268,7 @@ async def _guest_sandbox_belongs_to_actor(
                 },
             )
     except httpx.HTTPError:
+        logger.exception("Sandbox ownership check failed for sandbox_id=%s", sandbox_id)
         return False, True
 
     if response.status_code >= 400:
