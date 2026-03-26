@@ -1912,7 +1912,7 @@ const GUEST_LIMITS = {
   quiz: { column: "quiz_generations_used", limit: 5, label: "quiz generations" },
   flashcards: { column: "flashcard_generations_used", limit: 10, label: "flashcard generations" },
   blueprint: { column: "blueprint_regenerations_used", limit: 3, label: "blueprint regenerations" },
-  embedding: { column: null, limit: 0, label: "embedding operations" }, // always blocked
+  embedding: { column: "embedding_operations_used", limit: 5, label: "embedding operations" },
 } as const;
 
 type GuestFeature = keyof typeof GUEST_LIMITS;
@@ -1931,11 +1931,7 @@ export async function checkGuestRateLimit(
     .eq("id", sandboxId)
     .single();
 
-  // Embedding operations are always blocked for guests (pre-embedded seed only)
-  if (!config.column) {
-    return { allowed: false, message: `Guest mode does not support ${config.label}. Create a free account to use this feature!` };
-  }
-
+  // All features (including embeddings) use the same quota check path
   if (!data) return { allowed: false, message: "Guest session not found" };
 
   const used = (data as Record<string, number>)[config.column] ?? 0;
@@ -1996,7 +1992,7 @@ class _GuestTracker:
     _lock: Lock = field(default_factory=Lock)
     _ip_sessions: dict[str, list[float]] = field(default_factory=lambda: defaultdict(list))
 
-    def try_acquire(self, max_concurrent: int = 20) -> bool:
+    def try_acquire(self, max_concurrent: int = 10) -> bool:
         with self._lock:
             if self._concurrent >= max_concurrent:
                 return False
@@ -2132,7 +2128,7 @@ if (ctx.isGuest && ctx.sandboxId) {
 
 - [ ] **Step 3: Block material ingestion queue for guest uploads**
 
-Guest-uploaded materials should NOT trigger the embedding pipeline (embedding ops are blocked for guests). In the material dispatch logic, skip enqueuing for sandbox-scoped materials:
+Guest-uploaded materials should NOT trigger the embedding pipeline (embedding ops are quota-limited for guests to 5 per sandbox). In the material dispatch logic, skip enqueuing for sandbox-scoped materials:
 
 ```ts
 // In the material processing dispatch, check sandbox_id:
