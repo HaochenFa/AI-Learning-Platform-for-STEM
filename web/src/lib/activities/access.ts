@@ -13,13 +13,16 @@ export async function requireAuthenticatedUser(options?: {
     profile,
     isEmailVerified,
     isGuest,
+    guestSessionError,
     sandboxId,
     guestRole,
     guestClassId,
   } = await getAuthContext();
   const requiredRole = options?.accountType;
   const resolvedAccountType = isGuest ? guestRole : profile?.account_type;
-  const authError = !user
+  const authError = guestSessionError
+    ? guestSessionError
+    : !user
     ? "Please sign in."
     : !isGuest && options?.requireVerifiedEmail !== false && !isEmailVerified
       ? "Please verify your email before continuing."
@@ -51,6 +54,13 @@ export async function requireRealAccountOnly() {
     return {
       ...context,
       authError: "Please sign in.",
+    };
+  }
+
+  if (context.guestSessionError) {
+    return {
+      ...context,
+      authError: context.guestSessionError,
     };
   }
 

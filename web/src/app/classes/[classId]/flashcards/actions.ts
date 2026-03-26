@@ -220,7 +220,10 @@ export async function generateFlashcardsDraft(classId: string, formData: FormDat
   try {
     const blueprintContext = await loadPublishedBlueprintContext(classId);
     const retrievalQuery = `Generate ${cardCount} flashcards. ${instructions}`;
-    const materialContext = await retrieveMaterialContext(classId, retrievalQuery);
+    const materialContext = await retrieveMaterialContext(classId, retrievalQuery, undefined, {
+      accessToken,
+      sandboxId,
+    });
     const pythonResult = await generateFlashcardsViaPythonBackend({
       classTitle: role.classTitle,
       cardCount,

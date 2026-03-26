@@ -263,6 +263,7 @@ describe("flashcards actions", () => {
       supabase: { from: supabaseFromMock },
       user: { id: "teacher-1" },
       isGuest: true,
+      accessToken: "guest-token",
       sandboxId: "sandbox-1",
     });
 
@@ -316,8 +317,20 @@ describe("flashcards actions", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/v1/flashcards/generate"),
       expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer guest-token",
+        }),
         body: expect.stringContaining('"sandbox_id":"sandbox-1"'),
       }),
+    );
+    expect(retrieveMaterialContext).toHaveBeenCalledWith(
+      "class-1",
+      "Generate 1 flashcards. Use only class notes.",
+      undefined,
+      {
+        accessToken: "guest-token",
+        sandboxId: "sandbox-1",
+      },
     );
     fetchMock.mockRestore();
   });

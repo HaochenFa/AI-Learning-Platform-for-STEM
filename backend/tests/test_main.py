@@ -32,13 +32,94 @@ class MainTests(unittest.TestCase):
                 raise httpx.ConnectError("boom")
 
         async def run_test() -> Any:
-            from app.main import _guest_sandbox_belongs_to_actor
+            from app.main import _load_guest_sandbox_for_actor
 
             with patch("app.main.httpx.AsyncClient", return_value=_FailingClient()):
-                return await _guest_sandbox_belongs_to_actor(settings, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+                return await _load_guest_sandbox_for_actor(
+                    settings,
+                    "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                )
 
         result = __import__("asyncio").run(run_test())
-        self.assertEqual(result, (False, True))
+        self.assertEqual(result, (None, True))
+
+    def test_guest_chat_reuses_cached_actor_lookup(self) -> None:
+        settings = make_settings(python_backend_api_key="secret")
+        client = TestClient(app)
+        request_urls: list[str] = []
+
+        class _Client:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, url: str, **_kwargs):
+                request_urls.append(url)
+                if url.endswith("/auth/v1/user"):
+                    return httpx.Response(
+                        200,
+                        json={
+                            "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                            "is_anonymous": True,
+                        },
+                    )
+                return httpx.Response(
+                    200,
+                    json=[
+                        {
+                            "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                            "chat_messages_used": 0,
+                            "quiz_generations_used": 0,
+                            "flashcard_generations_used": 0,
+                            "blueprint_regenerations_used": 0,
+                            "embedding_operations_used": 0,
+                        }
+                    ],
+                )
+
+        with (
+            patch("app.main.get_settings", return_value=settings),
+            patch("app.main.httpx.AsyncClient", return_value=_Client()),
+            patch("app.main.acquire_guest_ai_slot", new=AsyncMock(return_value=True)),
+            patch("app.main.increment_guest_ai_usage", new=AsyncMock()),
+            patch("app.main.release_guest_ai_slot", new=AsyncMock()),
+            patch(
+                "app.main.run_in_threadpool",
+                return_value=type(
+                    "ChatResult",
+                    (),
+                    {
+                        "model_dump": lambda self: {
+                            "payload": {"message": "Hello"},
+                            "provider": "openrouter",
+                            "model": "test-model",
+                            "latency_ms": 10,
+                            "orchestration": {},
+                        }
+                    },
+                )(),
+            ),
+        ):
+            response = client.post(
+                "/v1/chat/generate",
+                headers={"x-api-key": "secret", "authorization": "Bearer guest-jwt"},
+                json={
+                    "user_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                    "class_id": "c1",
+                    "class_title": "Guest Class",
+                    "user_message": "hello",
+                    "blueprint_context": "bp",
+                    "material_context": "materials",
+                    "sandbox_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        auth_urls = [url for url in request_urls if url.endswith("/auth/v1/user")]
+        self.assertEqual(len(auth_urls), 1)
 
     def test_healthz(self) -> None:
         client = TestClient(app)

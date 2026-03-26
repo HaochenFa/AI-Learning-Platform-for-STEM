@@ -629,6 +629,8 @@ export async function generateBlueprint(classId: string) {
     const contextTimeoutMs = requireRemainingBudget(startedAtMs);
     materialText = await retrieveMaterialContext(classId, query, undefined, {
       timeoutMs: contextTimeoutMs,
+      accessToken,
+      sandboxId,
     });
   } catch (error) {
     redirectWithError(

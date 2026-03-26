@@ -31,6 +31,8 @@ export type PythonBackendGenerateResult = {
 export type PythonBackendEmbeddingsOptions = {
   inputs: string[];
   timeoutMs: number;
+  accessToken?: string | null;
+  sandboxId?: string | null;
   providerOrder?: PythonBackendProvider[];
   defaultProvider?: PythonBackendProvider;
 };
@@ -147,10 +149,16 @@ export async function generateEmbeddingsViaPythonBackend(
     timeoutMs: options.timeoutMs,
     body: {
       inputs: options.inputs,
+      sandbox_id: options.sandboxId ?? null,
       timeout_ms: options.timeoutMs,
       provider_order: options.providerOrder,
       default_provider: options.defaultProvider,
     },
+    headers: options.accessToken
+      ? {
+          Authorization: `Bearer ${options.accessToken}`,
+        }
+      : undefined,
   });
 
   return {

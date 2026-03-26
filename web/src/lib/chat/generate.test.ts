@@ -87,6 +87,10 @@ describe("generateGroundedChatResponse", () => {
     });
 
     expect(generateChatViaPythonBackend).toHaveBeenCalledTimes(1);
+    expect(retrieveMaterialContext).toHaveBeenCalledWith("class-1", "Can we review kinematics?", undefined, {
+      accessToken: "session-token",
+      sandboxId: null,
+    });
     expect(generateChatViaPythonBackend).toHaveBeenCalledWith(
       expect.objectContaining({
         classId: "class-1",
@@ -127,6 +131,15 @@ describe("generateGroundedChatResponse", () => {
       expect.objectContaining({
         sandboxId: "sandbox-1",
       }),
+    );
+    expect(retrieveMaterialContext).toHaveBeenCalledWith(
+      "class-1",
+      "Can we review kinematics?",
+      undefined,
+      {
+        accessToken: "session-token",
+        sandboxId: "sandbox-1",
+      },
     );
   });
 

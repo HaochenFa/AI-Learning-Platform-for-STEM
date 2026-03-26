@@ -76,6 +76,8 @@ export async function generateTextWithFallback(
 export async function generateEmbeddingsWithFallback(options: {
   inputs: string[];
   timeoutMs?: number;
+  accessToken?: string | null;
+  sandboxId?: string | null;
 }) {
   const totalTimeoutMs = resolveTimeoutMs(options.timeoutMs, DEFAULT_AI_EMBEDDING_TIMEOUT_MS);
   return await generateEmbeddingsViaPythonBackend({

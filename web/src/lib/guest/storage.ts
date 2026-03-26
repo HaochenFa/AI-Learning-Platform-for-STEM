@@ -5,9 +5,20 @@ export function buildGuestStoragePath(classId: string, sandboxId: string, filena
 }
 
 export function isGuestSafeStoragePath(path: string, sandboxId: string) {
+  if (path.startsWith(SEED_STORAGE_PREFIX)) {
+    return true;
+  }
+
+  const segments = path.split("/").filter(Boolean);
+  if (segments.some((segment) => segment === "." || segment === "..")) {
+    return false;
+  }
+
   return (
-    path.startsWith(SEED_STORAGE_PREFIX) ||
-    path.includes(`/sandboxes/${sandboxId}/`)
+    segments.length >= 5 &&
+    segments[0] === "classes" &&
+    segments[2] === "sandboxes" &&
+    segments[3] === sandboxId
   );
 }
 

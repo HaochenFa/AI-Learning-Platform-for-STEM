@@ -1,8 +1,7 @@
 "use server";
 
+import { GUEST_SESSION_MAX_AGE_MS } from "@/lib/guest/config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-const GUEST_SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
 export type GuestSandboxResult =
   | {
@@ -22,6 +21,10 @@ type ActiveSandboxRow = {
   guest_role: "teacher" | "student";
 };
 
+function isMaybeSingleNoRowsError(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "PGRST116";
+}
+
 export async function provisionGuestSandbox(): Promise<GuestSandboxResult> {
   const supabase = await createServerSupabaseClient();
 
@@ -30,12 +33,19 @@ export async function provisionGuestSandbox(): Promise<GuestSandboxResult> {
   } = await supabase.auth.getSession();
 
   if (existingSession?.user) {
-    const { data: existingSandbox } = await supabase
+    const { data: existingSandbox, error: existingSandboxError } = await supabase
       .from("guest_sandboxes")
       .select("id,class_id,status,guest_role")
       .eq("user_id", existingSession.user.id)
       .eq("status", "active")
       .maybeSingle<ActiveSandboxRow>();
+
+    if (existingSandboxError && !isMaybeSingleNoRowsError(existingSandboxError)) {
+      return {
+        ok: false,
+        error: "We couldn't verify your current guest session. Please try again.",
+      };
+    }
 
     if (existingSandbox?.class_id) {
       return {
@@ -133,22 +143,11 @@ export async function discardGuestSandbox(
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createServerSupabaseClient();
 
-  const { error: markError } = await supabase
-    .from("guest_sandboxes")
-    .update({
-      status: "discarded",
-      last_seen_at: new Date().toISOString(),
-    })
-    .eq("id", sandboxId)
-    .eq("status", "active");
-
-  if (markError) {
-    return { ok: false, error: markError.message };
-  }
-
-  const { error: deleteError } = await supabase.from("classes").delete().eq("sandbox_id", sandboxId);
-  if (deleteError) {
-    return { ok: false, error: deleteError.message };
+  const { error } = await supabase.rpc("discard_guest_sandbox", {
+    p_sandbox_id: sandboxId,
+  });
+  if (error) {
+    return { ok: false, error: error.message };
   }
 
   return { ok: true };
@@ -157,12 +156,19 @@ export async function discardGuestSandbox(
 export async function resetGuestSandbox(userId: string): Promise<GuestSandboxResult> {
   const supabase = await createServerSupabaseClient();
 
-  const { data: existingSandbox } = await supabase
+  const { data: existingSandbox, error: existingSandboxError } = await supabase
     .from("guest_sandboxes")
     .select("id")
     .eq("user_id", userId)
     .eq("status", "active")
     .maybeSingle<{ id: string }>();
+
+  if (existingSandboxError && !isMaybeSingleNoRowsError(existingSandboxError)) {
+    return {
+      ok: false,
+      error: "We couldn't verify your current guest session. Please try again.",
+    };
+  }
 
   if (existingSandbox?.id) {
     const discarded = await discardGuestSandbox(existingSandbox.id);

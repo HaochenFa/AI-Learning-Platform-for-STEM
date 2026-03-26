@@ -1,94 +1,187 @@
 # AGENTS.md
 
-Project: STEM Learning Platform with GenAI (Teacher + Student workflows)
+This file provides guidance to Codex (ChatGPT) when working with code in this repository.
 
-This document is the operating guideline for all contributors and agents. It defines product intent, non negotiables, and engineering standards so the codebase stays production ready.
+## Project Overview
 
-**Product Goals**
+STEM Learning Platform with GenAI - A production-ready educational platform where teachers transform class materials into structured Course Blueprints that power student activities (AI chat, quizzes, flashcards, homework help, exam review).
 
-- Support high school and college STEM subjects without hardcoded subject content.
-- Provide full teacher and student workflows that are both usable and production ready.
-- Use AI to generate a Course Blueprint from uploaded materials and drive all downstream features.
-- Maintain teacher control and transparency for all AI outputs.
+**Stack**: Next.js 16 (App Router), TypeScript, Supabase (PostgreSQL, Auth, Storage, RLS), Tailwind CSS 4, Vitest
 
-**Roles And Scope**
+## Common Commands
 
-- Teacher: create classes, upload materials, curate blueprint, assign activities, review outcomes.
-- Student: use AI chat, quizzes, flashcards, homework assistance, exam review, submit reflections.
-- Admin: optional, can be merged into teacher if needed.
+```bash
+pnpm install        # Install all dependencies (from monorepo root)
+pnpm dev           # Run Next.js dev server (uses --webpack; required for Next.js 16 + React 19)
+pnpm build         # Build for production (--webpack required; turbopack not yet stable)
+pnpm start         # Run production server
+pnpm lint          # Run ESLint
+pnpm test          # Run tests
+pnpm test:watch    # Run tests in watch mode
 
-**Core Principles**
+# Python backend
+pip install -r backend/requirements.txt                                                          # Install Python deps
+uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload                      # Run backend locally
+python3 -m unittest discover -s backend/tests -p 'test_*.py'                                    # Run Python tests
+```
 
-- Production quality over demo shortcuts.
-- Subject agnostic by design. No hardcoded topics or sample content in core logic.
-- AI outputs must be editable and auditable.
-- Minimal duplication. All activities derive from the same Course Blueprint.
+Run a single test file:
 
-**Stack**
+```bash
+pnpm vitest run path/to/testfile.test.ts
+```
 
-- Frontend and backend: Next.js with TypeScript.
-- Data and auth: Supabase Postgres, Supabase Auth, Supabase Storage.
-- Deployment: Vercel for the app, Supabase for data and storage.
+## Git Remotes
 
-**Repo Layout**
+- This repository has two configured remotes for push/fetch: `origin` and `org`.
+- When pushing a branch, push to both remotes so they stay synchronized.
+- Recommended commands:
 
-- `web/` contains the Next.js application.
-- `supabase/` contains database migrations and setup notes.
+```bash
+git push origin HEAD
+git push org HEAD
+```
 
-**Architecture Boundaries**
+## Deployment Commands
 
-- Web App: UI, role based routing, and client side workflows.
-- API Layer: Next.js server actions or API routes. All data writes flow through this layer.
-- AI Orchestrator: provider adapters, prompt templates, and safety checks.
-- Data Layer: Supabase with row level security and migrations.
+### Vercel (Frontend/App)
 
-**Frontend UI System Standards**
+```bash
+cd web/
 
-- UI primitives should be built from the shared `web/src/components/ui` layer.
-- Prefer Radix-based primitives and composition patterns over bespoke interaction logic.
-- Use `web/src/components/icons/index.tsx` for app icons. Avoid page-level inline SVG icons unless there is a documented exception (for example, branded marks or semantic diagrams).
-- Keep motion consistent via the global Motion provider and presets in `web/src/lib/motion/presets.ts`.
-- Preserve warm semantic token usage in `web/src/app/globals.css` and avoid introducing raw one-off colors in component class strings.
+# Check Vercel version
+npx vercel --version
 
-**AI Provider Policy**
+# Check logged-in user
+npx vercel whoami
 
-- Support OpenAI, Google Gemini, and OpenRouter via a provider adapter interface.
-- Configuration must be environment driven. No keys in code or committed files.
-- A provider can be swapped without changing feature logic.
-- Log model name, latency, and token usage for observability.
+# Deploy to production
+npx --yes vercel --yes --prod
 
-**Security And Privacy**
+# Deploy to preview (staging)
+npx vercel
 
-- Enforce RBAC in the data layer using Supabase RLS policies.
-- Validate inputs on every API route and server action.
-- File uploads must be size limited and content type checked.
-- Prevent prompt injection by restricting AI context to approved materials and blueprint.
-- Do not expose raw student data to other classes or roles.
+# View deployment logs
+npx vercel logs ai-stem-learning-platform-group-8
 
-**Quality Gates**
+# Inspect a deployment
+npx vercel inspect <deployment-url>
+```
 
-- Lint and typecheck must pass before merge.
-- Critical flows must have tests: auth, blueprint generation, assignments, and student submissions.
-- All AI outputs must have deterministic structure and be saved before use.
-- Error states and loading states must be first class UI.
+### Supabase (Database/Backend)
 
-**Data Model Essentials**
+```bash
+# Link to Supabase project
+supabase link --project-ref <project-ref>
 
-- User, Role, Class, Enrollment
-- Material, Blueprint, Topic, Objective
-- Activity, Assignment, Submission
-- QuizQuestion, Flashcard, Feedback, Reflection
+# Apply migrations
+supabase db push
 
-**Documentation Expectations**
+# Create new migration
+supabase migration new migration_name
 
-- Update DESIGN.md when architecture or flows change.
-- Update ROADMAP.md when milestones shift.
-- Keep environment setup in a README if created later.
+# Start local Supabase instance
+supabase start
 
-**Branching And Commits**
+# View Supabase logs
+supabase functions logs <function-name>
+```
 
-- Use small, reviewable changes.
-- Commit messages should be descriptive and consistent.
-- This repository has two remotes: `origin` and `org`.
-- When pushing a branch, push to both remotes to keep them in sync.
-  Example: `git push origin HEAD` and `git push org HEAD`.
+Apply migrations via MCP (if configured):
+
+```bash
+# Use the supabase MCP tool to execute SQL
+mcp__supabase__execute_sql --sql "SELECT 1"
+```
+
+## Key File Paths
+
+| Purpose | Path |
+|---------|------|
+| Supabase browser client | `web/src/lib/supabase/client.ts` |
+| Supabase server client | `web/src/lib/supabase/server.ts` |
+| AI adapter entry (Next.js → Python) | `web/src/lib/ai/python-backend.ts` |
+| Server actions (root) | `web/src/app/actions.ts` |
+| Activity access/assignments | `web/src/lib/activities/` |
+| Analytics/class insights | `backend/app/analytics.py` |
+| Global styles & design tokens | `web/src/app/globals.css` |
+
+## Architecture
+
+**Monorepo Structure**:
+
+- `web/` - Next.js application with App Router
+- `backend/` - Python FastAPI service for AI provider orchestration
+- `supabase/` - Database migrations and Supabase configuration
+
+**Key Boundaries**:
+
+- Web App: UI, role-based routing, client-side workflows
+- API Layer: Server actions and API routes for all data writes
+- AI Orchestrator: Provider adapters (OpenAI, Gemini, OpenRouter), prompt templates, safety checks
+- Data Layer: Supabase with Row Level Security (RLS) policies
+
+## Database
+
+- Apply migrations via Supabase CLI or dashboard SQL editor
+- Baseline schema: `supabase/migrations/0001_init.sql`
+- Incremental migrations in `supabase/migrations/`
+
+## Environment Setup
+
+1. Copy `web/.env.example` to `web/.env.local`
+2. Required variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SECRET_KEY`
+   - At least one AI provider key: `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY`
+   - `PYTHON_BACKEND_URL` (default: `http://localhost:8001` for local dev)
+   - `PYTHON_BACKEND_API_KEY` (required when `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS=false`)
+   - `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS` (set `true` for local dev without API key)
+
+## Key Design Patterns
+
+**Blueprint Lifecycle**: Draft → Overview (Approved) → Published (read-only, student-facing)
+
+**AI Provider Policy**: Pluggable adapter interface supporting OpenAI, Gemini, OpenRouter. Configuration is environment-driven. Providers can be swapped without changing feature logic.
+
+**Python Backend**: All AI generation (blueprints, quiz, flashcards, chat, embeddings) routes through the FastAPI `backend/` service. Next.js server actions call `web/src/lib/ai/python-*.ts` adapters, which proxy to the backend. Never call AI providers directly from Next.js. Response envelope is always `{ ok, data, error, meta }`.
+
+**Canvas / Generative Layout**: `backend/app/canvas.py` supports AI-driven layout generation for the student chat view and teacher insights panel. Layouts are generated per-session using the blueprint as context.
+
+**Class Analytics**: `backend/app/analytics.py` + migration `0013_add_class_insights_snapshots.sql` persist aggregated class intelligence snapshots for the teacher dashboard.
+
+**Security**: RLS enforced on all tables, input validation on every API route and server action, file uploads are size-limited and content-type checked. AI context restricted to approved materials and blueprint.
+
+## Frontend UI Conventions
+
+- Shared UI primitives live in `web/src/components/ui` and should be preferred over ad-hoc page-local controls.
+- Utility helpers and variant merging:
+  - `web/src/lib/utils.ts` (`cn`)
+  - `class-variance-authority` patterns for variant-driven components
+- Icons should be consumed from `web/src/components/icons/index.tsx` (Lucide registry) rather than inline SVG in pages/components, except approved exceptions (brand mark and semantic diagrams).
+- Motion should use:
+  - global provider: `web/src/components/providers/motion-provider.tsx`
+  - reusable variants/transitions: `web/src/lib/motion/presets.ts`
+- Preserve semantic warm tokens in `web/src/app/globals.css`; avoid introducing hardcoded color classes where token utilities exist.
+
+## Plans and Trackers
+
+- Store all implementation plans, session trackers, and working notes under `.claude/plans/` — not in `docs/` or the repo root.
+- `.claude/` is gitignored-safe for local-only files and avoids branch noise for plan files that don't belong in PR diffs.
+
+## Important Notes
+
+- Email/password auth only; `profiles.account_type` is immutable (teacher or student)
+- Material ingestion is queue-driven on Supabase (`pgmq` + Edge Function worker)
+- Chat uses long-session context engineering with memory compaction
+- All AI outputs are saved before use and are editable/auditable by teachers
+
+## Lessons Learned
+
+- **Edge Function Secrets**: When using AI providers (like `OPENROUTER_*`) in Supabase Edge Functions, secrets must be set in **Edge Function Secrets** (in Supabase Dashboard → Edge Functions → Secrets), not in the Vault. Edge Functions cannot access Vault secrets.
+- **Vercel + Supabase Integration**: While the Vercel + Supabase integration plugin allows Vercel to access Supabase secrets, the reverse is not true—Supabase Edge Functions cannot access secrets stored in Vercel. All secrets required by Edge Functions must be configured directly in Supabase.
+- **httpx trust_env**: All `httpx.Client(...)` calls in the Python backend must include `trust_env=False` to avoid picking up proxy env vars in production; omitting it causes silent connection failures in certain deploy environments.
+- **Cursor pagination validation**: Cursor tokens passed to PostgREST must be validated as UUID + ISO-8601 format before string interpolation to prevent injection. See `backend/app/chat_workspace.py`.
+- **Message timestamp ordering**: When persisting user + assistant message pairs, offset assistant timestamp by 1ms to guarantee correct ordering in queries that sort by `created_at`.
+- **Supabase Storage iframe embedding**: Supabase Storage serves files with `X-Frame-Options` headers that block cross-origin iframe embedding. Never use signed URLs directly as iframe `src`. Instead, fetch the file as a blob via `fetch(signedUrl)`, create a same-origin blob URL with `URL.createObjectURL(blob)`, and use that. Always clean up with `URL.revokeObjectURL()` in both the dialog close handler and a `useEffect` cleanup. See `MaterialActionsMenu.tsx` for the reference implementation.

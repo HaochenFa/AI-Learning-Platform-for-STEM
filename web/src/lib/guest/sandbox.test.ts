@@ -6,6 +6,7 @@ vi.mock("@/lib/supabase/server", () => ({
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
+  discardGuestSandbox,
   provisionGuestSandbox,
   resetGuestSandbox,
   switchGuestRole,
@@ -150,6 +151,46 @@ describe("provisionGuestSandbox", () => {
       error: "Anonymous auth disabled",
     });
   });
+
+  it("fails closed when verifying an existing sandbox errors", async () => {
+    mockSupabase({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session: {
+              access_token: "guest-token",
+              user: { id: "anon-existing" },
+            },
+          },
+        }),
+        signInAnonymously: vi.fn(),
+        signOut: vi.fn(),
+      },
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "guest_sandboxes") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            insert: vi.fn().mockReturnThis(),
+            update: vi.fn().mockReturnThis(),
+            delete: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: null,
+              error: { code: "500", message: "db unavailable" },
+            }),
+          };
+        }
+        return makeMutableBuilder({ data: null });
+      }),
+    });
+
+    const result = await provisionGuestSandbox();
+
+    expect(result).toEqual({
+      ok: false,
+      error: "We couldn't verify your current guest session. Please try again.",
+    });
+  });
 });
 
 describe("switchGuestRole", () => {
@@ -222,5 +263,63 @@ describe("resetGuestSandbox", () => {
       classId: "class-1",
       sandboxId: expect.any(String),
     });
+  });
+
+  it("fails closed when verifying the current sandbox errors", async () => {
+    mockSupabase({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "guest_sandboxes") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            insert: vi.fn().mockReturnThis(),
+            update: vi.fn().mockReturnThis(),
+            delete: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: null,
+              error: { code: "500", message: "db unavailable" },
+            }),
+          };
+        }
+        return makeMutableBuilder({ data: null });
+      }),
+    });
+
+    const result = await resetGuestSandbox("anon-1");
+
+    expect(result).toEqual({
+      ok: false,
+      error: "We couldn't verify your current guest session. Please try again.",
+    });
+  });
+});
+
+describe("discardGuestSandbox", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uses the atomic discard rpc", async () => {
+    const { supabase } = mockSupabase();
+
+    const result = await discardGuestSandbox("sandbox-1");
+
+    expect(supabase.rpc).toHaveBeenCalledWith("discard_guest_sandbox", {
+      p_sandbox_id: "sandbox-1",
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("returns an error when the atomic discard rpc fails", async () => {
+    mockSupabase({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: "discard failed" },
+      }),
+    });
+
+    const result = await discardGuestSandbox("sandbox-1");
+
+    expect(result).toEqual({ ok: false, error: "discard failed" });
   });
 });

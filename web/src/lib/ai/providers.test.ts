@@ -173,7 +173,7 @@ describe("generateEmbeddingsWithFallback", () => {
   it("routes embeddings through python backend when enabled", async () => {
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
 
-    vi.spyOn(global, "fetch").mockResolvedValueOnce(
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
       makeJsonResponse({
         ok: true,
         data: {
@@ -186,10 +186,23 @@ describe("generateEmbeddingsWithFallback", () => {
       }),
     );
 
-    const result = await generateEmbeddingsWithFallback({ inputs: ["hello"] });
+    const result = await generateEmbeddingsWithFallback({
+      inputs: ["hello"],
+      accessToken: "guest-token",
+      sandboxId: "sandbox-1",
+    });
     expect(result.provider).toBe("openrouter");
     expect(result.embeddings).toHaveLength(1);
     expect(result.usage?.totalTokens).toBe(10);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8001/v1/llm/embeddings",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer guest-token",
+        }),
+        body: expect.stringContaining('"sandbox_id":"sandbox-1"'),
+      }),
+    );
   });
 });
 

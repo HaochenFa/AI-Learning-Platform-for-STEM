@@ -26,6 +26,7 @@ export type AuthContext = {
   profile: ProfileRow | null;
   isEmailVerified: boolean;
   isGuest: boolean;
+  guestSessionError: string | null;
   sandboxId: string | null;
   guestRole: GuestRole | null;
   guestClassId: string | null;
@@ -67,6 +68,7 @@ export async function getAuthContext(): Promise<AuthContext> {
       profile: null,
       isEmailVerified: false,
       isGuest: false,
+      guestSessionError: null,
       sandboxId: null,
       guestRole: null,
       guestClassId: null,
@@ -75,19 +77,22 @@ export async function getAuthContext(): Promise<AuthContext> {
 
   let profile: ProfileRow | null = null;
   let isGuest = false;
+  let guestSessionError: string | null = null;
   let sandboxId: string | null = null;
   let guestRole: GuestRole | null = null;
   let guestClassId: string | null = null;
 
   if (isAnonymousUser(user)) {
-    const { data: sandbox } = await supabase
+    const { data: sandbox, error: sandboxError } = await supabase
       .from("guest_sandboxes")
       .select("id,class_id,guest_role,status")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle<GuestSandboxRow>();
 
-    if (sandbox) {
+    if (sandboxError && sandboxError.code !== "PGRST116") {
+      guestSessionError = "We couldn't verify your guest session right now. Please try again.";
+    } else if (sandbox) {
       isGuest = true;
       sandboxId = sandbox.id;
       guestRole = sandbox.guest_role;
@@ -110,6 +115,7 @@ export async function getAuthContext(): Promise<AuthContext> {
     profile,
     isEmailVerified: Boolean(user.email_confirmed_at),
     isGuest,
+    guestSessionError,
     sandboxId,
     guestRole,
     guestClassId,
@@ -123,6 +129,10 @@ export async function requireVerifiedUser(options?: {
   const context = await getAuthContext();
   if (!context.user) {
     redirect("/login");
+  }
+
+  if (context.guestSessionError) {
+    redirect("/?error=guest-session-check-failed");
   }
 
   if (context.isGuest) {
@@ -171,6 +181,10 @@ export async function requireGuestOrVerifiedUser(options?: {
   const context = await getAuthContext();
   if (!context.user) {
     redirect("/login");
+  }
+
+  if (context.guestSessionError) {
+    redirect("/?error=guest-session-check-failed");
   }
 
   if (context.isGuest) {

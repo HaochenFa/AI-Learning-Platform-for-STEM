@@ -99,6 +99,9 @@ export async function signUp(formData: FormData) {
   }
 
   const existingContext = await getAuthContext();
+  if (existingContext.guestSessionError) {
+    redirect(`/register?error=${encodeURIComponent(existingContext.guestSessionError)}`);
+  }
   if (existingContext.isGuest && existingContext.sandboxId) {
     const discarded = await discardGuestSandbox(existingContext.sandboxId);
     if (!discarded.ok) {
@@ -217,6 +220,9 @@ export async function resetGuestSessionAction(): Promise<{
   error?: string;
 }> {
   const context = await getAuthContext();
+  if (context.guestSessionError) {
+    return { ok: false, error: context.guestSessionError };
+  }
   if (!context.user || !context.isGuest) {
     return { ok: false, error: "Guest session not found." };
   }
@@ -236,6 +242,9 @@ export async function switchGuestRoleAction(
   nextRole: "teacher" | "student",
 ): Promise<{ ok: boolean; error?: string }> {
   const context = await getAuthContext();
+  if (context.guestSessionError) {
+    return { ok: false, error: context.guestSessionError };
+  }
   if (!context.isGuest || !context.sandboxId) {
     return { ok: false, error: "Guest session not found." };
   }

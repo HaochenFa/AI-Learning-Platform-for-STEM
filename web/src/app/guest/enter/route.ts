@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { startGuestSession } from "@/app/actions";
+import {
+  GUEST_SESSIONS_PER_HOUR,
+  GUEST_SESSION_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/guest/config";
 
 const ipSessionMap = new Map<string, number[]>();
-const GUEST_SESSIONS_PER_HOUR = 5;
-const ONE_HOUR_MS = 60 * 60 * 1000;
 
 function recordableIp(request: Request) {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 }
 
 function isWithinIpLimit(ip: string) {
-  const cutoff = Date.now() - ONE_HOUR_MS;
+  const cutoff = Date.now() - GUEST_SESSION_RATE_LIMIT_WINDOW_MS;
   const recent = (ipSessionMap.get(ip) ?? []).filter((timestamp) => timestamp > cutoff);
   ipSessionMap.set(ip, recent);
   return recent.length < GUEST_SESSIONS_PER_HOUR;

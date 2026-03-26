@@ -35,6 +35,7 @@ class GenerateResult(BaseModel):
 
 class EmbeddingsRequest(BaseModel):
     inputs: list[str]
+    sandbox_id: str | None = None
     timeout_ms: int | None = None
     provider_order: list[AiProvider] | None = None
     default_provider: AiProvider | None = None

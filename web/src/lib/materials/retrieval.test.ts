@@ -195,4 +195,29 @@ describe("retrieveMaterialContext", () => {
 
     await expect(retrieveMaterialContext("class-1", "query")).rejects.toThrow("RPC failed");
   });
+
+  it("forwards guest embedding context to the python backend adapter", async () => {
+    const { retrieveMaterialContext } = await loadRetrieval();
+
+    generateEmbeddingsWithFallback.mockResolvedValueOnce({
+      provider: "openai",
+      model: "embedding",
+      embeddings: [[0.1, 0.2]],
+      latencyMs: 10,
+    });
+    supabaseRpcMock.mockResolvedValueOnce({ data: [], error: null });
+
+    await retrieveMaterialContext("class-1", "query", 10, {
+      accessToken: "guest-token",
+      sandboxId: "sandbox-1",
+      timeoutMs: 1234,
+    });
+
+    expect(generateEmbeddingsWithFallback).toHaveBeenCalledWith({
+      inputs: ["query"],
+      accessToken: "guest-token",
+      sandboxId: "sandbox-1",
+      timeoutMs: 1234,
+    });
+  });
 });

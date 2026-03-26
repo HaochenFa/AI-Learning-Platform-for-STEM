@@ -168,6 +168,7 @@ describe("generateBlueprint", () => {
       accountType: "teacher",
       isEmailVerified: true,
       isGuest: true,
+      accessToken: "guest-token",
       sandboxId: "sandbox-1",
     } as never);
 
@@ -252,8 +253,21 @@ describe("generateBlueprint", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/v1/blueprints/generate"),
       expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer guest-token",
+        }),
         body: expect.stringContaining('"sandbox_id":"sandbox-1"'),
       }),
+    );
+    expect(retrieveMaterialContext).toHaveBeenCalledWith(
+      "class-1",
+      "Course blueprint for Math. Focus on core topics, objectives, prerequisites, and assessment ideas.",
+      undefined,
+      {
+        timeoutMs: expect.any(Number),
+        accessToken: "guest-token",
+        sandboxId: "sandbox-1",
+      },
     );
     fetchMock.mockRestore();
   });

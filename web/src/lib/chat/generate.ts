@@ -159,14 +159,6 @@ export async function generateGroundedChatResponse(input: {
 
   try {
     const blueprintContext = await loadPublishedBlueprintContext(input.classId);
-    const retrievalQuery = input.assignmentInstructions
-      ? `${input.assignmentInstructions}\n\n${input.userMessage}`
-      : input.userMessage;
-    const materialContext = await retrieveMaterialContext(input.classId, retrievalQuery);
-    const maxTokens = resolveChatMaxTokens();
-    const pythonChatEngine = resolvePythonChatEngine();
-    const pythonChatToolMode = resolvePythonChatToolMode();
-    const pythonChatToolCatalog = resolvePythonChatToolCatalog();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -174,6 +166,18 @@ export async function generateGroundedChatResponse(input: {
     if (!accessToken) {
       throw new Error("User session token is missing.");
     }
+
+    const retrievalQuery = input.assignmentInstructions
+      ? `${input.assignmentInstructions}\n\n${input.userMessage}`
+      : input.userMessage;
+    const materialContext = await retrieveMaterialContext(input.classId, retrievalQuery, undefined, {
+      accessToken,
+      sandboxId: input.sandboxId ?? null,
+    });
+    const maxTokens = resolveChatMaxTokens();
+    const pythonChatEngine = resolvePythonChatEngine();
+    const pythonChatToolMode = resolvePythonChatToolMode();
+    const pythonChatToolCatalog = resolvePythonChatToolCatalog();
 
     const pythonResult = await generateChatViaPythonBackend({
       classId: input.classId,

@@ -63,6 +63,7 @@ describe("getAuthContext", () => {
 
     expect(context.user).toBeNull();
     expect(context.isGuest).toBe(false);
+    expect(context.guestSessionError).toBeNull();
     expect(context.sandboxId).toBeNull();
   });
 
@@ -85,6 +86,7 @@ describe("getAuthContext", () => {
 
     expect(context.user?.id).toBe("user-1");
     expect(context.isGuest).toBe(false);
+    expect(context.guestSessionError).toBeNull();
     expect(context.profile?.account_type).toBe("teacher");
     expect(context.profile?.display_name).toBe("Teacher Example");
     expect(context.isEmailVerified).toBe(true);
@@ -111,6 +113,7 @@ describe("getAuthContext", () => {
 
     expect(context.user?.id).toBe("anon-1");
     expect(context.isGuest).toBe(true);
+    expect(context.guestSessionError).toBeNull();
     expect(context.sandboxId).toBe("sandbox-1");
     expect(context.guestRole).toBe("teacher");
     expect(context.guestClassId).toBe("class-1");
@@ -132,7 +135,47 @@ describe("getAuthContext", () => {
 
     expect(context.user?.id).toBe("anon-2");
     expect(context.isGuest).toBe(false);
+    expect(context.guestSessionError).toBeNull();
     expect(context.sandboxId).toBeNull();
     expect(context.guestRole).toBeNull();
+  });
+
+  it("surfaces sandbox lookup failures for anonymous users", async () => {
+    const supabase = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session: {
+              access_token: "guest-token",
+              user: {
+                id: "anon-3",
+                email: null,
+                email_confirmed_at: null,
+                is_anonymous: true,
+                app_metadata: { provider: "anonymous" },
+              },
+            },
+          },
+        }),
+      },
+      from: vi.fn().mockImplementation(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: null,
+          error: { code: "500", message: "db unavailable" },
+        }),
+      })),
+    };
+
+    vi.mocked(createServerSupabaseClient).mockResolvedValue(supabase as never);
+
+    const context = await getAuthContext();
+
+    expect(context.isGuest).toBe(false);
+    expect(context.guestSessionError).toBe(
+      "We couldn't verify your guest session right now. Please try again.",
+    );
+    expect(context.sandboxId).toBeNull();
   });
 });

@@ -195,7 +195,10 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
     }
 
     const retrievalQuery = `Generate ${questionCount} multiple choice quiz questions. ${instructions}`;
-    const materialContext = await retrieveMaterialContext(classId, retrievalQuery);
+    const materialContext = await retrieveMaterialContext(classId, retrievalQuery, undefined, {
+      accessToken,
+      sandboxId,
+    });
     const pythonResult = await generateQuizViaPythonBackend({
       classTitle: role.classTitle,
       questionCount,
