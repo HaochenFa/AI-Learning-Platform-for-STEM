@@ -254,6 +254,74 @@ describe("flashcards actions", () => {
     fetchMock.mockRestore();
   });
 
+  it("passes sandboxId to python flashcards generation for guest sessions", async () => {
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    process.env.PYTHON_BACKEND_API_KEY = "secret";
+
+    const supabaseFromMock = vi.fn();
+    requireAuthenticatedUser.mockResolvedValue({
+      supabase: { from: supabaseFromMock },
+      user: { id: "teacher-1" },
+      isGuest: true,
+      sandboxId: "sandbox-1",
+    });
+
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse({
+        ok: true,
+        data: {
+          payload: {
+            cards: [
+              {
+                front: "What is 1 + 1?",
+                back: "The sum equals 2.",
+              },
+            ],
+          },
+          provider: "openrouter",
+          model: "or-model",
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
+          latency_ms: 30,
+        },
+      }),
+    );
+
+    const activityInsertBuilder = makeBuilder({ data: { id: "activity-1" }, error: null });
+    const cardsInsertBuilder = makeBuilder({ error: null });
+    const aiRequestsBuilder = makeBuilder({ error: null });
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "activities") {
+        return activityInsertBuilder;
+      }
+      if (table === "flashcards") {
+        return cardsInsertBuilder;
+      }
+      if (table === "ai_requests") {
+        return aiRequestsBuilder;
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const formData = new FormData();
+    formData.set("title", "Generated Flashcards");
+    formData.set("instructions", "Use only class notes.");
+    formData.set("card_count", "1");
+
+    await expectRedirect(
+      () => generateFlashcardsDraft("class-1", formData),
+      "/classes/class-1/activities/flashcards/activity-1/edit?created=1",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/flashcards/generate"),
+      expect.objectContaining({
+        body: expect.stringContaining('"sandbox_id":"sandbox-1"'),
+      }),
+    );
+    fetchMock.mockRestore();
+  });
+
   it("returns a configuration error when python backend url is missing", async () => {
     delete process.env.PYTHON_BACKEND_URL;
     const supabaseFromMock = vi.fn();

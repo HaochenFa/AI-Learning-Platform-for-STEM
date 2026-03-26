@@ -100,7 +100,7 @@ async function logQuizAiRequest(input: {
 }
 
 export async function generateQuizDraft(classId: string, formData: FormData) {
-  const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
+  const { supabase, user, authError, sandboxId } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
   }
@@ -202,6 +202,8 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
       instructions,
       blueprintContext: blueprintContextStr,
       materialContext,
+      accessToken: sandboxId ? null : undefined,
+      sandboxId,
     });
     usedProvider = pythonResult.provider;
     usedModel = pythonResult.model;

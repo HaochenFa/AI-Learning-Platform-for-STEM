@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 import { parseBlueprintResponse } from "@/lib/ai/blueprint";
 import { generateTextWithFallback } from "@/lib/ai/providers";
 import { retrieveMaterialContext } from "@/lib/materials/retrieval";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -38,7 +38,7 @@ vi.mock("@/lib/materials/retrieval", () => ({
 }));
 
 vi.mock("@/lib/auth/session", () => ({
-  requireVerifiedUser: vi.fn(),
+  requireGuestOrVerifiedUser: vi.fn(),
 }));
 
 const supabaseAuth = {
@@ -108,7 +108,7 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 }
 
 function mockTeacherAccess() {
-  vi.mocked(requireVerifiedUser).mockResolvedValueOnce({
+  vi.mocked(requireGuestOrVerifiedUser).mockResolvedValueOnce({
     supabase: {
       from: supabaseFromMock,
       rpc: supabaseRpcMock,
@@ -133,7 +133,7 @@ function mockTeacherAccess() {
 }
 
 function mockRequireVerifiedUserSuccess() {
-  vi.mocked(requireVerifiedUser).mockResolvedValue({
+  vi.mocked(requireGuestOrVerifiedUser).mockResolvedValue({
     supabase: {
       from: supabaseFromMock,
       rpc: supabaseRpcMock,
@@ -154,8 +154,112 @@ describe("generateBlueprint", () => {
     supabaseRpcMock.mockResolvedValue({ data: null, error: null });
   });
 
+  it("passes sandboxId to python blueprint generation for guest sessions", async () => {
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    process.env.PYTHON_BACKEND_API_KEY = "secret";
+
+    vi.mocked(requireGuestOrVerifiedUser).mockResolvedValueOnce({
+      supabase: {
+        from: supabaseFromMock,
+        rpc: supabaseRpcMock,
+      },
+      user: { id: "u1", email: "guest@example.com" },
+      profile: { id: "u1", account_type: "teacher" },
+      accountType: "teacher",
+      isEmailVerified: true,
+      isGuest: true,
+      sandboxId: "sandbox-1",
+    } as never);
+
+    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "u1" } } });
+    let blueprintCall = 0;
+    let topicCall = 0;
+    const latestBlueprintBuilder = makeBuilder({ data: null, error: null });
+    const insertBlueprintBuilder = makeBuilder({ data: { id: "bp-1" }, error: null });
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({
+          data: {
+            id: "class-1",
+            owner_id: "u1",
+            title: "Math",
+            subject: "Mathematics",
+            level: "College",
+          },
+          error: null,
+        });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({
+          data: [{ id: "m1", title: "Lecture", extracted_text: "content", status: "ready" }],
+          error: null,
+        });
+      }
+      if (table === "blueprints") {
+        blueprintCall += 1;
+        if (blueprintCall === 1) {
+          return latestBlueprintBuilder;
+        }
+        return insertBlueprintBuilder;
+      }
+      if (table === "topics") {
+        topicCall += 1;
+        return makeBuilder({ data: { id: `topic-${topicCall}` }, error: null });
+      }
+      if (table === "objectives") {
+        return makeBuilder({ error: null });
+      }
+      if (table === "ai_requests") {
+        return makeBuilder({ error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    vi.mocked(retrieveMaterialContext).mockResolvedValue("context");
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      makeJsonResponse({
+        ok: true,
+        data: {
+          payload: {
+            schemaVersion: "v2",
+            summary: "Summary",
+            topics: [
+              {
+                key: "topic-1",
+                title: "Limits",
+                sequence: 1,
+                objectives: [{ statement: "Define limits." }],
+              },
+            ],
+          },
+          provider: "openai",
+          model: "gpt-test",
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
+          latency_ms: 42,
+        },
+      }),
+    );
+
+    await expectRedirect(
+      () => generateBlueprint("class-1"),
+      "/classes/class-1/blueprint?generated=1",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/blueprints/generate"),
+      expect.objectContaining({
+        body: expect.stringContaining('"sandbox_id":"sandbox-1"'),
+      }),
+    );
+    fetchMock.mockRestore();
+  });
+
   it("redirects to login when unauthenticated", async () => {
-    vi.mocked(requireVerifiedUser).mockImplementationOnce(async () => {
+    vi.mocked(requireGuestOrVerifiedUser).mockImplementationOnce(async () => {
       redirect("/login");
       throw new Error("unreachable");
     });

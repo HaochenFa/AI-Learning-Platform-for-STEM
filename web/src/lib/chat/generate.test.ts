@@ -100,6 +100,53 @@ describe("generateGroundedChatResponse", () => {
     );
   });
 
+  it("passes sandboxId to python chat generation for guest sessions", async () => {
+    generateChatViaPythonBackend.mockResolvedValue({
+      payload: {
+        safety: "ok",
+        answer: "Grounded response",
+        citations: [],
+      },
+      provider: "openrouter",
+      model: "or-model",
+      usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
+      latencyMs: 15,
+    });
+
+    createServerSupabaseClient.mockResolvedValue({
+      auth: {
+        getSession: vi.fn(async () => ({
+          data: { session: { access_token: "session-token" } },
+        })),
+      },
+      from: vi.fn(() => ({
+        insert: vi.fn(async () => ({ error: null })),
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(async () => ({
+              data: { id: "sandbox-1" },
+            })),
+          })),
+        })),
+      })),
+    });
+
+    await generateGroundedChatResponse({
+      classId: "class-1",
+      classTitle: "Physics",
+      userId: "student-1",
+      userMessage: "Can we review kinematics?",
+      transcript: [],
+      purpose: "student_chat_open_v2",
+    });
+
+    expect(generateChatViaPythonBackend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxId: "sandbox-1",
+      }),
+    );
+  });
+
   it("returns a configuration error when python backend url is missing", async () => {
     delete process.env.PYTHON_BACKEND_URL;
     generateChatViaPythonBackend.mockRejectedValue(new Error("PYTHON_BACKEND_URL is not configured."));
