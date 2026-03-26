@@ -53,11 +53,18 @@ export async function checkGuestRateLimit(
   }
 
   const supabase = await createServerSupabaseClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("guest_sandboxes")
     .select(config.column)
     .eq("id", sandboxId)
     .maybeSingle<Record<string, number>>();
+
+  if (error) {
+    return {
+      allowed: false,
+      message: "We couldn't verify your guest usage right now. Please try again.",
+    };
+  }
 
   const used = data?.[config.column] ?? 0;
   if (used >= config.limit) {
@@ -75,8 +82,12 @@ export async function incrementGuestUsage(
   feature: Exclude<GuestFeature, "embedding">,
 ): Promise<void> {
   const supabase = await createServerSupabaseClient();
-  await supabase.rpc("increment_guest_ai_usage", {
+  const { error } = await supabase.rpc("increment_guest_ai_usage", {
     p_sandbox_id: sandboxId,
     p_feature: feature,
   });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }

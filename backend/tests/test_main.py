@@ -4,8 +4,9 @@ import path_setup  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 import unittest
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+import httpx
 from fastapi.testclient import TestClient
 
 from app.main import _parse_bearer_token, app
@@ -16,6 +17,28 @@ class MainTests(unittest.TestCase):
     def test_parse_bearer_token(self) -> None:
         self.assertEqual(_parse_bearer_token("Bearer abc"), "abc")
         self.assertIsNone(_parse_bearer_token("Token abc"))
+
+    def test_guest_sandbox_verification_distinguishes_upstream_unavailable(self) -> None:
+        settings = make_settings()
+
+        class _FailingClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, *_args, **_kwargs):
+                raise httpx.ConnectError("boom")
+
+        async def run_test() -> Any:
+            from app.main import _guest_sandbox_belongs_to_actor
+
+            with patch("app.main.httpx.AsyncClient", return_value=_FailingClient()):
+                return await _guest_sandbox_belongs_to_actor(settings, "guest-user-1", "sandbox-1")
+
+        result = __import__("asyncio").run(run_test())
+        self.assertEqual(result, (False, True))
 
     def test_healthz(self) -> None:
         client = TestClient(app)

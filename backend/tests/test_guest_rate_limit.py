@@ -102,7 +102,7 @@ class GuestRateLimitTests(unittest.TestCase):
         with (
             patch("app.main.get_settings", return_value=self.settings),
             patch("app.main._resolve_actor_user", return_value=({"id": "guest-user-1", "is_anonymous": True}, None)),
-            patch("app.main._guest_sandbox_belongs_to_actor", return_value=True),
+            patch("app.main._guest_sandbox_belongs_to_actor", return_value=(True, False)),
             patch("app.main.check_guest_ai_access", return_value=(False, "Guest chat limit reached.")),
         ):
             response = self.client.post(
@@ -118,7 +118,7 @@ class GuestRateLimitTests(unittest.TestCase):
         with (
             patch("app.main.get_settings", return_value=self.settings),
             patch("app.main._resolve_actor_user", return_value=({"id": "guest-user-1", "is_anonymous": True}, None)),
-            patch("app.main._guest_sandbox_belongs_to_actor", return_value=True),
+            patch("app.main._guest_sandbox_belongs_to_actor", return_value=(True, False)),
             patch("app.main.check_guest_ai_access", return_value=(True, None)),
             patch("app.main.acquire_guest_ai_slot", return_value=False),
         ):
@@ -135,7 +135,7 @@ class GuestRateLimitTests(unittest.TestCase):
         with (
             patch("app.main.get_settings", return_value=self.settings),
             patch("app.main._resolve_actor_user", return_value=({"id": "guest-user-1", "is_anonymous": True}, None)),
-            patch("app.main._guest_sandbox_belongs_to_actor", return_value=False, create=True),
+            patch("app.main._guest_sandbox_belongs_to_actor", return_value=(False, False), create=True),
             patch("app.main.check_guest_ai_access", return_value=(True, None)),
             patch("app.main.acquire_guest_ai_slot", return_value=True),
             patch(
@@ -164,11 +164,49 @@ class GuestRateLimitTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"]["code"], "guest_sandbox_forbidden")
 
+    def test_guest_chat_returns_upstream_error_when_sandbox_ownership_check_fails(self) -> None:
+        with (
+            patch("app.main.get_settings", return_value=self.settings),
+            patch("app.main._resolve_actor_user", return_value=({"id": "guest-user-1", "is_anonymous": True}, None)),
+            patch(
+                "app.main._guest_sandbox_belongs_to_actor",
+                return_value=(False, True),
+                create=True,
+            ),
+        ):
+            response = self.client.post(
+                "/v1/chat/generate",
+                headers=self._guest_headers(),
+                json=self._chat_payload(),
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["error"]["code"], "guest_sandbox_verification_unavailable")
+
+    def test_guest_quiz_returns_upstream_error_when_sandbox_ownership_check_fails(self) -> None:
+        with (
+            patch("app.main.get_settings", return_value=self.settings),
+            patch("app.main._resolve_actor_user", return_value=({"id": "guest-user-1", "is_anonymous": True}, None)),
+            patch(
+                "app.main._guest_sandbox_belongs_to_actor",
+                return_value=(False, True),
+                create=True,
+            ),
+        ):
+            response = self.client.post(
+                "/v1/quiz/generate",
+                headers=self._guest_headers(),
+                json=self._quiz_payload(),
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["error"]["code"], "guest_sandbox_verification_unavailable")
+
     def test_guest_quiz_rejects_unowned_sandbox_id(self) -> None:
         with (
             patch("app.main.get_settings", return_value=self.settings),
             patch("app.main._resolve_actor_user", return_value=({"id": "guest-user-1", "is_anonymous": True}, None)),
-            patch("app.main._guest_sandbox_belongs_to_actor", return_value=False, create=True),
+            patch("app.main._guest_sandbox_belongs_to_actor", return_value=(False, False), create=True),
             patch("app.main.check_guest_ai_access", return_value=(True, None)),
             patch("app.main.acquire_guest_ai_slot", return_value=True),
             patch(
@@ -209,7 +247,7 @@ class GuestRateLimitTests(unittest.TestCase):
         with (
             patch("app.main.get_settings", return_value=self.settings),
             patch("app.main._resolve_actor_user", return_value=({"id": "guest-user-1", "is_anonymous": True}, None)),
-            patch("app.main._guest_sandbox_belongs_to_actor", return_value=True),
+            patch("app.main._guest_sandbox_belongs_to_actor", return_value=(True, False)),
             patch("app.main.check_guest_ai_access", return_value=(True, None)),
             patch("app.main.acquire_guest_ai_slot", return_value=True),
             patch("app.main.release_guest_ai_slot", side_effect=_release),

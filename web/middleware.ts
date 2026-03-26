@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    const { data: sandbox } = await supabase
+    const { data: sandbox, error: sandboxError } = await supabase
       .from("guest_sandboxes")
       .select("class_id,status,expires_at,last_seen_at")
       .eq("user_id", guestUser.id)
@@ -79,6 +79,10 @@ export async function middleware(request: NextRequest) {
         expires_at: string;
         last_seen_at: string;
       }>();
+
+    if (sandboxError) {
+      return NextResponse.redirect(new URL("/?error=guest-session-check-failed", request.url));
+    }
 
     const isExpired =
       !sandbox ||

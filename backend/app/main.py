@@ -239,11 +239,11 @@ async def _guest_sandbox_belongs_to_actor(
     settings: Settings,
     actor_user_id: str,
     sandbox_id: str,
-) -> bool:
+) -> tuple[bool, bool]:
     supabase_url = settings.supabase_url
     service_role_key = settings.supabase_service_role_key
     if not supabase_url or not service_role_key:
-        return False
+        return False, True
 
     sandbox_url = (
         f"{supabase_url.rstrip('/')}/rest/v1/guest_sandboxes"
@@ -259,13 +259,13 @@ async def _guest_sandbox_belongs_to_actor(
                 },
             )
     except httpx.HTTPError:
-        return False
+        return False, True
 
     if response.status_code >= 400:
-        return False
+        return False, True
 
     payload = response.json()
-    return isinstance(payload, list) and len(payload) > 0
+    return isinstance(payload, list) and len(payload) > 0, False
 
 
 def _bind_actor_user_id(
@@ -325,7 +325,20 @@ async def _enforce_guest_ai_guards(
             code="invalid_user_token",
         )
 
-    if not await _guest_sandbox_belongs_to_actor(settings, actor_user_id.strip(), sandbox_id):
+    ownership_matches, verification_unavailable = await _guest_sandbox_belongs_to_actor(
+        settings,
+        actor_user_id.strip(),
+        sandbox_id,
+    )
+    if verification_unavailable:
+        return None, _error_response(
+            request,
+            status_code=502,
+            message="Guest sandbox ownership could not be verified right now.",
+            code="guest_sandbox_verification_unavailable",
+        )
+
+    if not ownership_matches:
         return None, _error_response(
             request,
             status_code=403,

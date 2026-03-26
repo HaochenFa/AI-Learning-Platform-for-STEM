@@ -78,10 +78,10 @@ A dedicated migration inserts the canonical seed dataset into regular tables wit
 | Quiz generations | 5 |
 | Flashcard generations | 10 |
 | Blueprint regenerations | 3 |
-| Embedding operations | 0 (use pre-embedded seed) |
+| Embedding operations | 5 |
 
 Global safety:
-- Max 20 concurrent guest AI operations across all guests
+- Max 10 concurrent guest AI operations across all guests
 - IP-level: max 5 guest sessions per hour
 - Friendly limit-reached messages with signup CTA
 
