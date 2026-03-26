@@ -7,6 +7,7 @@ export type PythonChatGenerateRequest = {
   classId: string;
   userId: string;
   accessToken: string;
+  sandboxId?: string | null;
   classTitle: string;
   userMessage: string;
   transcript: ChatTurn[];
@@ -73,6 +74,7 @@ export async function generateChatViaPythonBackend(
         })),
         blueprint_context: input.blueprintContext,
         material_context: input.materialContext,
+        sandbox_id: input.sandboxId ?? null,
         compacted_memory_context: input.compactedMemoryContext ?? null,
         assignment_instructions: input.assignmentInstructions ?? null,
         purpose: input.purpose,

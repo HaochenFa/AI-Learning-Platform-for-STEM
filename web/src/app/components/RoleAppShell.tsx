@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Sidebar from "@/app/components/Sidebar";
+import GuestBanner from "@/components/guest/GuestBanner";
 import type { AccountType } from "@/lib/auth/session";
 
 type RoleAppShellProps = {
@@ -7,6 +8,8 @@ type RoleAppShellProps = {
   userEmail?: string;
   userDisplayName?: string | null;
   classId?: string;
+  isGuest?: boolean;
+  guestRole?: AccountType | null;
   children: ReactNode;
 };
 
@@ -15,6 +18,8 @@ export default function RoleAppShell({
   userEmail,
   userDisplayName,
   classId,
+  isGuest = false,
+  guestRole = null,
   children,
 }: RoleAppShellProps) {
   return (
@@ -24,8 +29,17 @@ export default function RoleAppShell({
         userEmail={userEmail}
         userDisplayName={userDisplayName}
         classId={classId}
+        isGuest={isGuest}
+        guestRole={guestRole}
       />
-      <div className="sidebar-content">{children}</div>
+      <div className="sidebar-content">
+        {isGuest && classId && guestRole ? (
+          <div className="mx-auto w-full max-w-6xl px-6 pt-6">
+            <GuestBanner guestRole={guestRole} classId={classId} />
+          </div>
+        ) : null}
+        {children}
+      </div>
     </div>
   );
 }

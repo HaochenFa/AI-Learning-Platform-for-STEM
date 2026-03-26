@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
 
 type SearchParams = {
   error?: string;
@@ -21,7 +21,7 @@ export default async function NewFlashcardsDraftPage({
 }) {
   const { classId } = await params;
   const resolvedSearchParams = await searchParams;
-  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+  const { supabase, user } = await requireGuestOrVerifiedUser({ accountType: "teacher" });
 
   const { data: classRow } = await supabase
     .from("classes")

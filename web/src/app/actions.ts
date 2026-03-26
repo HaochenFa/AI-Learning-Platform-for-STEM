@@ -1,7 +1,15 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/session";
 import { validatePasswordPolicy } from "@/lib/auth/password-policy";
+import { isGuestModeEnabled } from "@/lib/guest/config";
+import {
+  discardGuestSandbox,
+  provisionGuestSandbox,
+  resetGuestSandbox,
+  switchGuestRole,
+} from "@/lib/guest/sandbox";
 import { getAuthRedirectUrl } from "@/lib/site-url";
 import { redirect } from "next/navigation";
 
@@ -89,6 +97,12 @@ export async function signUp(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(passwordValidation.message)}`);
   }
 
+  const existingContext = await getAuthContext();
+  if (existingContext.isGuest && existingContext.sandboxId) {
+    await discardGuestSandbox(existingContext.sandboxId);
+    await existingContext.supabase.auth.signOut();
+  }
+
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signUp({
     email,
@@ -167,4 +181,56 @@ export async function signOut() {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+export async function startGuestSession(): Promise<{
+  ok: boolean;
+  redirectTo?: string;
+  error?: string;
+}> {
+  if (!isGuestModeEnabled()) {
+    return { ok: false, error: "Guest mode is not enabled." };
+  }
+
+  const result = await provisionGuestSandbox();
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  return {
+    ok: true,
+    redirectTo: `/classes/${result.classId}`,
+  };
+}
+
+export async function resetGuestSessionAction(): Promise<{
+  ok: boolean;
+  redirectTo?: string;
+  error?: string;
+}> {
+  const context = await getAuthContext();
+  if (!context.user || !context.isGuest) {
+    return { ok: false, error: "Guest session not found." };
+  }
+
+  const result = await resetGuestSandbox(context.user.id);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  return {
+    ok: true,
+    redirectTo: `/classes/${result.classId}`,
+  };
+}
+
+export async function switchGuestRoleAction(
+  nextRole: "teacher" | "student",
+): Promise<{ ok: boolean; error?: string }> {
+  const context = await getAuthContext();
+  if (!context.isGuest || !context.sandboxId) {
+    return { ok: false, error: "Guest session not found." };
+  }
+
+  return switchGuestRole(context.sandboxId, nextRole);
 }

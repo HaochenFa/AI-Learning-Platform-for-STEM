@@ -6,16 +6,26 @@ export async function requireAuthenticatedUser(options?: {
   accountType?: AccountType;
   requireVerifiedEmail?: boolean;
 }) {
-  const { supabase, user, accessToken, profile, isEmailVerified } = await getAuthContext();
+  const {
+    supabase,
+    user,
+    accessToken,
+    profile,
+    isEmailVerified,
+    isGuest,
+    sandboxId,
+    guestRole,
+    guestClassId,
+  } = await getAuthContext();
   const requiredRole = options?.accountType;
-  const profileAccountType = profile?.account_type;
+  const resolvedAccountType = isGuest ? guestRole : profile?.account_type;
   const authError = !user
     ? "Please sign in."
-    : options?.requireVerifiedEmail !== false && !isEmailVerified
+    : !isGuest && options?.requireVerifiedEmail !== false && !isEmailVerified
       ? "Please verify your email before continuing."
-      : !profileAccountType
+      : !resolvedAccountType
         ? "Account setup is incomplete. Please sign in again."
-        : requiredRole && profileAccountType !== requiredRole
+        : requiredRole && resolvedAccountType !== requiredRole
         ? `This action requires a ${requiredRole} account.`
         : null;
 
@@ -25,7 +35,49 @@ export async function requireAuthenticatedUser(options?: {
     accessToken,
     profile,
     isEmailVerified,
+    isGuest,
+    sandboxId,
+    guestRole,
+    guestClassId,
+    accountType: resolvedAccountType ?? null,
     authError,
+  };
+}
+
+export async function requireRealAccountOnly() {
+  const context = await getAuthContext();
+
+  if (!context.user) {
+    return {
+      ...context,
+      authError: "Please sign in.",
+    };
+  }
+
+  if (context.isGuest) {
+    return {
+      ...context,
+      authError: "Create an account to use this area.",
+    };
+  }
+
+  if (!context.isEmailVerified) {
+    return {
+      ...context,
+      authError: "Please verify your email before continuing.",
+    };
+  }
+
+  if (!context.profile?.account_type) {
+    return {
+      ...context,
+      authError: "Account setup is incomplete. Please sign in again.",
+    };
+  }
+
+  return {
+    ...context,
+    authError: null,
   };
 }
 

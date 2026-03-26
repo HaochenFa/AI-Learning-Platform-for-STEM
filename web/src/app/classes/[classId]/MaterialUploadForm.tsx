@@ -14,7 +14,7 @@ import { MAX_MATERIAL_BYTES } from "@/lib/materials/constants";
 type UploadMaterialMutationResult =
   | {
       ok: true;
-      uploadNotice: "processing" | "failed";
+      uploadNotice: "processing" | "failed" | "ready";
     }
   | {
       ok: false;

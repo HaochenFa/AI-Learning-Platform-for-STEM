@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import RoleAppShell from "@/app/components/RoleAppShell";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
+import { touchGuestSandbox } from "@/lib/guest/sandbox";
 
 export default async function ClassRouteLayout({
   children,
@@ -10,14 +11,20 @@ export default async function ClassRouteLayout({
   params: Promise<{ classId: string }>;
 }) {
   const { classId } = await params;
-  const { accountType, user, profile } = await requireVerifiedUser();
+  const context = await requireGuestOrVerifiedUser();
+
+  if (context.isGuest && context.sandboxId) {
+    await touchGuestSandbox(context.sandboxId);
+  }
 
   return (
     <RoleAppShell
-      accountType={accountType}
-      userEmail={user.email ?? undefined}
-      userDisplayName={profile.display_name}
+      accountType={context.accountType}
+      userEmail={context.user.email ?? undefined}
+      userDisplayName={context.profile.display_name}
       classId={classId}
+      isGuest={context.isGuest}
+      guestRole={context.guestRole}
     >
       {children}
     </RoleAppShell>

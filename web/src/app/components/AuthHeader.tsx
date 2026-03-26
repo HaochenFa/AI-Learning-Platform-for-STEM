@@ -26,6 +26,8 @@ export type AuthHeaderProps = {
   breadcrumbs?: HeaderBreadcrumb[];
   activeNav?: NavKey;
   accountType?: AccountType;
+  isGuest?: boolean;
+  guestRole?: AccountType | null;
   tone?: "default" | "subtle";
   classContext?: {
     classId: string;
@@ -71,10 +73,13 @@ export default function AuthHeader({
   breadcrumbs,
   activeNav,
   accountType,
+  isGuest = false,
+  guestRole = null,
   classContext,
   tone = "default",
 }: AuthHeaderProps) {
   const resolvedAccountType =
+    guestRole ??
     accountType ??
     (classContext
       ? classContext.isTeacher
@@ -114,11 +119,24 @@ export default function AuthHeader({
     return (
       <div className="sticky top-0 z-40 border-b border-default bg-[var(--surface-page)]/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6">
-          <h1 className="editorial-title truncate text-2xl text-ui-primary">{classTitle}</h1>
+          <div className="flex min-w-0 items-center gap-3">
+            <h1 className="editorial-title truncate text-2xl text-ui-primary">{classTitle}</h1>
+            {isGuest ? (
+              <Badge variant="secondary" className="capitalize">
+                Guest {resolvedAccountType}
+              </Badge>
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link href={classesHref}>My Classes</Link>
-            </Button>
+            {isGuest ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/register">Create account</Link>
+              </Button>
+            ) : (
+              <Button asChild variant="outline" size="sm">
+                <Link href={classesHref}>My Classes</Link>
+              </Button>
+            )}
             {classContext.isTeacher ? (
               <>
                 <Button asChild variant="outline" size="sm">
@@ -170,12 +188,18 @@ export default function AuthHeader({
               </Link>
             </Button>
           )}
-          <form action={signOut}>
-            <Button type="submit" variant="ghost" size="sm" className="hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--status-error-fg,#9f1239)]">
-              <AppIcons.logout className="h-4 w-4" />
-              Sign Out
+          {isGuest ? (
+            <Button asChild variant="warm" size="sm">
+              <Link href="/register">Create account</Link>
             </Button>
-          </form>
+          ) : (
+            <form action={signOut}>
+              <Button type="submit" variant="ghost" size="sm" className="hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--status-error-fg,#9f1239)]">
+                <AppIcons.logout className="h-4 w-4" />
+                Sign Out
+              </Button>
+            </form>
+          )}
         </div>
       </div>
       {breadcrumbs && breadcrumbs.length > 0 ? (
@@ -184,7 +208,7 @@ export default function AuthHeader({
             {renderBreadcrumbs(breadcrumbs)}
             {resolvedAccountType ? (
               <Badge variant="secondary" className="capitalize">
-                {resolvedAccountType}
+                {isGuest ? `Guest ${resolvedAccountType}` : resolvedAccountType}
               </Badge>
             ) : null}
           </div>

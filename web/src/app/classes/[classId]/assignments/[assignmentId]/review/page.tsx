@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChatTurn } from "@/lib/chat/types";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
 
 type SearchParams = {
   created?: string;
@@ -169,7 +169,7 @@ export default async function AssignmentReviewPage({
 }) {
   const { classId, assignmentId } = await params;
   const resolvedSearchParams = await searchParams;
-  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+  const { supabase, user } = await requireGuestOrVerifiedUser({ accountType: "teacher" });
 
   const { data: classRow } = await supabase
     .from("classes")

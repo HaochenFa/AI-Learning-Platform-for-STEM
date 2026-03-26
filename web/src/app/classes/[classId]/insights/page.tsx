@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import HeaderPageShell from "@/app/components/HeaderPageShell";
 import EmptyStateCard from "@/app/components/EmptyStateCard";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
 import { getClassInsights } from "@/lib/actions/insights";
 import InsightsHeader from "./InsightsHeader";
 import InsightsSummaryCards from "./InsightsSummaryCards";
@@ -20,7 +20,7 @@ export default async function ClassInsightsPage({
 }) {
   const { classId } = await params;
 
-  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+  const { supabase, user } = await requireGuestOrVerifiedUser({ accountType: "teacher" });
 
   // Verify teacher/TA access
   const { data: enrollment } = await supabase

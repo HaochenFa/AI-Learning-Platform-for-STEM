@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AppIcons } from "@/components/icons";
 import { startServerTimer } from "@/lib/perf";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
 import { getClassTeachingBrief } from "@/lib/actions/teaching-brief";
 import { cn } from "@/lib/utils";
 
@@ -110,7 +110,12 @@ export default async function ClassOverviewPage({
   const timer = startServerTimer("class-overview");
   const { classId } = await params;
   const resolvedSearchParams = await searchParams;
-  const { supabase, user } = await requireVerifiedUser();
+  const context = await requireGuestOrVerifiedUser();
+  const { supabase, user, isGuest, guestRole, guestClassId } = context;
+
+  if (isGuest && guestClassId && guestClassId !== classId) {
+    redirect(`/classes/${guestClassId}`);
+  }
 
   const [classResult, enrollmentResult] = await Promise.all([
     supabase
@@ -135,8 +140,8 @@ export default async function ClassOverviewPage({
   const isActualTeacher =
     classRow.owner_id === user.id || enrollment?.role === "teacher" || enrollment?.role === "ta";
 
-  const isStudentPreview = isActualTeacher && resolvedSearchParams?.as === "student";
-  const isTeacher = isActualTeacher && !isStudentPreview;
+  const isStudentPreview = !isGuest && isActualTeacher && resolvedSearchParams?.as === "student";
+  const isTeacher = isGuest ? guestRole === "teacher" : isActualTeacher && !isStudentPreview;
 
   const [publishedBlueprintResult, materialsResult] = await Promise.all([
     supabase
@@ -328,6 +333,8 @@ export default async function ClassOverviewPage({
   const uploadNotice =
     resolvedSearchParams?.uploaded === "processing"
       ? "Material uploaded. Processing will complete shortly."
+      : resolvedSearchParams?.uploaded === "ready"
+        ? "Material uploaded. It is ready to use in guest mode."
       : resolvedSearchParams?.uploaded === "failed"
         ? "Material uploaded, but extraction failed."
         : null;
@@ -376,6 +383,8 @@ export default async function ClassOverviewPage({
     <div className="min-h-screen surface-page text-ui-primary">
       <AuthHeader
         activeNav="dashboard"
+        isGuest={isGuest}
+        guestRole={guestRole}
         classContext={{ classId: classRow.id, isTeacher }}
         breadcrumbs={[{ label: "Dashboard", href: "/teacher/dashboard" }, { label: classRow.title }]}
       />

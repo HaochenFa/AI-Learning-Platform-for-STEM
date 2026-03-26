@@ -12,8 +12,13 @@ import {
   detectMaterialKind,
   sanitizeFilename,
 } from "@/lib/materials/extract-text";
+import {
+  assertGuestSafeSignedUrl,
+  buildGuestStoragePath,
+} from "@/lib/guest/storage";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { requireGuestOrVerifiedUser, requireVerifiedUser } from "@/lib/auth/session";
 
 function getFormValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -424,7 +429,7 @@ export async function joinClass(formData: FormData) {
 export type UploadMaterialMutationResult =
   | {
       ok: true;
-      uploadNotice: "processing" | "failed";
+      uploadNotice: "processing" | "failed" | "ready";
     }
   | {
       ok: false;
@@ -466,7 +471,9 @@ async function uploadMaterialMutationInternal(
     return { ok: false, error: "Unsupported MIME type" };
   }
 
-  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+  const { supabase, user, isGuest, sandboxId } = await requireGuestOrVerifiedUser({
+    accountType: "teacher",
+  });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
@@ -475,7 +482,10 @@ async function uploadMaterialMutationInternal(
 
   const materialId = crypto.randomUUID();
   const safeName = sanitizeFilename(file.name);
-  const storagePath = `classes/${classId}/${materialId}/${safeName}`;
+  const storagePath =
+    isGuest && sandboxId
+      ? buildGuestStoragePath(classId, sandboxId, safeName)
+      : `classes/${classId}/${materialId}/${safeName}`;
   const buffer = Buffer.from(await file.arrayBuffer());
   const baseMetadata = {
     original_name: file.name,
@@ -484,9 +494,10 @@ async function uploadMaterialMutationInternal(
     extraction_stats: null,
     page_count: null,
   };
-  const processingStatus = "processing";
+  const processingStatus = isGuest ? "ready" : "processing";
+  const storageClient = isGuest ? createAdminSupabaseClient().storage : supabase.storage;
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await storageClient
     .from(MATERIALS_BUCKET)
     .upload(storagePath, buffer, {
       contentType: file.type || "application/octet-stream",
@@ -515,7 +526,7 @@ async function uploadMaterialMutationInternal(
     .single();
 
   if (insertError || !materialRow) {
-    await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
+    await storageClient.from(MATERIALS_BUCKET).remove([storagePath]);
     return { ok: false, error: insertError?.message ?? "Failed to save material record." };
   }
 
@@ -541,13 +552,13 @@ async function uploadMaterialMutationInternal(
       jobFailed = true;
       if (shouldRollbackMaterialOnJobFailure) {
         await supabase.from("materials").delete().eq("id", materialRow.id);
-        await supabase.storage.from(MATERIALS_BUCKET).remove([storagePath]);
+        await storageClient.from(MATERIALS_BUCKET).remove([storagePath]);
       }
       return { ok: false, error: `Failed to queue material processing: ${jobError.message}` };
     }
   }
 
-  return { ok: true, uploadNotice: jobFailed ? "failed" : "processing" };
+  return { ok: true, uploadNotice: jobFailed ? "failed" : processingStatus };
 }
 
 export async function uploadMaterialMutation(classId: string, formData: FormData) {
@@ -572,7 +583,9 @@ export async function getMaterialSignedUrl(
   classId: string,
   materialId: string,
 ): Promise<MaterialSignedUrlResult> {
-  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+  const { supabase, user, isGuest, sandboxId } = await requireGuestOrVerifiedUser({
+    accountType: "teacher",
+  });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
@@ -590,7 +603,12 @@ export async function getMaterialSignedUrl(
     return { ok: false, error: "Material not found." };
   }
 
-  const { data, error: signedError } = await supabase.storage
+  if (isGuest && sandboxId) {
+    assertGuestSafeSignedUrl(material.storage_path, sandboxId);
+  }
+
+  const storageClient = isGuest ? createAdminSupabaseClient().storage : supabase.storage;
+  const { data, error: signedError } = await storageClient
     .from(MATERIALS_BUCKET)
     .createSignedUrl(material.storage_path, 300);
 
@@ -609,7 +627,9 @@ export async function deleteMaterial(
   classId: string,
   materialId: string,
 ): Promise<DeleteMaterialResult> {
-  const { supabase, user } = await requireVerifiedUser({ accountType: "teacher" });
+  const { supabase, user, isGuest, sandboxId } = await requireGuestOrVerifiedUser({
+    accountType: "teacher",
+  });
 
   const access = await requireTeacherAccess(classId, user.id, supabase);
   if (!access.allowed) {
@@ -633,7 +653,12 @@ export async function deleteMaterial(
 
   // Delete storage first — if this fails, the DB row is preserved and user can retry.
   // Reversing the order would leave orphaned storage objects invisible to the UI.
-  const { error: storageError } = await supabase.storage
+  if (isGuest && sandboxId) {
+    assertGuestSafeSignedUrl(material.storage_path, sandboxId);
+  }
+
+  const storageClient = isGuest ? createAdminSupabaseClient().storage : supabase.storage;
+  const { error: storageError } = await storageClient
     .from(MATERIALS_BUCKET)
     .remove([material.storage_path]);
 

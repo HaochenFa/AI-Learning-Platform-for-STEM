@@ -17,6 +17,8 @@ type HeroContentProps = {
   primaryLabel: string;
   secondaryHref: string;
   secondaryLabel: string;
+  guestHref?: string;
+  guestLabel?: string;
 };
 
 const WORKFLOW_STEPS = [
@@ -86,6 +88,8 @@ export default function HeroContent({
   primaryLabel,
   secondaryHref,
   secondaryLabel,
+  guestHref,
+  guestLabel,
 }: HeroContentProps) {
   return (
     <div className="space-y-10">
@@ -120,7 +124,7 @@ export default function HeroContent({
           </motion.p>
         </div>
 
-        <motion.div variants={STAGGER_ITEM} className="flex items-center gap-5">
+        <motion.div variants={STAGGER_ITEM} className="flex flex-wrap items-center gap-5">
           <Button asChild variant="warm" size="lg" className="ui-motion-lift">
             <Link href={primaryHref}>{primaryLabel}</Link>
           </Button>
@@ -130,6 +134,11 @@ export default function HeroContent({
           >
             {secondaryLabel} →
           </Link>
+          {guestHref && guestLabel ? (
+            <Link href={guestHref} className="text-sm ui-motion-color text-ui-subtle hover:text-accent">
+              {guestLabel} →
+            </Link>
+          ) : null}
         </motion.div>
       </motion.div>
 

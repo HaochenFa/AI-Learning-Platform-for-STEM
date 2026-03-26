@@ -9,6 +9,8 @@ export type PythonBlueprintGenerateRequest = {
   materialCount: number;
   materialText: string;
   timeoutMs: number;
+  accessToken?: string | null;
+  sandboxId?: string | null;
 };
 
 export type PythonBlueprintGenerateResult = {
@@ -38,6 +40,7 @@ export async function generateBlueprintViaPythonBackend(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(input.accessToken ? { Authorization: `Bearer ${input.accessToken}` } : {}),
         ...(apiKey ? { "x-api-key": apiKey } : {}),
       },
       body: JSON.stringify({
@@ -47,6 +50,7 @@ export async function generateBlueprintViaPythonBackend(
         material_count: input.materialCount,
         material_text: input.materialText,
         timeout_ms: input.timeoutMs,
+        sandbox_id: input.sandboxId ?? null,
       }),
     },
     input.timeoutMs,

@@ -74,12 +74,21 @@ type SidebarProps = {
   userEmail?: string;
   userDisplayName?: string | null;
   classId?: string;
+  isGuest?: boolean;
+  guestRole?: AccountType | null;
 };
 
 const COLLAPSED_KEY = "ui.sidebar.collapsed";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-export default function Sidebar({ accountType, userEmail, userDisplayName, classId }: SidebarProps) {
+export default function Sidebar({
+  accountType,
+  userEmail,
+  userDisplayName,
+  classId,
+  isGuest = false,
+  guestRole = null,
+}: SidebarProps) {
   const pathname = usePathname();
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
     if (typeof window === "undefined") {
@@ -145,7 +154,28 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const navItems = accountType === "teacher" ? teacherNavItems : studentNavItems;
+  const navItems = isGuest
+    ? [
+        {
+          label: "Guest Classroom",
+          href: classId ? `/classes/${classId}` : "/",
+          icon: "classes" as const,
+          match: (currentPathname: string) => currentPathname.startsWith("/classes/"),
+        },
+      ]
+    : accountType === "teacher"
+      ? teacherNavItems
+      : studentNavItems;
+  const displayName = isGuest ? "Guest Explorer" : userDisplayName || userEmail || "User";
+  const displayEmail = isGuest ? "Temporary session" : userDisplayName && userEmail ? userEmail : null;
+  const roleLabel = isGuest ? `Guest ${guestRole ?? accountType}` : accountType;
+  const homeHref = isGuest
+    ? classId
+      ? `/classes/${classId}`
+      : "/"
+    : accountType === "teacher"
+      ? "/teacher/dashboard"
+      : "/student/dashboard";
 
   const isActive = (item: NavItem) => {
     if (item.match) {
@@ -164,7 +194,7 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
       <div className={cn("flex h-16 items-center border-b border-default px-4", isCompact ? "justify-center" : "justify-between")}>
         {!isCompact && (
           <Link
-            href={accountType === "teacher" ? "/teacher/dashboard" : "/student/dashboard"}
+            href={homeHref}
             className="flex items-center gap-2"
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-white">
@@ -262,7 +292,7 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
             </Link>
           )}
 
-          {accountType === "teacher" && (
+          {(accountType === "teacher" || guestRole === "teacher") && (
             isCompact ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -302,17 +332,17 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
           <div className="flex items-center justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-muted)] text-sm font-medium text-ui-muted">
-                {userEmail?.charAt(0).toUpperCase() || "U"}
+                {displayName.charAt(0).toUpperCase() || "G"}
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-ui-primary">
-                  {userDisplayName || userEmail || "User"}
+                  {displayName}
                 </p>
-                {userDisplayName && userEmail ? (
-                  <p className="truncate text-xs font-medium text-ui-muted">{userEmail}</p>
+                {displayEmail ? (
+                  <p className="truncate text-xs font-medium text-ui-muted">{displayEmail}</p>
                 ) : null}
                 <p className="truncate text-xs text-ui-muted">
-                  {accountType === "teacher" ? "Teacher" : "Student"}
+                  <span className="capitalize">{roleLabel}</span>
                 </p>
               </div>
             </div>
@@ -320,24 +350,38 @@ export default function Sidebar({ accountType, userEmail, userDisplayName, class
         ) : (
           <div className="flex justify-center">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-muted)] text-sm font-medium text-ui-muted">
-              {userEmail?.charAt(0).toUpperCase() || "U"}
+              {displayName.charAt(0).toUpperCase() || "G"}
             </div>
           </div>
         )}
-        <form action={signOut} className={cn("mt-3", isCompact ? "flex justify-center" : "") }>
-          <Button
-            type="submit"
-            aria-label={isCompact ? "Sign out" : undefined}
-            variant="ghost"
+        {isGuest ? (
+          <Link
+            href="/register"
             className={cn(
-              "text-sm font-medium text-ui-muted hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--status-error-fg,#9f1239)]",
-              isCompact ? "h-10 w-10 rounded-xl px-0" : "justify-start gap-2 rounded-lg px-3 py-2",
+              "mt-3 inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-strong",
+              isCompact ? "w-10 rounded-xl px-0" : "gap-2",
             )}
+            aria-label={isCompact ? "Create account" : undefined}
           >
-            <AppIcons.logout className="h-4 w-4" />
-            {!isCompact && <span>Sign Out</span>}
-          </Button>
-        </form>
+            <AppIcons.add className="h-4 w-4" />
+            {!isCompact && <span>Create Account</span>}
+          </Link>
+        ) : (
+          <form action={signOut} className={cn("mt-3", isCompact ? "flex justify-center" : "") }>
+            <Button
+              type="submit"
+              aria-label={isCompact ? "Sign out" : undefined}
+              variant="ghost"
+              className={cn(
+                "text-sm font-medium text-ui-muted hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--status-error-fg,#9f1239)]",
+                isCompact ? "h-10 w-10 rounded-xl px-0" : "justify-start gap-2 rounded-lg px-3 py-2",
+              )}
+            >
+              <AppIcons.logout className="h-4 w-4" />
+              {!isCompact && <span>Sign Out</span>}
+            </Button>
+          </form>
+        )}
       </div>
       </motion.aside>
     </TooltipProvider>

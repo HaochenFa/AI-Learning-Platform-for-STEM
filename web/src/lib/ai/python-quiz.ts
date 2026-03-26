@@ -14,6 +14,8 @@ export type PythonQuizGenerateRequest = {
   blueprintContext: string;
   materialContext: string;
   timeoutMs?: number;
+  accessToken?: string | null;
+  sandboxId?: string | null;
 };
 
 export type PythonQuizGenerateResult = {
@@ -46,6 +48,7 @@ export async function generateQuizViaPythonBackend(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(input.accessToken ? { Authorization: `Bearer ${input.accessToken}` } : {}),
         ...(apiKey ? { "x-api-key": apiKey } : {}),
       },
       body: JSON.stringify({
@@ -55,6 +58,7 @@ export async function generateQuizViaPythonBackend(
         blueprint_context: input.blueprintContext,
         material_context: input.materialContext,
         timeout_ms: timeoutMs,
+        sandbox_id: input.sandboxId ?? null,
       }),
     },
     timeoutMs,

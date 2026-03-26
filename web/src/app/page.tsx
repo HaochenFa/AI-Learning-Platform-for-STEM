@@ -3,6 +3,7 @@ import AmbientBackground from "@/app/components/AmbientBackground";
 import BrandMark from "@/app/components/BrandMark";
 import HeroContent from "@/app/components/HeroContent";
 import { getAuthContext } from "@/lib/auth/session";
+import { isGuestModeEnabled } from "@/lib/guest/config";
 
 export default async function HomePage() {
   const { user, profile, isEmailVerified } = await getAuthContext();
@@ -26,6 +27,8 @@ export default async function HomePage() {
       : "Join a class";
   const secondaryHref = isAuthed ? dashboardHref : "/login";
   const secondaryLabel = isAuthed ? "Go to dashboard" : "Sign in";
+  const guestHref = !isAuthed && isGuestModeEnabled() ? "/guest/enter" : undefined;
+  const guestLabel = guestHref ? "Continue as guest" : undefined;
 
   return (
     <div className="surface-page relative min-h-screen overflow-hidden">
@@ -52,6 +55,8 @@ export default async function HomePage() {
             primaryLabel={primaryLabel}
             secondaryHref={secondaryHref}
             secondaryLabel={secondaryLabel}
+            guestHref={guestHref}
+            guestLabel={guestLabel}
           />
         </main>
       </div>
