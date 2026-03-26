@@ -69,14 +69,22 @@ describe("checkGuestRateLimit", () => {
     });
   });
 
-  it("always blocks guest embedding operations", async () => {
-    makeSupabase({});
+  it("allows guest embeddings when usage is below the limit", async () => {
+    makeSupabase({ embedding_operations_used: 2 });
 
     const result = await checkGuestRateLimit("sandbox-1", "embedding");
 
-    expect(result.allowed).toBe(false);
-    expect(result).toMatchObject({
-      message: expect.stringContaining("embedding operations"),
+    expect(result).toEqual({ allowed: true });
+  });
+
+  it("blocks guest embeddings when usage reaches the limit", async () => {
+    makeSupabase({ embedding_operations_used: 5 });
+
+    const result = await checkGuestRateLimit("sandbox-1", "embedding");
+
+    expect(result).toEqual({
+      allowed: false,
+      message: "You've used all 5 guest embedding operations. Create a free account to keep going.",
     });
   });
 });

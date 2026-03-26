@@ -24,8 +24,8 @@ const GUEST_LIMITS = {
     label: "blueprint regenerations",
   },
   embedding: {
-    column: null,
-    limit: 0,
+    column: "embedding_operations_used",
+    limit: 5,
     label: "embedding operations",
   },
 } as const;
@@ -44,13 +44,6 @@ export async function checkGuestRateLimit(
   feature: GuestFeature,
 ): Promise<RateLimitResult> {
   const config = GUEST_LIMITS[feature];
-
-  if (!config.column) {
-    return {
-      allowed: false,
-      message: `Guest mode does not support ${config.label}. Create a free account to continue.`,
-    };
-  }
 
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
@@ -79,7 +72,7 @@ export async function checkGuestRateLimit(
 
 export async function incrementGuestUsage(
   sandboxId: string,
-  feature: Exclude<GuestFeature, "embedding">,
+  feature: GuestFeature,
 ): Promise<void> {
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.rpc("increment_guest_ai_usage", {

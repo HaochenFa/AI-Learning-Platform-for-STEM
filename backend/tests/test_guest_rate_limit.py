@@ -75,7 +75,10 @@ class GuestRateLimitTests(unittest.TestCase):
             (False, "Guest blueprint limit reached."),
         )
 
-    def test_embedding_is_always_blocked_for_guest_mode(self) -> None:
+    def test_embedding_uses_guest_quota_limit(self) -> None:
+        self.assertEqual(check_guest_ai_access(self.settings, "sandbox-embed", "embedding"), (True, None))
+        for _ in range(5):
+            increment_guest_ai_usage("sandbox-embed", "embedding")
         self.assertEqual(
             check_guest_ai_access(self.settings, "sandbox-embed", "embedding"),
             (False, "Guest embedding limit reached."),
