@@ -14,6 +14,7 @@ import {
   Clock3,
   Download,
   Eye,
+  EyeOff,
   File,
   FileText,
   FolderOpen,
@@ -71,5 +72,6 @@ export const AppIcons = {
   moreActions: MoreHorizontal,
   download: Download,
   preview: Eye,
+  previewOff: EyeOff,
   trash: Trash2,
 } as const;

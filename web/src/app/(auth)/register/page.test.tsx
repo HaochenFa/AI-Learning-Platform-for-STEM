@@ -12,6 +12,7 @@ describe("RegisterPage", () => {
     expect(html).toContain("Student");
     expect(html).toContain("Email");
     expect(html).toContain("Password");
+    expect(html).toContain("Show password");
     expect(html).toContain("Create account");
   });
 

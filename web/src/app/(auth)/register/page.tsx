@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_POLICY_HINT,
@@ -85,10 +86,9 @@ export default async function RegisterPage({
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             required
             minLength={PASSWORD_MIN_LENGTH}
             pattern={PASSWORD_POLICY_PATTERN}

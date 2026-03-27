@@ -9,6 +9,7 @@ describe("LoginPage", () => {
     expect(html).toContain("Welcome back");
     expect(html).toContain("Email");
     expect(html).toContain("Password");
+    expect(html).toContain("Show password");
     expect(html).toContain("Sign in");
   });
 

@@ -3,8 +3,8 @@ import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import { completePasswordRecovery } from "@/app/actions";
 import { Alert } from "@/components/ui/alert";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_POLICY_HINT,
@@ -49,10 +49,9 @@ export default async function ResetPasswordPage({
       <form className="space-y-4" action={completePasswordRecovery}>
         <div className="space-y-2">
           <Label htmlFor="new_password">New password</Label>
-          <Input
+          <PasswordInput
             id="new_password"
             name="new_password"
-            type="password"
             required
             minLength={PASSWORD_MIN_LENGTH}
             pattern={PASSWORD_POLICY_PATTERN}
@@ -61,10 +60,9 @@ export default async function ResetPasswordPage({
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm_password">Confirm new password</Label>
-          <Input
+          <PasswordInput
             id="confirm_password"
             name="confirm_password"
-            type="password"
             required
             minLength={PASSWORD_MIN_LENGTH}
             pattern={PASSWORD_POLICY_PATTERN}
