@@ -63,7 +63,7 @@ export type TeachingBriefPayload = {
   }>;
   nextStep: string;
   recommendedActivity: {
-    type: "quiz" | "flashcards" | "chat" | "discussion";
+    type: string;
     reason: string;
   } | null;
   evidenceBasis: string;
@@ -78,6 +78,64 @@ export type TeachingBriefActionResult = {
   payload: TeachingBriefPayload | null;
   error: string | null;
 };
+
+type TeachingBriefAttentionItem =
+  | string
+  | {
+      topic?: string;
+      title?: string;
+      detail?: string;
+      description?: string;
+    };
+
+type TeachingBriefMisconception = {
+  topic_id?: string | null;
+  topic_title?: string;
+  topic?: string;
+  title?: string;
+  description?: string;
+};
+
+type TeachingBriefStudentToWatch = {
+  student_id?: string;
+  display_name?: string;
+  reason?: string;
+};
+
+type TeachingBriefRecommendedActivity = {
+  type?: string;
+  reason?: string;
+};
+
+function normalizeBriefText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeAttentionItem(item: TeachingBriefAttentionItem): string {
+  if (typeof item === "string") {
+    return normalizeBriefText(item);
+  }
+
+  const topic = normalizeBriefText(item.topic ?? item.title);
+  const detail = normalizeBriefText(item.detail ?? item.description);
+
+  if (topic && detail) return `${topic}: ${detail}`;
+  return topic || detail;
+}
+
+function normalizeRecommendedActivity(
+  activity: TeachingBriefRecommendedActivity | null | undefined,
+): TeachingBriefPayload["recommendedActivity"] {
+  const type = normalizeBriefText(activity?.type);
+  if (!type) {
+    return null;
+  }
+
+  return {
+    type,
+    reason: normalizeBriefText(activity?.reason),
+  };
+}
 
 type EnvelopeError = {
   message?: string;
@@ -185,22 +243,11 @@ export async function requestClassTeachingBrief(input: {
     payload?: {
       summary?: string;
       strongest_action?: string;
-      attention_items?: string[];
-      misconceptions?: Array<{
-        topic_id?: string | null;
-        topic_title?: string;
-        description?: string;
-      }>;
-      students_to_watch?: Array<{
-        student_id?: string;
-        display_name?: string;
-        reason?: string;
-      }>;
+      attention_items?: TeachingBriefAttentionItem[];
+      misconceptions?: TeachingBriefMisconception[];
+      students_to_watch?: TeachingBriefStudentToWatch[];
       next_step?: string;
-      recommended_activity?: {
-        type?: "quiz" | "flashcards" | "chat" | "discussion";
-        reason?: string;
-      } | null;
+      recommended_activity?: TeachingBriefRecommendedActivity | null;
       evidence_basis?: string;
     } | null;
     error_message?: string | null;
@@ -228,27 +275,24 @@ export async function requestClassTeachingBrief(input: {
     hasEvidence: payload.has_evidence,
     payload: payload.payload
       ? {
-          summary: payload.payload.summary ?? "",
-          strongestAction: payload.payload.strongest_action ?? "",
-          attentionItems: payload.payload.attention_items ?? [],
+          summary: normalizeBriefText(payload.payload.summary),
+          strongestAction: normalizeBriefText(payload.payload.strongest_action),
+          attentionItems: (payload.payload.attention_items ?? []).map(
+            normalizeAttentionItem,
+          ).filter((item): item is string => item.length > 0),
           misconceptions: (payload.payload.misconceptions ?? []).map((item) => ({
-            topicId: item.topic_id ?? null,
-            topicTitle: item.topic_title ?? "",
-            description: item.description ?? "",
-          })),
+            topicId: normalizeBriefText(item.topic_id) || null,
+            topicTitle: normalizeBriefText(item.topic_title ?? item.topic ?? item.title),
+            description: normalizeBriefText(item.description),
+          })).filter((item) => item.topicTitle.length > 0 || item.description.length > 0),
           studentsToWatch: (payload.payload.students_to_watch ?? []).map((student) => ({
-            studentId: student.student_id ?? "",
-            displayName: student.display_name ?? "",
-            reason: student.reason ?? "",
-          })),
-          nextStep: payload.payload.next_step ?? "",
-          recommendedActivity: payload.payload.recommended_activity?.type
-            ? {
-                type: payload.payload.recommended_activity.type,
-                reason: payload.payload.recommended_activity.reason ?? "",
-              }
-            : null,
-          evidenceBasis: payload.payload.evidence_basis ?? "",
+            studentId: normalizeBriefText(student.student_id),
+            displayName: normalizeBriefText(student.display_name) || normalizeBriefText(student.student_id) || "Unknown",
+            reason: normalizeBriefText(student.reason),
+          })).filter((student) => student.studentId.length > 0 || student.reason.length > 0),
+          nextStep: normalizeBriefText(payload.payload.next_step),
+          recommendedActivity: normalizeRecommendedActivity(payload.payload.recommended_activity),
+          evidenceBasis: normalizeBriefText(payload.payload.evidence_basis),
         }
       : null,
     error: payload.error_message ?? null,
