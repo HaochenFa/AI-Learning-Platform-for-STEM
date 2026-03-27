@@ -509,7 +509,57 @@ describe("resetGuestSandbox", () => {
 
     expect(result).toEqual({
       ok: false,
+      code: "guest-session-check-failed",
       error: "We couldn't verify your current guest session. Please try again.",
+      reason: "existing-session-check",
+    });
+  });
+
+  it("returns a typed provisioning failure when discarding the old sandbox fails", async () => {
+    let callCount = 0;
+    mockSupabase({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "guest_sandboxes") {
+          callCount += 1;
+          if (callCount === 1) {
+            return makeMutableBuilder({ data: { id: "sandbox-old" } });
+          }
+          return makeMutableBuilder({ data: null });
+        }
+        if (table === "materials") {
+          return makeMutableBuilder({
+            data: [{ storage_path: "classes/class-1/sandboxes/sandbox-old/material-1/file.pdf" }],
+          });
+        }
+        return makeMutableBuilder({ data: null });
+      }),
+    });
+
+    vi.mocked(createAdminSupabaseClient).mockReturnValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "materials") {
+          return makeMutableBuilder({
+            data: [{ storage_path: "classes/class-1/sandboxes/sandbox-old/material-1/file.pdf" }],
+          });
+        }
+        return makeMutableBuilder({ data: null });
+      }),
+      storage: {
+        from: vi.fn(() => ({
+          remove: vi.fn().mockResolvedValue({
+            error: { message: "cleanup failed" },
+          }),
+        })),
+      },
+    } as never);
+
+    const result = await resetGuestSandbox("anon-1");
+
+    expect(result).toEqual({
+      ok: false,
+      code: "guest-sandbox-provision-failed",
+      error: "cleanup failed",
+      reason: "discard-existing-sandbox",
     });
   });
 });

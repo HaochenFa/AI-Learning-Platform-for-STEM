@@ -351,14 +351,21 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
   if (existingSandboxError && !isMaybeSingleNoRowsError(existingSandboxError)) {
     return {
       ok: false,
+      code: "guest-session-check-failed",
       error: "We couldn't verify your current guest session. Please try again.",
+      reason: "existing-session-check",
     };
   }
 
   if (existingSandbox?.id) {
     const discarded = await discardGuestSandbox(existingSandbox.id);
     if (!discarded.ok) {
-      return { ok: false, error: discarded.error ?? "Failed to discard the old guest sandbox." };
+      return {
+        ok: false,
+        code: "guest-sandbox-provision-failed",
+        error: discarded.error ?? "Failed to discard the old guest sandbox.",
+        reason: "discard-existing-sandbox",
+      };
     }
   }
 
@@ -374,7 +381,9 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
   if (sandboxError) {
     return {
       ok: false,
+      code: "guest-sandbox-provision-failed",
       error: `Failed to create a fresh guest sandbox: ${sandboxError.message}`,
+      reason: "sandbox-insert",
     };
   }
 
@@ -387,7 +396,9 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
     await supabase.from("guest_sandboxes").update({ status: "discarded" }).eq("id", sandboxId);
     return {
       ok: false,
+      code: "guest-sandbox-provision-failed",
       error: cloneError?.message ?? "Failed to reset the guest classroom.",
+      reason: "sandbox-clone",
     };
   }
 
