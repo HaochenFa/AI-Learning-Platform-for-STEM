@@ -175,6 +175,7 @@ export async function requestClassTeachingBrief(input: {
   userId: string;
   forceRefresh: boolean;
   accessToken?: string | null;
+  sandboxId?: string | null;
 }): Promise<TeachingBriefActionResult> {
   const payload = await postToPythonBackend<{
     status: TeachingBriefStatus;
@@ -209,6 +210,7 @@ export async function requestClassTeachingBrief(input: {
     body: {
       user_id: input.userId,
       class_id: input.classId,
+      sandbox_id: input.sandboxId ?? null,
       force_refresh: input.forceRefresh,
     },
     headers: input.accessToken

@@ -13,6 +13,7 @@ import httpx
 
 from app.chat import generate_chat
 from app.config import Settings
+from app.guest_access import resolve_guest_class_access
 from app.providers import generate_embeddings_with_fallback
 from app.schemas import (
     ChatGenerateRequest,
@@ -104,7 +105,7 @@ def list_participants(settings: Settings, request: ChatWorkspaceParticipantsRequ
     _require_supabase_credentials(settings)
     with _client(settings) as client:
         access = _resolve_access(
-            client, settings, request.class_id, request.user_id)
+            client, settings, request.class_id, request.user_id, request.sandbox_id)
         if not access["is_member"]:
             raise ChatWorkspaceError(
                 "Class access required.", "class_access_required", 403)
@@ -169,7 +170,7 @@ def list_sessions(settings: Settings, request: ChatWorkspaceSessionsListRequest)
     _require_supabase_credentials(settings)
     with _client(settings) as client:
         access = _resolve_access(
-            client, settings, request.class_id, request.user_id)
+            client, settings, request.class_id, request.user_id, request.sandbox_id)
         if not access["is_member"]:
             raise ChatWorkspaceError(
                 "Class access required.", "class_access_required", 403)
@@ -181,6 +182,7 @@ def list_sessions(settings: Settings, request: ChatWorkspaceSessionsListRequest)
             current_user_id=request.user_id,
             requested_owner_user_id=request.owner_user_id,
             is_teacher=access["is_teacher"],
+            sandbox_id=request.sandbox_id,
         )
 
         sessions = _query_list(
@@ -204,7 +206,7 @@ def create_session(settings: Settings, request: ChatWorkspaceSessionCreateReques
     _require_supabase_credentials(settings)
     with _client(settings) as client:
         access = _resolve_access(
-            client, settings, request.class_id, request.user_id)
+            client, settings, request.class_id, request.user_id, request.sandbox_id)
         if not access["is_member"]:
             raise ChatWorkspaceError(
                 "Class access required.", "class_access_required", 403)
@@ -230,7 +232,7 @@ def rename_session(settings: Settings, request: ChatWorkspaceSessionRenameReques
     _require_supabase_credentials(settings)
     with _client(settings) as client:
         access = _resolve_access(
-            client, settings, request.class_id, request.user_id)
+            client, settings, request.class_id, request.user_id, request.sandbox_id)
         if not access["is_member"]:
             raise ChatWorkspaceError(
                 "Class access required.", "class_access_required", 403)
@@ -261,7 +263,7 @@ def archive_session(settings: Settings, request: ChatWorkspaceSessionArchiveRequ
     _require_supabase_credentials(settings)
     with _client(settings) as client:
         access = _resolve_access(
-            client, settings, request.class_id, request.user_id)
+            client, settings, request.class_id, request.user_id, request.sandbox_id)
         if not access["is_member"]:
             raise ChatWorkspaceError(
                 "Class access required.", "class_access_required", 403)
@@ -287,7 +289,7 @@ def list_messages(settings: Settings, request: ChatWorkspaceMessagesListRequest)
     _require_supabase_credentials(settings)
     with _client(settings) as client:
         access = _resolve_access(
-            client, settings, request.class_id, request.user_id)
+            client, settings, request.class_id, request.user_id, request.sandbox_id)
         if not access["is_member"]:
             raise ChatWorkspaceError(
                 "Class access required.", "class_access_required", 403)
@@ -299,6 +301,7 @@ def list_messages(settings: Settings, request: ChatWorkspaceMessagesListRequest)
             current_user_id=request.user_id,
             requested_owner_user_id=request.owner_user_id,
             is_teacher=access["is_teacher"],
+            sandbox_id=request.sandbox_id,
         )
 
         session = _query_maybe_single(
@@ -377,7 +380,7 @@ def send_message(settings: Settings, request: ChatWorkspaceMessageSendRequest) -
     _require_supabase_credentials(settings)
     with _client(settings) as client:
         access = _resolve_access(
-            client, settings, request.class_id, request.user_id)
+            client, settings, request.class_id, request.user_id, request.sandbox_id)
         if not access["is_member"]:
             raise ChatWorkspaceError(
                 "Class access required.", "class_access_required", 403)
@@ -654,12 +657,13 @@ def _resolve_access(
     settings: Settings,
     class_id: str,
     user_id: str,
+    sandbox_id: str | None = None,
 ) -> dict[str, Any]:
     class_row = _query_maybe_single(
         client,
         _rest_url(settings, "classes"),
         params={
-            "select": "id,owner_id,title",
+            "select": "id,owner_id,title,sandbox_id",
             "id": f"eq.{class_id}",
             "limit": "1",
         },
@@ -668,6 +672,23 @@ def _resolve_access(
     )
     if not class_row:
         return {"is_member": False, "is_teacher": False, "class_title": ""}
+
+    class_sandbox_id = class_row.get("sandbox_id")
+    if isinstance(class_sandbox_id, str) and class_sandbox_id.strip():
+        guest_access = resolve_guest_class_access(
+            client,
+            settings,
+            class_id=class_id,
+            user_id=user_id,
+            sandbox_id=sandbox_id,
+        )
+        if guest_access is None:
+            return {"is_member": False, "is_teacher": False, "class_title": class_row.get("title") or ""}
+        return {
+            "is_member": True,
+            "is_teacher": guest_access["is_teacher"],
+            "class_title": guest_access["class_title"],
+        }
 
     if class_row.get("owner_id") == user_id:
         return {
@@ -707,9 +728,13 @@ def _resolve_owner_user_id(
     current_user_id: str,
     requested_owner_user_id: str | None,
     is_teacher: bool,
+    sandbox_id: str | None = None,
 ) -> str:
     requested = (requested_owner_user_id or "").strip()
     if not requested or requested == current_user_id:
+        return current_user_id
+
+    if sandbox_id:
         return current_user_id
 
     if not is_teacher:

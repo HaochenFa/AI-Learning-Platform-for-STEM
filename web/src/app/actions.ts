@@ -6,7 +6,7 @@ import { validatePasswordPolicy } from "@/lib/auth/password-policy";
 import { isGuestModeEnabled } from "@/lib/guest/config";
 import {
   discardGuestSandbox,
-  provisionGuestSandbox,
+  provisionGuestSandboxWithOptions,
   resetGuestSandbox,
   switchGuestRole,
 } from "@/lib/guest/sandbox";
@@ -103,6 +103,30 @@ export async function signUp(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(existingContext.guestSessionError)}`);
   }
 
+  if (existingContext.isGuest && existingContext.sandboxId) {
+    const discarded = await discardGuestSandbox(existingContext.sandboxId);
+    if (!discarded.ok) {
+      redirect(
+        `/register?error=${encodeURIComponent(
+          discarded.error ?? "Unable to discard guest sandbox.",
+        )}`,
+      );
+    }
+
+    const signOutResult = await existingContext.supabase.auth.signOut();
+    if (signOutResult?.error) {
+      redirect(`/register?error=${encodeURIComponent(signOutResult.error.message)}`);
+    }
+
+    const redirectUrl = new URL("/register", "http://localhost");
+    redirectUrl.searchParams.set("guest", "ready");
+    if (email) {
+      redirectUrl.searchParams.set("email", email);
+    }
+    redirectUrl.searchParams.set("account_type", accountType);
+    redirect(redirectUrl.pathname + "?" + redirectUrl.searchParams.toString());
+  }
+
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signUp({
     email,
@@ -119,24 +143,6 @@ export async function signUp(formData: FormData) {
       : error.message;
 
     redirect(`/register?error=${encodeURIComponent(msg)}`);
-  }
-
-  if (existingContext.isGuest && existingContext.sandboxId) {
-    let cleanupError: string | null = null;
-
-    const discarded = await discardGuestSandbox(existingContext.sandboxId);
-    if (!discarded.ok) {
-      cleanupError = discarded.error ?? "Unable to discard guest sandbox";
-    }
-
-    const signOutResult = await existingContext.supabase.auth.signOut();
-    if (signOutResult?.error && !cleanupError) {
-      cleanupError = signOutResult.error.message;
-    }
-
-    if (cleanupError) {
-      redirect(`/login?verify=1&error=${encodeURIComponent(cleanupError)}`);
-    }
   }
 
   redirect("/login?verify=1");
@@ -201,7 +207,9 @@ export async function signOut() {
   redirect("/login");
 }
 
-export async function startGuestSession(): Promise<{
+export async function startGuestSession(input?: {
+  ipAddress?: string | null;
+}): Promise<{
   ok: boolean;
   redirectTo?: string;
   error?: string;
@@ -210,7 +218,9 @@ export async function startGuestSession(): Promise<{
     return { ok: false, error: "Guest mode is not enabled." };
   }
 
-  const result = await provisionGuestSandbox();
+  const result = await provisionGuestSandboxWithOptions({
+    ipAddress: input?.ipAddress ?? null,
+  });
   if (!result.ok) {
     return { ok: false, error: result.error };
   }

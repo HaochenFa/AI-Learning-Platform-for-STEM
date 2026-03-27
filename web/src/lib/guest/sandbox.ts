@@ -5,6 +5,7 @@ import {
   getGuestSessionExpiredMessage,
   isGuestSandboxExpired,
 } from "@/lib/guest/session-expiry";
+import { consumeGuestEntryRateLimit } from "@/lib/guest/entry-rate-limit";
 import { isGuestMutableStoragePath } from "@/lib/guest/storage";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -96,6 +97,12 @@ async function removeGuestSandboxStorageObjects(
 }
 
 export async function provisionGuestSandbox(): Promise<GuestSandboxResult> {
+  return provisionGuestSandboxWithOptions();
+}
+
+export async function provisionGuestSandboxWithOptions(options?: {
+  ipAddress?: string | null;
+}): Promise<GuestSandboxResult> {
   const supabase = await createServerSupabaseClient();
 
   const {
@@ -167,6 +174,25 @@ export async function provisionGuestSandbox(): Promise<GuestSandboxResult> {
         ok: true,
         classId,
         sandboxId: existingSandbox.id,
+      };
+    }
+  }
+
+  if (options?.ipAddress) {
+    let allowed: boolean;
+    try {
+      allowed = await consumeGuestEntryRateLimit(options.ipAddress);
+    } catch {
+      return {
+        ok: false,
+        error: "guest-unavailable",
+      };
+    }
+
+    if (!allowed) {
+      return {
+        ok: false,
+        error: "too-many-guest-sessions",
       };
     }
   }

@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
 import { startGuestSession } from "@/app/actions";
-import { consumeGuestEntryRateLimit, getGuestEntryIp } from "@/lib/guest/entry-rate-limit";
+import { getGuestEntryIp } from "@/lib/guest/entry-rate-limit";
 
 export async function GET(request: Request) {
-  try {
-    const ip = getGuestEntryIp(request);
-    const allowed = await consumeGuestEntryRateLimit(ip);
-    if (!allowed) {
-      return NextResponse.redirect(new URL("/?error=too-many-guest-sessions", request.url));
-    }
-  } catch {
-    return NextResponse.redirect(new URL("/?error=guest-unavailable", request.url));
+  const result = await startGuestSession({
+    ipAddress: getGuestEntryIp(request),
+  });
+  if (!result.ok) {
+    const error =
+      result.error === "too-many-guest-sessions" ? "too-many-guest-sessions" : "guest-unavailable";
+    return NextResponse.redirect(new URL(`/?error=${error}`, request.url));
   }
-
-  const result = await startGuestSession();
-  if (!result.ok || !result.redirectTo) {
+  if (!result.redirectTo) {
     return NextResponse.redirect(new URL("/?error=guest-unavailable", request.url));
   }
 

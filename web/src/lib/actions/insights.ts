@@ -64,9 +64,11 @@ export async function getClassInsights(
   forceRefresh = false,
 ): Promise<InsightsResult> {
   let userId: string;
+  let sandboxId: string | null = null;
   try {
     const auth = await requireGuestOrVerifiedUser({ accountType: "teacher" });
     userId = auth.user.id;
+    sandboxId = auth.sandboxId;
   } catch {
     redirect("/login");
   }
@@ -112,6 +114,7 @@ export async function getClassInsights(
         body: JSON.stringify({
           user_id: userId,
           class_id: classId,
+          sandbox_id: sandboxId,
           force_refresh: forceRefresh,
         }),
         signal: controller.signal,
@@ -158,10 +161,12 @@ export async function queryClassData(
 
   let userId: string;
   let accessToken: string | null = null;
+  let sandboxId: string | null = null;
   try {
     const auth = await requireGuestOrVerifiedUser({ accountType: "teacher" });
     userId = auth.user.id;
     accessToken = auth.accessToken;
+    sandboxId = auth.sandboxId;
   } catch {
     redirect("/login");
   }
@@ -212,6 +217,7 @@ export async function queryClassData(
         body: JSON.stringify({
           user_id: userId,
           class_id: classId,
+          sandbox_id: sandboxId,
           query: safeQuery,
         }),
         signal: controller.signal,

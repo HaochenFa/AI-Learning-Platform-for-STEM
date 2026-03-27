@@ -42,11 +42,13 @@ async function loadTeachingBrief(
 ): Promise<TeachingBriefActionResult> {
   let userId: string;
   let accessToken: string | null = null;
+  let sandboxId: string | null = null;
 
   try {
     const auth = await requireGuestOrVerifiedUser({ accountType: "teacher" });
     userId = auth.user.id;
     accessToken = auth.accessToken;
+    sandboxId = auth.sandboxId;
   } catch {
     redirect("/login");
   }
@@ -77,6 +79,7 @@ async function loadTeachingBrief(
       userId,
       forceRefresh,
       accessToken,
+      sandboxId,
     });
   } catch (error) {
     return invalidClassResult(

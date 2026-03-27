@@ -98,6 +98,7 @@ describe("workspace chat actions", () => {
       classId: "class-1",
       userId: "student-1",
       accessToken: "session-token",
+      sandboxId: null,
       ownerUserId: undefined,
     });
   });
@@ -141,6 +142,7 @@ describe("workspace chat actions", () => {
       classId: "class-1",
       userId: "student-1",
       accessToken: "session-token",
+      sandboxId: null,
       title: "  New chat  ",
     });
 
@@ -150,6 +152,7 @@ describe("workspace chat actions", () => {
       classId: "class-1",
       userId: "student-1",
       accessToken: "session-token",
+      sandboxId: null,
       sessionId: "session-python-1",
       title: "Renamed session",
     });
@@ -163,6 +166,7 @@ describe("workspace chat actions", () => {
       classId: "class-1",
       userId: "student-1",
       accessToken: "session-token",
+      sandboxId: null,
       sessionId: "session-python-1",
     });
   });
@@ -394,6 +398,7 @@ describe("workspace chat actions", () => {
       classId: "class-1",
       userId: "teacher-1",
       accessToken: "session-token",
+      sandboxId: null,
     });
   });
 

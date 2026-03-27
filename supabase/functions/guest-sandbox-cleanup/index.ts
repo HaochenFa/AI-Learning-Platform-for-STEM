@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 type CleanupCandidate = {
   id: string;
   user_id: string;
-  status: "expired" | "discarded";
+  status: "active" | "expired" | "discarded";
   created_at: string | null;
   expires_at: string | null;
   last_seen_at: string | null;
@@ -94,10 +94,18 @@ async function resolveBatchSize(req: Request) {
 }
 
 async function listCleanupCandidates(supabase: SupabaseClient, batchSize: number) {
+  const expiryCutoff = new Date().toISOString();
+  const inactivityCutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("guest_sandboxes")
     .select("id,user_id,status,created_at,expires_at,last_seen_at")
-    .in("status", ["expired", "discarded"])
+    .or(
+      [
+        "status.in.(expired,discarded)",
+        `and(status.eq.active,expires_at.lte.${expiryCutoff})`,
+        `and(status.eq.active,last_seen_at.lte.${inactivityCutoff})`,
+      ].join(","),
+    )
     .order("expires_at", { ascending: true, nullsFirst: true })
     .order("last_seen_at", { ascending: true })
     .order("created_at", { ascending: true })

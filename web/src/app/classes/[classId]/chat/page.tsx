@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireAuthenticatedUser } from "@/lib/activities/access";
 
 export default async function ClassChatCompatibilityPage({
   params,
@@ -7,13 +7,23 @@ export default async function ClassChatCompatibilityPage({
   params: Promise<{ classId: string }>;
 }) {
   const { classId } = await params;
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, authError, isGuest, guestRole, guestClassId } =
+    await requireAuthenticatedUser();
 
   if (!user) {
     redirect("/login");
+  }
+  if (authError) {
+    redirect(`/classes/${classId}?error=${encodeURIComponent(authError)}`);
+  }
+  if (isGuest && guestClassId && guestClassId !== classId) {
+    redirect(`/classes/${guestClassId}?view=chat`);
+  }
+  if (isGuest) {
+    if (guestRole === "teacher") {
+      redirect(`/classes/${classId}#teacher-chat-monitor`);
+    }
+    redirect(`/classes/${classId}?view=chat`);
   }
 
   const { data: classRow } = await supabase

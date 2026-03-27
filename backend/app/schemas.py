@@ -98,23 +98,27 @@ class ClassJoinResult(BaseModel):
 class ChatWorkspaceParticipantsRequest(BaseModel):
     class_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
+    sandbox_id: str | None = None
 
 
 class ChatWorkspaceSessionsListRequest(BaseModel):
     class_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
+    sandbox_id: str | None = None
     owner_user_id: str | None = None
 
 
 class ChatWorkspaceSessionCreateRequest(BaseModel):
     class_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
+    sandbox_id: str | None = None
     title: str | None = None
 
 
 class ChatWorkspaceSessionRenameRequest(BaseModel):
     class_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
+    sandbox_id: str | None = None
     session_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
 
@@ -122,12 +126,14 @@ class ChatWorkspaceSessionRenameRequest(BaseModel):
 class ChatWorkspaceSessionArchiveRequest(BaseModel):
     class_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
+    sandbox_id: str | None = None
     session_id: str = Field(min_length=1)
 
 
 class ChatWorkspaceMessagesListRequest(BaseModel):
     class_id: str = Field(min_length=1)
     user_id: str = Field(min_length=1)
+    sandbox_id: str | None = None
     session_id: str = Field(min_length=1)
     owner_user_id: str | None = None
     before_cursor: str | None = None
@@ -280,4 +286,5 @@ class CanvasResponse(BaseModel):
 class DataQueryRequest(BaseModel):
     user_id: str
     class_id: str
+    sandbox_id: str | None = None
     query: str = Field(min_length=1, max_length=500)

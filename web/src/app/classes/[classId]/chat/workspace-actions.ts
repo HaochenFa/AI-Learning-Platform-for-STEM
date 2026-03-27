@@ -105,6 +105,7 @@ export async function listClassChatParticipants(
       classId,
       userId: access.user.id,
       accessToken: access.accessToken ?? "",
+      sandboxId: access.sandboxId,
     });
     return { ok: true, data };
   } catch (error) {
@@ -124,6 +125,7 @@ export async function listClassChatSessions(
       classId,
       userId: access.user.id,
       accessToken: access.accessToken ?? "",
+      sandboxId: access.sandboxId,
       ownerUserId,
     });
     return { ok: true, data };
@@ -144,6 +146,7 @@ export async function createClassChatSession(
       classId,
       userId: access.user.id,
       accessToken: access.accessToken ?? "",
+      sandboxId: access.sandboxId,
       title,
     });
     return { ok: true, data };
@@ -171,6 +174,7 @@ export async function renameClassChatSession(
       classId,
       userId: access.user.id,
       accessToken: access.accessToken ?? "",
+      sandboxId: access.sandboxId,
       sessionId,
       title: normalizedTitle,
     });
@@ -192,6 +196,7 @@ export async function archiveClassChatSession(
       classId,
       userId: access.user.id,
       accessToken: access.accessToken ?? "",
+      sandboxId: access.sandboxId,
       sessionId,
     });
     return { ok: true, data };
@@ -224,6 +229,7 @@ export async function listClassChatMessages(
       classId,
       userId: access.user.id,
       accessToken: access.accessToken ?? "",
+      sandboxId: access.sandboxId,
       sessionId,
       ownerUserId,
       beforeCursor: options?.beforeCursor,

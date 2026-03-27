@@ -19,6 +19,7 @@ from app.classes import ClassDomainError, _require_supabase_credentials, _safe_j
 from app.config import Settings, get_settings
 from app.providers import generate_with_fallback
 from app.canvas import _strip_fence, CHART_SPEC_SCHEMA, validate_canvas_spec
+from app.guest_access import resolve_guest_class_access
 from app.schemas import ApiEnvelope, ApiError, DataQueryRequest, GenerateRequest
 
 logger = logging.getLogger(__name__)
@@ -78,12 +79,14 @@ Rules:
 class ClassInsightsRequest(BaseModel):
     user_id: str
     class_id: str
+    sandbox_id: str | None = None
     force_refresh: bool = False
 
 
 class ClassTeachingBriefRequest(BaseModel):
     user_id: str
     class_id: str
+    sandbox_id: str | None = None
     force_refresh: bool = False
 
 
@@ -167,9 +170,53 @@ def _upsert_snapshot(client: httpx.Client, settings: Settings, class_id: str, pa
         )
 
 
-def _check_teacher_enrollment(client: httpx.Client, settings: Settings, user_id: str, class_id: str) -> None:
-    """Raise ClassDomainError(403) if user_id is not teacher/TA of class_id."""
+def _check_teacher_access(
+    client: httpx.Client,
+    settings: Settings,
+    user_id: str,
+    class_id: str,
+    sandbox_id: str | None = None,
+) -> None:
+    """Raise ClassDomainError(403) if the actor cannot use teacher-only analytics for this class."""
+    guest_access = resolve_guest_class_access(
+        client,
+        settings,
+        class_id=class_id,
+        user_id=user_id,
+        sandbox_id=sandbox_id,
+    )
+    if guest_access is not None:
+        if guest_access["is_teacher"]:
+            return
+        raise ClassDomainError(
+            message="Only guest teachers can access class insights in guest mode.",
+            code="forbidden",
+            status_code=403,
+        )
+
     base_url = _supabase_base_url(settings)
+    class_url = (
+        f"{base_url}/rest/v1/classes"
+        f"?select=owner_id,sandbox_id&id=eq.{quote(class_id, safe='')}&limit=1"
+    )
+    class_response = client.get(class_url, headers=_service_headers(settings))
+    class_rows = _safe_json(class_response)
+    class_row = class_rows[0] if isinstance(class_rows, list) and class_rows else None
+    if not isinstance(class_row, dict):
+        raise ClassDomainError(
+            message="Class not found.",
+            code="class_not_found",
+            status_code=404,
+        )
+    if class_row.get("sandbox_id") is not None:
+        raise ClassDomainError(
+            message="Guest sandbox access could not be verified for this class.",
+            code="forbidden",
+            status_code=403,
+        )
+    if class_row.get("owner_id") == user_id:
+        return
+
     url = (
         f"{base_url}/rest/v1/enrollments"
         f"?select=role&class_id=eq.{quote(class_id, safe='')}&user_id=eq.{quote(user_id, safe='')}&limit=1"
@@ -979,7 +1026,13 @@ def get_class_teaching_brief(
     timeout_seconds = max(30, settings.ai_request_timeout_ms / 1000)
 
     with httpx.Client(timeout=timeout_seconds, trust_env=False) as client:
-        _check_teacher_enrollment(client, settings, request.user_id, request.class_id)
+        _check_teacher_access(
+            client,
+            settings,
+            request.user_id,
+            request.class_id,
+            request.sandbox_id,
+        )
 
         cached = _get_cached_teaching_brief_snapshot(client, settings, request.class_id)
 
@@ -1113,7 +1166,13 @@ def get_class_insights(settings: Settings, request: ClassInsightsRequest) -> dic
     timeout_seconds = max(30, settings.ai_request_timeout_ms / 1000)
 
     with httpx.Client(timeout=timeout_seconds, trust_env=False) as client:
-        _check_teacher_enrollment(client, settings, request.user_id, request.class_id)
+        _check_teacher_access(
+            client,
+            settings,
+            request.user_id,
+            request.class_id,
+            request.sandbox_id,
+        )
 
         if not request.force_refresh:
             cached = _get_cached_snapshot(client, settings, request.class_id)
@@ -1219,7 +1278,13 @@ def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> 
     base_url = _supabase_base_url(settings)
 
     with httpx.Client(timeout=timeout_seconds, trust_env=False) as client:
-        _check_teacher_enrollment(client, settings, request.user_id, request.class_id)
+        _check_teacher_access(
+            client,
+            settings,
+            request.user_id,
+            request.class_id,
+            request.sandbox_id,
+        )
 
         # Fetch topic performance data for this class
         blueprint_url = (

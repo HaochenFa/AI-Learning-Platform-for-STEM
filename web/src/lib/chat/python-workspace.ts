@@ -29,6 +29,7 @@ export async function listWorkspaceParticipantsViaPython(input: {
   classId: string;
   userId: string;
   accessToken: string;
+  sandboxId?: string | null;
 }) {
   const payload = await postWorkspace<{
     participants?: Array<{
@@ -38,6 +39,7 @@ export async function listWorkspaceParticipantsViaPython(input: {
   }>("/v1/chat/workspace/participants", {
     class_id: input.classId,
     user_id: input.userId,
+    sandbox_id: input.sandboxId ?? null,
   }, input.accessToken);
 
   const participants: ClassChatParticipant[] = (payload.participants ?? [])
@@ -54,6 +56,7 @@ export async function listWorkspaceSessionsViaPython(input: {
   classId: string;
   userId: string;
   accessToken: string;
+  sandboxId?: string | null;
   ownerUserId?: string;
 }) {
   const payload = await postWorkspace<{
@@ -61,6 +64,7 @@ export async function listWorkspaceSessionsViaPython(input: {
   }>("/v1/chat/workspace/sessions/list", {
     class_id: input.classId,
     user_id: input.userId,
+    sandbox_id: input.sandboxId ?? null,
     owner_user_id: input.ownerUserId ?? null,
   }, input.accessToken);
 
@@ -73,6 +77,7 @@ export async function createWorkspaceSessionViaPython(input: {
   classId: string;
   userId: string;
   accessToken: string;
+  sandboxId?: string | null;
   title?: string;
 }) {
   const payload = await postWorkspace<{
@@ -80,6 +85,7 @@ export async function createWorkspaceSessionViaPython(input: {
   }>("/v1/chat/workspace/sessions/create", {
     class_id: input.classId,
     user_id: input.userId,
+    sandbox_id: input.sandboxId ?? null,
     title: input.title ?? null,
   }, input.accessToken);
 
@@ -96,6 +102,7 @@ export async function renameWorkspaceSessionViaPython(input: {
   classId: string;
   userId: string;
   accessToken: string;
+  sandboxId?: string | null;
   sessionId: string;
   title: string;
 }) {
@@ -104,6 +111,7 @@ export async function renameWorkspaceSessionViaPython(input: {
   }>("/v1/chat/workspace/sessions/rename", {
     class_id: input.classId,
     user_id: input.userId,
+    sandbox_id: input.sandboxId ?? null,
     session_id: input.sessionId,
     title: input.title,
   }, input.accessToken);
@@ -121,6 +129,7 @@ export async function archiveWorkspaceSessionViaPython(input: {
   classId: string;
   userId: string;
   accessToken: string;
+  sandboxId?: string | null;
   sessionId: string;
 }) {
   const payload = await postWorkspace<{
@@ -128,6 +137,7 @@ export async function archiveWorkspaceSessionViaPython(input: {
   }>("/v1/chat/workspace/sessions/archive", {
     class_id: input.classId,
     user_id: input.userId,
+    sandbox_id: input.sandboxId ?? null,
     session_id: input.sessionId,
   }, input.accessToken);
 
@@ -144,6 +154,7 @@ export async function listWorkspaceMessagesViaPython(input: {
   classId: string;
   userId: string;
   accessToken: string;
+  sandboxId?: string | null;
   sessionId: string;
   ownerUserId?: string;
   beforeCursor?: string | null;
@@ -159,6 +170,7 @@ export async function listWorkspaceMessagesViaPython(input: {
   }>("/v1/chat/workspace/messages/list", {
     class_id: input.classId,
     user_id: input.userId,
+    sandbox_id: input.sandboxId ?? null,
     session_id: input.sessionId,
     owner_user_id: input.ownerUserId ?? null,
     before_cursor: input.beforeCursor ?? null,

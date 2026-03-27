@@ -1,6 +1,7 @@
 import { signUp } from "@/app/actions";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import AuthShell from "@/app/(auth)/AuthShell";
+import { Alert } from "@/components/ui/alert";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,10 @@ import {
 } from "@/lib/auth/password-policy";
 
 type SearchParams = {
+  account_type?: string;
+  email?: string;
   error?: string;
+  guest?: string;
 };
 
 export default async function RegisterPage({
@@ -23,6 +27,11 @@ export default async function RegisterPage({
   const resolvedSearchParams = await searchParams;
   const errorMessage =
     typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null;
+  const guestReady = resolvedSearchParams?.guest === "ready";
+  const defaultEmail =
+    typeof resolvedSearchParams?.email === "string" ? resolvedSearchParams.email : "";
+  const defaultAccountType =
+    resolvedSearchParams?.account_type === "student" ? "student" : "teacher";
 
   return (
     <AuthShell
@@ -37,6 +46,13 @@ export default async function RegisterPage({
         <TransientFeedbackAlert variant="error" message={errorMessage} className="mb-6" />
       ) : null}
 
+      {guestReady ? (
+        <Alert variant="success" className="mb-6">
+          Your guest classroom has been discarded. Finish creating your account to continue with a
+          fresh permanent workspace.
+        </Alert>
+      ) : null}
+
       <form className="space-y-4" action={signUp}>
         <div className="space-y-2">
           <span className="text-sm font-medium text-ui-muted">Account type</span>
@@ -46,7 +62,7 @@ export default async function RegisterPage({
                 type="radio"
                 name="account_type"
                 value="teacher"
-                defaultChecked
+                defaultChecked={defaultAccountType === "teacher"}
                 className="h-4 w-4 accent-[var(--accent-primary)]"
               />
               Teacher
@@ -56,6 +72,7 @@ export default async function RegisterPage({
                 type="radio"
                 name="account_type"
                 value="student"
+                defaultChecked={defaultAccountType === "student"}
                 className="h-4 w-4 accent-[var(--accent-primary)]"
               />
               Student
@@ -64,7 +81,7 @@ export default async function RegisterPage({
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" required />
+          <Input id="email" name="email" type="email" required defaultValue={defaultEmail} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>

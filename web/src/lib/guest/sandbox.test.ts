@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { consumeGuestEntryRateLimitMock } = vi.hoisted(() => ({
+  consumeGuestEntryRateLimitMock: vi.fn(),
+}));
+
 vi.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: vi.fn(),
 }));
@@ -8,11 +12,16 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: vi.fn(),
 }));
 
+vi.mock("@/lib/guest/entry-rate-limit", () => ({
+  consumeGuestEntryRateLimit: consumeGuestEntryRateLimitMock,
+}));
+
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   discardGuestSandbox,
   provisionGuestSandbox,
+  provisionGuestSandboxWithOptions,
   resetGuestSandbox,
   switchGuestRole,
   touchGuestSandbox,
@@ -102,6 +111,7 @@ function mockSupabase(overrides: Partial<Record<string, unknown>> = {}) {
 describe("provisionGuestSandbox", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    consumeGuestEntryRateLimitMock.mockResolvedValue(true);
   });
 
   it("creates an anonymous session and clones a guest sandbox", async () => {
@@ -163,6 +173,7 @@ describe("provisionGuestSandbox", () => {
       classId: "class-existing",
       sandboxId: "sandbox-existing",
     });
+    expect(consumeGuestEntryRateLimitMock).not.toHaveBeenCalled();
   });
 
   it("reuses an existing anonymous session instead of replacing it", async () => {
@@ -201,6 +212,17 @@ describe("provisionGuestSandbox", () => {
         p_guest_user_id: "anon-existing",
       }),
     );
+  });
+
+  it("consumes the hourly entry limit only when provisioning a new sandbox", async () => {
+    mockSupabase();
+
+    const result = await provisionGuestSandboxWithOptions({
+      ipAddress: "203.0.113.10",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(consumeGuestEntryRateLimitMock).toHaveBeenCalledWith("203.0.113.10");
   });
 
   it("does not reuse an expired anonymous sandbox", async () => {
