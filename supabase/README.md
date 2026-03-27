@@ -2,6 +2,16 @@
 
 This directory contains the schema migrations, local Supabase configuration, and Edge Functions that support the STEM Learning Platform. Supabase is not just the database layer for this project. It also provides auth, storage, queue-backed background processing, guest sandbox lifecycle data, and Edge Function runtime support.
 
+## Email Template Workflow
+
+- the confirmation email source of truth lives at `supabase/templates/confirmation.html`
+- local Supabase uses that template through `auth.email.template.confirmation` in `supabase/config.toml`
+- hosted Supabase still needs the same HTML pasted into Auth → Email Templates → Confirm signup
+- the confirmation button is intentionally wired to the app SSR route:
+  `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login`
+- the template depends on publicly served brand assets under `web/public/email/`
+- after changing the local template config, restart local Supabase so the auth service reloads it
+
 ## What Lives Here
 
 | Path | Purpose |
@@ -122,6 +132,7 @@ The hosted project should support the capabilities used by the migrations:
 - email/password auth only
 - email confirmation enabled
 - immutable account type in `profiles`
+- verification emails use a custom branded confirmation template and should resolve through the app's `/auth/confirm` route for SSR-safe verification
 
 ### Guest Users
 

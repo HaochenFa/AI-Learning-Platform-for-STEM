@@ -129,12 +129,13 @@ export async function signUp(formData: FormData) {
   }
 
   const supabase = await createServerSupabaseClient();
+  const authRedirectUrl = getAuthRedirectUrl();
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { account_type: accountType },
-      emailRedirectTo: getAuthRedirectUrl(),
+      emailRedirectTo: authRedirectUrl,
     },
   });
 
@@ -157,8 +158,9 @@ export async function requestPasswordReset(formData: FormData) {
   }
 
   const supabase = await createServerSupabaseClient();
+  const authRedirectUrl = getAuthRedirectUrl();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: getAuthRedirectUrl(),
+    redirectTo: authRedirectUrl,
   });
 
   if (error) {
