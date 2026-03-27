@@ -51,9 +51,9 @@ npx playwright test --config tests/playwright.config.ts
 
 ## 5. Results
 
-- Screenshots and traces are saved to `tests/results/` on failure
-- HTML report: `tests/results/playwright/html-report/`
-- Open report in browser: `npx playwright show-report tests/results/playwright/html-report`
+- Screenshots and traces are saved to `tests/results/test-artifacts/` on failure
+- HTML report: `tests/results/html-report/`
+- Open report in browser: `npx playwright show-report tests/results/html-report`
 
 ## 6. Troubleshooting
 

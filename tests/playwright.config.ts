@@ -3,10 +3,10 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   // Paths are relative to this config file (i.e. tests/)
   testDir: './e2e',
-  outputDir: './results/playwright',
+  outputDir: './results/test-artifacts',
   reporter: [
     ['list'],
-    ['html', { outputFolder: './results/playwright/html-report', open: 'never' }],
+    ['html', { outputFolder: './results/html-report', open: 'never' }],
   ],
 
   use: {
