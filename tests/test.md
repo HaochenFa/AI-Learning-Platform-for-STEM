@@ -10,6 +10,15 @@
 
 Test config: `tests/config.ts`
 
+**Quick setup:** Copy the example env file and fill in your credentials:
+
+```sh
+cp tests/.env.example tests/.env
+# Edit tests/.env with your values
+```
+
+The `.env` file is auto-loaded by the Playwright config. It is gitignored.
+
 Required environment variables:
 
 | Variable | Description |
