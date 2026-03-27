@@ -53,7 +53,6 @@ supabase/.temp/
 # Claude Code
 .claude/
 .superpowers/
-docs/superpowers/
 
 # Codex
 .codex/
