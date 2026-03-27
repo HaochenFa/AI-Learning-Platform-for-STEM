@@ -48,7 +48,7 @@ export default function StudentEngagementScatter({ students }: Props) {
           X = completion rate · Y = score · bubble size = chat messages
         </p>
         <ResponsiveContainer width="100%" height={220}>
-          <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+          <ScatterChart margin={{ top: 16, right: 32, bottom: 8, left: 8 }}>
             <XAxis
               type="number"
               dataKey="x"

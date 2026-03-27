@@ -67,7 +67,7 @@ export default function GuestBanner({ guestRole, classId }: GuestBannerProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-nowrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" onClick={handleSwitchRole} disabled={isSwitching || isResetting}>
             Switch to {otherRole}
           </Button>

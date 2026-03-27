@@ -60,7 +60,7 @@ export default function StudentOverviewTable({ students }: Props) {
         <CardHeader>
           <CardTitle>Students</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="px-2 pb-2 pt-0">
           <Table>
             <TableHeader>
               <TableRow>

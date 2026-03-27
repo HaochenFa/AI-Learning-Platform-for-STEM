@@ -221,8 +221,8 @@ export function AdaptiveTeachingBriefWidget({
                     Recommended follow-up activity
                   </p>
                   {liveState.payload.recommendedActivity ? (
-                    <div className="flex items-center gap-2 text-sm text-ui-primary">
-                      <Badge variant="secondary">{liveState.payload.recommendedActivity.type}</Badge>
+                    <div className="flex items-start gap-3 text-sm text-ui-primary">
+                      <Badge variant="secondary" className="whitespace-nowrap">{liveState.payload.recommendedActivity.type}</Badge>
                       <span>{liveState.payload.recommendedActivity.reason}</span>
                     </div>
                   ) : (
