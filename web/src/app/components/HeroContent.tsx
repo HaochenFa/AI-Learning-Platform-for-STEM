@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { AppIcons } from "@/components/icons";
+import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { type GuestLandingFeedback } from "@/lib/guest/errors";
 import {
   FADE_UP_VARIANTS,
   STAGGER_CONTAINER,
@@ -19,6 +21,7 @@ type HeroContentProps = {
   secondaryLabel: string;
   guestHref?: string;
   guestLabel?: string;
+  guestFeedback?: GuestLandingFeedback | null;
 };
 
 const WORKFLOW_STEPS = [
@@ -90,6 +93,7 @@ export default function HeroContent({
   secondaryLabel,
   guestHref,
   guestLabel,
+  guestFeedback,
 }: HeroContentProps) {
   return (
     <div className="space-y-10">
@@ -123,6 +127,18 @@ export default function HeroContent({
             grounded in what your learners are actually studying.
           </motion.p>
         </div>
+
+        {guestFeedback ? (
+          <motion.div variants={STAGGER_ITEM} className="max-w-[40rem]">
+            <TransientFeedbackAlert
+              variant={guestFeedback.variant}
+              title={guestFeedback.title}
+              message={guestFeedback.message}
+              className="border shadow-sm"
+              dismissOnRetry={false}
+            />
+          </motion.div>
+        ) : null}
 
         <motion.div variants={STAGGER_ITEM} className="flex flex-wrap items-center gap-5">
           <Button asChild variant="warm" size="lg" className="ui-motion-lift">

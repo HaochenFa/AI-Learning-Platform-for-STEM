@@ -6,6 +6,7 @@ import {
   isGuestSandboxExpired,
 } from "@/lib/guest/session-expiry";
 import { consumeGuestEntryRateLimit } from "@/lib/guest/entry-rate-limit";
+import { type GuestProvisionFailureCode } from "@/lib/guest/errors";
 import { isGuestMutableStoragePath } from "@/lib/guest/storage";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -18,7 +19,9 @@ export type GuestSandboxResult =
     }
   | {
       ok: false;
+      code: GuestProvisionFailureCode;
       error: string;
+      reason?: string;
     };
 
 type ActiveSandboxRow = {
@@ -124,7 +127,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
     if (existingSandboxError && !isMaybeSingleNoRowsError(existingSandboxError)) {
       return {
         ok: false,
+        code: "guest-session-check-failed",
         error: "We couldn't verify your current guest session. Please try again.",
+        reason: "existing-session-check",
       };
     }
 
@@ -134,7 +139,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
       if (!existingUserIsAnonymous) {
         return {
           ok: false,
+          code: "guest-session-conflict",
           error: getGuestSessionExpiredMessage(),
+          reason: "expired-non-anonymous-session",
         };
       }
 
@@ -153,7 +160,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
     if (!existingUserIsAnonymous) {
       return {
         ok: false,
+        code: "guest-session-conflict",
         error: "Please sign out before starting a guest session.",
+        reason: "existing-authenticated-session",
       };
     }
 
@@ -166,7 +175,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
       if (cloneError || typeof classId !== "string" || !classId) {
         return {
           ok: false,
+          code: "guest-sandbox-provision-failed",
           error: cloneError?.message ?? "Failed to provision the guest classroom.",
+          reason: "existing-anonymous-clone",
         };
       }
 
@@ -185,14 +196,18 @@ export async function provisionGuestSandboxWithOptions(options?: {
     } catch {
       return {
         ok: false,
+        code: "guest-unavailable",
         error: "guest-unavailable",
+        reason: "entry-rate-limit-check",
       };
     }
 
     if (!allowed) {
       return {
         ok: false,
+        code: "too-many-guest-sessions",
         error: "too-many-guest-sessions",
+        reason: "entry-rate-limit-exceeded",
       };
     }
   }
@@ -202,7 +217,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
     if (authError || !authData.user) {
       return {
         ok: false,
+        code: "guest-auth-unavailable",
         error: authError?.message ?? "Failed to create an anonymous guest session.",
+        reason: "anonymous-auth",
       };
     }
 
@@ -213,7 +230,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
   if (!guestUserId) {
     return {
       ok: false,
+      code: "guest-auth-unavailable",
       error: "Failed to create an anonymous guest session.",
+      reason: "anonymous-auth-missing-user",
     };
   }
 
@@ -232,7 +251,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
     }
     return {
       ok: false,
+      code: "guest-sandbox-provision-failed",
       error: `Failed to create a guest sandbox: ${sandboxError.message}`,
+      reason: "sandbox-insert",
     };
   }
 
@@ -248,7 +269,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
     }
     return {
       ok: false,
+      code: "guest-sandbox-provision-failed",
       error: cloneError?.message ?? "Failed to provision the guest classroom.",
+      reason: "sandbox-clone",
     };
   }
 

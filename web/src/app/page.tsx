@@ -4,13 +4,28 @@ import BrandMark from "@/app/components/BrandMark";
 import HeroContent from "@/app/components/HeroContent";
 import { getAuthContext } from "@/lib/auth/session";
 import { isGuestModeEnabled } from "@/lib/guest/config";
+import { getGuestLandingFeedback } from "@/lib/guest/errors";
 
-export default async function HomePage() {
+type SearchParams = {
+  error?: string;
+  guest?: string;
+};
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
+  const resolvedSearchParams = await searchParams;
   const { user, profile, isEmailVerified } = await getAuthContext();
   const accountType = profile?.account_type;
   const isAuthed = Boolean(
     user && isEmailVerified && (accountType === "teacher" || accountType === "student"),
   );
+  const guestFeedback = getGuestLandingFeedback({
+    error: typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null,
+    guest: typeof resolvedSearchParams?.guest === "string" ? resolvedSearchParams.guest : null,
+  });
 
   const dashboardHref =
     accountType === "teacher"
@@ -57,6 +72,7 @@ export default async function HomePage() {
             secondaryLabel={secondaryLabel}
             guestHref={guestHref}
             guestLabel={guestLabel}
+            guestFeedback={guestFeedback}
           />
         </main>
       </div>

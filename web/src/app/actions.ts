@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/auth/session";
 import { validatePasswordPolicy } from "@/lib/auth/password-policy";
 import { isGuestModeEnabled } from "@/lib/guest/config";
+import { type GuestProvisionFailureCode } from "@/lib/guest/errors";
 import {
   discardGuestSandbox,
   provisionGuestSandboxWithOptions,
@@ -212,17 +213,40 @@ export async function startGuestSession(input?: {
 }): Promise<{
   ok: boolean;
   redirectTo?: string;
+  code?: GuestProvisionFailureCode;
   error?: string;
 }> {
   if (!isGuestModeEnabled()) {
-    return { ok: false, error: "Guest mode is not enabled." };
+    return {
+      ok: false,
+      code: "guest-unavailable",
+      error: "Guest mode is not enabled.",
+    };
   }
 
   const result = await provisionGuestSandboxWithOptions({
     ipAddress: input?.ipAddress ?? null,
   });
   if (!result.ok) {
-    return { ok: false, error: result.error };
+    const env =
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV ??
+      "unknown";
+    const payload = {
+      code: result.code,
+      reason: result.reason ?? "unspecified",
+      message: result.error,
+      env,
+      hasIpAddress: Boolean(input?.ipAddress),
+    };
+
+    if (result.code === "too-many-guest-sessions") {
+      console.warn("Guest session start blocked by rate limit", payload);
+    } else {
+      console.error("Guest session start failed", payload);
+    }
+
+    return { ok: false, code: result.code, error: result.error };
   }
 
   return {

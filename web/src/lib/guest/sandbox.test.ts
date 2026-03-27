@@ -306,7 +306,9 @@ describe("provisionGuestSandbox", () => {
     expect(supabase.auth.signInAnonymously).not.toHaveBeenCalled();
     expect(result).toEqual({
       ok: false,
+      code: "guest-session-conflict",
       error: "Please sign out before starting a guest session.",
+      reason: "existing-authenticated-session",
     });
   });
 
@@ -328,7 +330,9 @@ describe("provisionGuestSandbox", () => {
 
     expect(result).toEqual({
       ok: false,
+      code: "guest-auth-unavailable",
       error: "Anonymous auth disabled",
+      reason: "anonymous-auth",
     });
   });
 
@@ -368,7 +372,43 @@ describe("provisionGuestSandbox", () => {
 
     expect(result).toEqual({
       ok: false,
+      code: "guest-session-check-failed",
       error: "We couldn't verify your current guest session. Please try again.",
+      reason: "existing-session-check",
+    });
+  });
+
+  it("returns a typed rate-limit failure when entry quota cannot be checked", async () => {
+    mockSupabase();
+    consumeGuestEntryRateLimitMock.mockRejectedValueOnce(new Error("quota unavailable"));
+
+    const result = await provisionGuestSandboxWithOptions({
+      ipAddress: "203.0.113.10",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      code: "guest-unavailable",
+      error: "guest-unavailable",
+      reason: "entry-rate-limit-check",
+    });
+  });
+
+  it("returns a typed sandbox provisioning failure when cloning fails", async () => {
+    mockSupabase({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: "clone failed" },
+      }),
+    });
+
+    const result = await provisionGuestSandbox();
+
+    expect(result).toEqual({
+      ok: false,
+      code: "guest-sandbox-provision-failed",
+      error: "clone failed",
+      reason: "sandbox-clone",
     });
   });
 });

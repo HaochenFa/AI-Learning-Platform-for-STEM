@@ -57,6 +57,7 @@ describe("GET /guest/enter", () => {
   it("blocks when the hourly IP limit is exceeded", async () => {
     startGuestSessionMock.mockResolvedValue({
       ok: false,
+      code: "too-many-guest-sessions",
       error: "too-many-guest-sessions",
     });
     const { GET } = await loadRoute();
@@ -74,7 +75,8 @@ describe("GET /guest/enter", () => {
   it("redirects to guest unavailable when provisioning returns a non-rate-limit error", async () => {
     startGuestSessionMock.mockResolvedValue({
       ok: false,
-      error: "guest-unavailable",
+      code: "guest-auth-unavailable",
+      error: "Anonymous auth disabled",
     });
     const { GET } = await loadRoute();
 
@@ -89,6 +91,7 @@ describe("GET /guest/enter", () => {
   it("redirects to guest unavailable when sandbox provisioning fails", async () => {
     startGuestSessionMock.mockResolvedValue({
       ok: false,
+      code: "guest-sandbox-provision-failed",
       error: "Guest mode is unavailable.",
     });
     const { GET } = await loadRoute();
@@ -96,5 +99,20 @@ describe("GET /guest/enter", () => {
     const response = await GET(makeRequest("203.0.113.13"));
 
     expect(response.headers.get("location")).toBe("https://example.com/?error=guest-unavailable");
+  });
+
+  it("redirects to guest session check failed when verification cannot complete", async () => {
+    startGuestSessionMock.mockResolvedValue({
+      ok: false,
+      code: "guest-session-check-failed",
+      error: "We couldn't verify your guest session right now. Please try again.",
+    });
+    const { GET } = await loadRoute();
+
+    const response = await GET(makeRequest("203.0.113.14"));
+
+    expect(response.headers.get("location")).toBe(
+      "https://example.com/?error=guest-session-check-failed",
+    );
   });
 });
