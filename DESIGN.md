@@ -1,206 +1,358 @@
 # DESIGN
 
-**Vision**
-Build a production ready STEM learning platform where teachers transform class materials into a structured Course Blueprint that powers student centered activities such as AI chat, quizzes, flashcards, homework assistance, and exam review.
+This document describes the current product and technical design of the STEM Learning Platform with GenAI. It focuses on implemented behavior in the repository today and separates durable architecture from optional future-facing ideas.
 
-**Target Users**
+## Product Goals
 
-- Teachers: create and curate course content, assign activities, review outcomes.
-- Students: learn through guided tools grounded in class materials.
-- Admin: optional. Can be merged into teacher for simplicity.
-- Identity model: each account has one immutable global account type (`teacher` or `student`).
-  Users who need both personas must use separate accounts.
+- Turn raw teaching materials into a structured Course Blueprint that becomes the source of truth for downstream learning experiences.
+- Keep teachers in control of AI output through editable, auditable generation and publishing workflows.
+- Give students a classroom workspace that feels focused, guided, and grounded in what their class is actually studying.
+- Support grading, demonstration, and evaluation through guest-safe sandboxing, strong access control, and reviewable AI behavior.
 
-**Key Product Ideas**
+## Non-Goals
 
-- Subject agnostic by design. All features derive from uploaded materials.
-- Course Blueprint is the source of truth for all activity generation.
-- Teacher control is explicit. AI outputs are editable and auditable.
+- A general-purpose consumer chatbot unrelated to classroom context.
+- A multi-role admin console. The current permanent role model is teacher or student.
+- Direct provider calls from the web app. AI orchestration belongs to the Python backend.
+- A read-only demo mode. Guest mode is intentionally interactive and sandboxed instead.
 
-**Primary Flows**
-Teacher Flow
+## Personas And Access Modes
 
-- Create class and configure settings.
-- Upload materials and generate blueprint.
-- Edit draft, approve for overview, and publish blueprint.
-- Generate and assign activities.
-- Review submissions and AI feedback.
+### Teacher
 
-Student Flow
+- Creates and manages classes.
+- Uploads materials and curates the Course Blueprint.
+- Generates and assigns activities.
+- Reviews submissions and class-level insights.
 
-- Join class and view assigned activities.
-- Use AI chat grounded in blueprint.
-- Complete quizzes and flashcards.
-- Request scaffolded homework help.
-- View exam review plan and submit reflections.
+### Student
 
-**Navigation Information Architecture**
+- Joins classes through join codes.
+- Learns through chat, quizzes, flashcards, and published blueprint content.
+- Tracks assignment state and receives teacher feedback.
 
-- Dashboard and My Classes are separate destinations for both roles:
-  - Teacher: `/teacher/dashboard` and `/teacher/classes`
-  - Student: `/student/dashboard` and `/student/classes`
-- Sidebar active state is route based (pathname), not URL hash based.
-- Class experiences under `/classes/[classId]/**` use the same sidebar shell to avoid switching to a different top-banner navigation pattern mid-flow.
-- Legacy `#classes` dashboard anchors are treated as compatibility redirects to the dedicated My Classes routes.
+### Guest
 
-**AI Chat (Always-On + Assignments)**
+- Enters through Supabase Anonymous Auth.
+- Receives a temporary cloned sandbox classroom.
+- Can switch between teacher and student demo perspectives.
+- Has quota and lifetime restrictions, and cannot carry sandbox work directly into a permanent account.
 
-- Always-On Class Chat:
-  - Available to class members when a published blueprint exists.
-  - Persistent multi-session chat history per user/class.
-  - Student class experience is chat-first when activated (large conversation pane + sidebar tools).
-  - Teachers retain class-overview-first UX with a read-only student chat monitor panel.
-- Chat Assignment Flow (still supported for grading):
-  - Teacher creates a chat activity + assignment (whole class targeting).
-  - Student completes assignment chat and submits transcript + reflection.
-  - Teacher reviews submission, records manual score, and adds feedback highlights/comments.
-- Context policy: chat responses are grounded in published blueprint + retrieved material chunks.
-- Long-session context engineering:
-  - The API composes context from recent raw turns plus persisted compacted memory for older turns.
-  - Compaction is triggered when conversation length or estimated token pressure approaches the context budget.
-  - Compaction memory is stored per chat session as structured JSON + condensed text for prompt continuity.
-  - If compacted memory conflicts with recent transcript turns, recent raw turns take priority.
-- Message retrieval policy:
-  - Chat history queries fetch latest messages first and return chronological pages to the UI.
-  - History pagination loads older pages on demand, preventing loss of recent messages in long sessions.
-- Chat model responses are normalized to deterministic JSON and logged in `ai_requests`.
+## Information Architecture And Navigation
 
-**Quiz Vertical Slice (Implemented)**
+The platform is intentionally split into distinct role-oriented experiences rather than one mixed dashboard.
 
-- Teacher Quiz Studio:
-  - Generate quiz drafts from published blueprint + retrieved materials.
-  - Edit MCQ questions (4 choices), answers, and explanations.
-  - Publish quiz before assignment (required curation gate).
-- Quiz Assignment Flow:
-  - Teacher creates whole-class quiz assignments from published quiz activities.
-  - Student takes up to 2 attempts (best score policy) with hard due-date lock.
-  - Auto-grading computes per-attempt score; answers/explanations reveal after final attempt or lock.
-  - Teacher review supports score override and feedback comments/highlights.
-- Shared activity infrastructure powers both chat and quiz assignment access/submission workflows.
+```mermaid
+flowchart TD
+    LP[Landing Page] --> AUTH[Auth and Onboarding]
+    LP --> GUEST[Guest Entry]
 
-**Enrollment Modes**
+    AUTH --> TD[Teacher Dashboard]
+    AUTH --> SD[Student Dashboard]
 
-- Primary: join code. Students self enroll using a class code.
-- Optional later: admin enrollment if needed.
+    TD --> TC[Teacher Classes]
+    SD --> SC[Student Classes]
 
-**Auth And Identity Constraints**
+    TC --> CW[Class Workspace]
+    SC --> CW
+    GUEST --> CW
 
-- Email/password is the only authentication method.
-- Email verification is required before protected routes and actions.
-- Phone auth is disabled and out of scope unless explicitly added later.
-- `profiles.account_type` is required and immutable.
-- Enrollment roles are constrained by account type:
-  - Teacher account: `teacher` or `ta`
-  - Student account: `student`
+    CW --> BP[Blueprint]
+    CW --> CHAT[Class Chat]
+    CW --> ACT[Activities and Assignments]
+    CW --> INS[Insights]
+    CW --> SET[Settings and Help]
+```
 
-**System Architecture**
+### Navigation Principles
 
-- Next.js App: UI, routing, and role based layouts.
-- API Layer: server actions or API routes for all data writes.
-- Python Backend: internal AI and workflow orchestration service (`backend/`) with
-  deterministic envelopes (`{ ok, data, error, meta }`) consumed by Next.
-  - Auth posture:
-    - Python backend fails closed when `PYTHON_BACKEND_API_KEY` is missing, unless explicitly
-      overridden by `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS=true` for local-only use.
-  - Current domain endpoint slices:
-    - health check (`GET /healthz`)
-    - raw LLM generation (`POST /v1/llm/generate`)
-    - embeddings generation (`POST /v1/llm/embeddings`)
-    - class creation (`POST /v1/classes/create`)
-    - class join-by-code (`POST /v1/classes/join`)
-    - blueprint generation (`POST /v1/blueprints/generate`)
-    - quiz generation (`POST /v1/quiz/generate`)
-    - flashcards generation (`POST /v1/flashcards/generate`)
-    - grounded chat generation (`POST /v1/chat/generate`)
-      - includes orchestration fields (`tool_mode`, `tool_catalog`, `orchestration_hints`)
-        and runtime metadata for LangGraph without changing frontend contracts
-      - `langgraph_v1` engine runs a full LangChain/LangGraph agent flow:
-        short-term memory (checkpointer), long-term memory (store + tools), and context-engineered
-        tool usage (`grounding_context.read`, `memory.search`, `memory.save`)
-      - `direct_v1` engine runs a lightweight single-pass chat path
-      - thread and long-term memory namespaces are scoped by `class_id + user_id` to prevent
-        cross-user/class memory bleed
-    - class chat workspace orchestration
-      - participants (`POST /v1/chat/workspace/participants`)
-      - sessions list/create/rename/archive (`POST /v1/chat/workspace/sessions/{list,create,rename,archive}`)
-      - message history listing (`POST /v1/chat/workspace/messages/list`)
-      - message send + persistence (`POST /v1/chat/workspace/messages/send`)
-    - material job dispatch (`POST /v1/materials/dispatch`)
-    - material worker trigger (`POST /v1/materials/process`)
-- AI Orchestrator: provider adapters, prompt templates, safety checks.
-- Supabase: Auth, Postgres, Storage, Row Level Security.
+- Teacher and student dashboards are separate routes and separate mental models.
+- Class routes stay within the same sidebar shell instead of switching to a different layout mid-flow.
+- Teachers can preview the student class experience inside the same class workspace.
+- Guests are constrained to their sandbox classroom and redirected away from routes outside that scope.
 
-**Frontend Design System (Current)**
+## Teacher Experience
 
-- UI primitives are standardized in `web/src/components/ui` using shadcn-style component patterns.
-- Interaction primitives are built on Radix UI packages for accessibility and consistent behavior.
-- Shared animation defaults are centralized through a global Motion provider (`motion/react`) in layout.
-- Icons are standardized via `lucide-react` with an app-level icon registry (`web/src/components/icons/index.tsx`).
-- Theme tokens remain CSS-variable driven and warm/academic in `web/src/app/globals.css`, with semantic token aliases to support gradual migration from legacy utility classes.
-- Editor-heavy class surfaces (Blueprint, Quiz Draft, Flashcards Draft, Assignment Review) now consume shared primitives and motion presets instead of page-local control styling.
-- Guardrails include contrast utility checks and an inline-SVG allowlist test (`web/src/lib/no-inline-svg-guardrails.test.ts`) to keep icon/symbol usage centralized.
+### Core Workflow
 
-**AI Provider Support**
+1. Create a class.
+2. Upload materials to the class library.
+3. Wait for material processing to complete.
+4. Generate the Course Blueprint.
+5. Edit, approve, and publish the blueprint.
+6. Generate activities from the published blueprint.
+7. Assign activities to students.
+8. Review submissions, chat behavior, and class intelligence.
 
-- OpenAI, Google Gemini, OpenRouter via a provider adapter interface.
-- Provider orchestration can run in either:
-  - Next server runtime (`web/src/lib/ai/providers.ts`)
-  - Python backend runtime (`backend/app/providers.py`) when `PYTHON_BACKEND_URL` is configured
-- Provider selection stored per class or per request.
-- All prompts and outputs are logged with metadata.
+### Teacher Surfaces
 
-**AI Safety And Guardrails**
+- Teacher dashboard and classes overview
+- Class overview with assignment summaries and enrollment context
+- Materials library with upload, preview, download, and delete actions
+- Blueprint editor, overview, and published view
+- Quiz and flashcard authoring flows
+- Chat activity authoring
+- Assignment review for chat, quiz, and flashcards
+- Teacher chat monitor panel
+- Adaptive teaching brief widget
+- Class intelligence dashboard with charts, drill-downs, and intervention suggestions
 
-- Restrict AI context to approved materials and blueprint.
-- Normalize prompts into structured JSON outputs.
-- Apply refusal rules for unsafe or irrelevant requests.
-- Reject prompt-injection attempts that request hidden instructions, external context, or unrelated class data.
+## Student Experience
 
-**Material Ingestion + Retrieval**
+### Core Workflow
 
-- Materials are extracted into structured segments (pages, slides, paragraphs).
-- Background processing is queue-driven on Supabase (`pgmq` + Supabase Cron + Edge Function worker).
-- Worker flow: upload -> enqueue -> process -> chunk -> embed -> status update (`ready` / `failed`).
-- Processing is text-only for RAG ingestion: extract text from PDF/DOCX/PPTX, then chunk and embed.
-- `POST /api/materials/process` in Next proxies to Python `POST /v1/materials/process`.
-- Blueprint generation retrieves top-ranked chunks with source metadata instead of raw concatenation.
-- Prompt quality and grounding behavior are environment-tunable (`AI_PROMPT_QUALITY_PROFILE`,
-  `AI_GROUNDING_MODE`) for safe rollout.
+1. Sign in and join a class with a join code.
+2. Enter the class workspace.
+3. Review the published blueprint and current assignments.
+4. Use always-on class chat or assigned learning activities.
+5. Submit work and revisit reviewed feedback.
 
-**Blueprint Lifecycle**
+### Student Surfaces
 
-- Draft: editable working version.
-- Overview (Approved): compiled preview for final review.
-- Published: read-only, student-facing blueprint snapshot.
-- Canonical Blueprint Snapshot (v2): each blueprint row stores a normalized JSON snapshot
-  (`blueprints.content_json`, `blueprints.content_schema_version`) used by downstream AI features.
-- Existing relational tables (`topics`, `objectives`) remain the current editor/publish surface and
-  are kept in sync for backward compatibility.
+- Student dashboard with current and past work
+- Class workspace with widget-driven focus areas
+- Published blueprint view
+- Always-on chat workspace
+- Quiz assignment panel
+- Flashcards assignment panel
+- Chat assignment panel
+- Settings and help
 
-**Data Model**
-Core Entities
+The student class workspace can become chat-first when the route indicates chat focus or when a teacher previews the class as a student.
 
-- User, Role, Class, Enrollment
-- Material, Blueprint, Topic, Objective
-- Activity, Assignment, Submission
-- QuizQuestion, Flashcard, Feedback, Reflection
+## Guest Sandbox Experience
 
-Relationship Rules
+Guest mode is a first-class product surface rather than a separate mock experience.
 
-- A Class owns Materials and Blueprints.
-- A Blueprint owns Topics and Objectives.
-- Activities are generated from Topics.
-- Assignments connect Activities to Students.
+### Current Guest Design
 
-**Non Functional Requirements**
+- Entry begins from the landing page when guest mode is enabled.
+- Supabase Anonymous Auth creates a real authenticated anonymous session.
+- The platform creates a sandbox row and clones canonical demo content into normal product tables under a new `sandbox_id`.
+- Guests can switch between teacher and student perspectives, reset the sandbox, or start real signup from a clean state.
+- Expiry, cleanup, and AI quotas are enforced both in app flows and backend guardrails.
 
-- Performance: sub 2 second response for common actions.
-- Reliability: safe retries for AI generation and file parsing.
-- Security: RLS enforced for all tables.
-- Observability: log AI usage, errors, and generation failures.
+```mermaid
+sequenceDiagram
+    participant User as Guest User
+    participant Web as Next.js App
+    participant SB as Supabase
+    participant DB as Postgres
+    participant PY as Python Backend
+    participant Cleanup as guest-sandbox-cleanup
 
-**UX Principles**
+    User->>Web: Continue as guest
+    Web->>SB: signInAnonymously()
+    Web->>DB: create guest_sandbox + clone seed data
+    User->>Web: Use sandbox classroom
+    Web->>PY: Guest AI request with sandbox_id
+    PY->>DB: Verify ownership + quotas
+    DB-->>PY: Allow or rate limit
+    Note over Cleanup,DB: On expiry or cleanup run
+    Cleanup->>DB: Delete sandbox class data
+    Cleanup->>SB: Delete anonymous user
+```
 
-- Teacher Studio and Student Hub are distinct and intentional.
-- AI output is presented as structured modules, not raw text.
-- All actions have visible status and error states.
+## Blueprint-Centered Learning Model
+
+The Course Blueprint is the central pedagogical object in the system. It connects materials, objectives, activities, and class experiences.
+
+### Blueprint Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Overview: Approve draft
+    Overview --> Draft: Revise
+    Overview --> Published: Publish
+    Published --> Draft: Create new version
+```
+
+### Why The Blueprint Matters
+
+- It structures topics and objectives from class materials.
+- It grounds student chat and activity generation.
+- It gives teachers an editorial checkpoint before students see AI-derived content.
+- It provides a stable canonical snapshot for downstream features.
+
+## Activity And Review Workflows
+
+### Supported Activity Types
+
+- `chat`
+- `quiz`
+- `flashcards`
+
+These are the activity types that should be documented as implemented-first. Other study use cases can be described as chat-supported patterns, not separate product modules, unless the repository grows dedicated surfaces for them.
+
+### Shared Workflow Pattern
+
+1. Teacher publishes a blueprint.
+2. Teacher generates an activity from that blueprint.
+3. Teacher reviews and edits content where applicable.
+4. Teacher assigns the activity.
+5. Students complete the assignment.
+6. Teacher reviews submissions and gives feedback.
+
+## System Architecture
+
+The system is a three-surface platform:
+
+- `web/` for the Next.js application
+- `backend/` for Python FastAPI AI and workflow orchestration
+- `supabase/` for auth, data, storage, RLS, migrations, queues, and Edge Functions
+
+```mermaid
+flowchart LR
+    U[Browser User] --> W[Next.js App Router]
+    W --> SA[Server Actions and Route Handlers]
+    SA --> PY[Python FastAPI Backend]
+    SA --> SB[(Supabase)]
+
+    PY --> Providers[Model Providers]
+    PY --> SB
+
+    SB --> Auth[Supabase Auth]
+    SB --> PG[(Postgres + RLS)]
+    SB --> Storage[Storage]
+    SB --> Edge[Edge Functions]
+```
+
+### Request Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Web as Next.js
+    participant Action as Server Action
+    participant PY as Python Backend
+    participant SB as Supabase
+    participant LLM as AI Provider
+
+    User->>Web: Trigger product action
+    Web->>Action: Submit validated payload
+    Action->>PY: Forward domain request
+    PY->>SB: Load class, blueprint, materials, or snapshots
+    PY->>LLM: Generate structured output
+    PY-->>Action: Return { ok, data, error, meta }
+    Action->>SB: Persist product state when needed
+    Action-->>Web: Render updated UI
+```
+
+## AI Architecture
+
+### Boundary
+
+- Next.js owns UI, routing, server actions, and persistence orchestration.
+- The Python backend owns AI generation, provider fallback, workflow logic, and service-level validation.
+- Model providers are pluggable and environment-driven.
+
+### Current AI Domains
+
+- blueprint generation
+- quiz generation
+- flashcards generation
+- grounded chat generation
+- chat canvas generation
+- class creation and join orchestration
+- material dispatch orchestration
+- class intelligence synthesis
+- adaptive teaching brief synthesis
+- natural-language data query to chart-spec generation
+
+### Chat Architecture
+
+- Chat is grounded in the published blueprint plus retrieved material chunks.
+- Chat supports two execution paths:
+  - `direct_v1`
+  - `langgraph_v1`
+- Workspace chat includes:
+  - participant listing
+  - session list/create/rename/archive
+  - paginated message history
+  - message send plus persistence
+- Long conversations use compaction and context-window management instead of replaying the entire transcript every time.
+
+### Visual Generation
+
+- Chat can return a `canvas_hint` and trigger `/v1/chat/canvas` for diagrams and charts.
+- Teacher data query uses analytics-backed chart spec generation to visualize class performance questions.
+
+## Analytics And Teaching-Brief Architecture
+
+Teacher analytics are not just UI charts. They are backed by snapshot storage and backend aggregation.
+
+### Class Intelligence
+
+- Aggregates quiz performance, Bloom-level coverage, student engagement, and intervention suggestions.
+- Persists class snapshots to support caching and stable teacher reloads.
+- Drives the class intelligence dashboard and AI-generated narrative.
+
+### Adaptive Teaching Brief
+
+- Generates a concise, teacher-oriented summary of what needs attention.
+- Persists snapshot data separately from the full class intelligence payload.
+- Surfaces recommended next steps and activity suggestions directly inside the class overview.
+
+## Guest-Mode Architecture
+
+Guest mode extends the same core system instead of creating a parallel demo stack.
+
+### Key Decisions
+
+- Real anonymous authenticated users
+- Full sandbox cloning into regular product tables under `sandbox_id`
+- Sandbox ownership checks in backend AI paths
+- Rate limits for session creation and AI features
+- Cleanup through request-time expiry and a dedicated Edge Function
+
+### Resulting Benefits
+
+- Guests see real product behavior
+- RLS and middleware continue to work with minimal branching
+- Demo data stays isolated from real classes
+
+## Security And RLS Model
+
+- Email/password auth is the standard permanent auth model.
+- Email verification is required before protected access for permanent users.
+- `profiles.account_type` is immutable for permanent accounts.
+- Row Level Security is enforced across application data.
+- Guest sandbox access is scoped by `sandbox_id` and verified ownership.
+- Service-role and Edge Function boundaries are used for background jobs and cleanup.
+- The Python backend validates user bearer tokens against Supabase and adds service-level guardrails for guest AI access, quotas, and sandbox ownership.
+
+## UI System And Interaction Patterns
+
+The UI is designed as a warm academic workspace rather than a generic admin dashboard.
+
+### Current UI Foundation
+
+- shared primitives in `web/src/components/ui`
+- centralized icon registry in `web/src/components/icons/index.tsx`
+- shared motion provider and presets in `web/src/components/providers/motion-provider.tsx` and `web/src/lib/motion/presets.ts`
+- semantic CSS tokens and warm/editorial visual language in `web/src/app/globals.css`
+
+### UX Patterns
+
+- role-specific dashboards and class shells
+- structured cards, badges, alerts, tables, and review surfaces
+- class-shell continuity across subroutes
+- motion used for hierarchy and orientation, not novelty
+- teacher preview mode to validate student-facing flows without switching accounts
+
+## Current Constraints
+
+- The Python backend is required for the platform's AI-heavy and workflow-heavy surfaces.
+- Guest mode depends on both app-side configuration and Supabase Anonymous Auth being enabled.
+- Material processing depends on Supabase queueing plus the `material-worker` Edge Function.
+- The project currently builds through Webpack rather than Turbopack.
+
+## Forward-Looking Items
+
+These are acceptable to mention only as future-facing items, not as shipped guarantees:
+
+- broader activity types beyond chat, quiz, and flashcards
+- richer operator tooling around deployment and observability
+- additional provider-specific orchestration paths
+- further analytics and intervention automation
