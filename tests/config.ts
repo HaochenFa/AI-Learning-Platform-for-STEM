@@ -12,3 +12,6 @@ export const TEACHER_PASSWORD = process.env.E2E_TEACHER_PASSWORD || '';
 /** Student account credentials for login */
 export const STUDENT_EMAIL = process.env.E2E_STUDENT_EMAIL || '';
 export const STUDENT_PASSWORD = process.env.E2E_STUDENT_PASSWORD || '';
+
+/** Join code for an existing class (used by student-join-class test) */
+export const JOIN_CODE = process.env.E2E_JOIN_CODE || '';
