@@ -15,5 +15,8 @@
     "@playwright/test": "^1.58.2",
     "shadcn": "^4.1.0",
     "supabase": "^2.75.3"
+  },
+  "dependencies": {
+    "input-otp": "^1.4.2"
   }
 }
