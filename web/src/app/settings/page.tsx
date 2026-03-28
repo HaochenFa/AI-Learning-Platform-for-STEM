@@ -1,6 +1,8 @@
 import RoleAppShell from "@/app/components/RoleAppShell";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
-import { changePassword, updateDisplayName } from "@/app/settings/actions";
+import { changePasswordWithOtp, updateDisplayName, verifyAndSendOtp } from "@/app/settings/actions";
+import { OtpInput } from "@/components/ui/otp-input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +18,7 @@ import { requireVerifiedUser } from "@/lib/auth/session";
 
 type SettingsSearchParams = {
   section?: string;
+  step?: string;
   status?: string;
   message?: string;
 };
@@ -29,6 +32,7 @@ export default async function SettingsPage({
   const resolvedSearchParams = await searchParams;
 
   const section = resolvedSearchParams?.section;
+  const step = resolvedSearchParams?.step;
   const status = resolvedSearchParams?.status;
   const message = typeof resolvedSearchParams?.message === "string" ? resolvedSearchParams.message : null;
 
@@ -124,7 +128,9 @@ export default async function SettingsPage({
               <Card className="p-6">
                 <h2 className="text-lg font-semibold text-ui-primary">Change Password</h2>
                 <p className="mt-2 text-sm text-ui-muted">
-                  Confirm your current password before setting a new one.
+                  {step === "otp"
+                    ? "Enter the verification code from your email and set a new password."
+                    : "Verify your identity to change your password. A code will be sent to your email."}
                 </p>
 
                 {passwordMessage ? (
@@ -141,42 +147,66 @@ export default async function SettingsPage({
                   )
                 ) : null}
 
-                <form className="mt-5 space-y-4" action={changePassword}>
-                  <div className="space-y-2">
-                    <Label htmlFor="current_password">Current password</Label>
-                    <Input id="current_password" name="current_password" type="password" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new_password">New password</Label>
-                    <Input
-                      id="new_password"
-                      name="new_password"
-                      type="password"
-                      required
-                      minLength={PASSWORD_MIN_LENGTH}
-                      pattern={PASSWORD_POLICY_PATTERN}
-                      title={PASSWORD_POLICY_TITLE}
+                {step === "otp" ? (
+                  <form className="mt-5 space-y-4" action={changePasswordWithOtp}>
+                    <div className="space-y-2">
+                      <Label htmlFor="otp">Verification code</Label>
+                      <OtpInput name="otp" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_password">New password</Label>
+                      <PasswordInput
+                        id="new_password"
+                        name="new_password"
+                        required
+                        minLength={PASSWORD_MIN_LENGTH}
+                        pattern={PASSWORD_POLICY_PATTERN}
+                        title={PASSWORD_POLICY_TITLE}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm_password">Confirm new password</Label>
+                      <PasswordInput
+                        id="confirm_password"
+                        name="confirm_password"
+                        required
+                        minLength={PASSWORD_MIN_LENGTH}
+                        pattern={PASSWORD_POLICY_PATTERN}
+                        title={PASSWORD_POLICY_TITLE}
+                      />
+                    </div>
+                    <p className="text-xs text-ui-muted">{PASSWORD_POLICY_HINT}</p>
+                    <div className="flex items-center gap-3">
+                      <PendingSubmitButton
+                        label="Change password"
+                        pendingLabel="Changing..."
+                        variant="warm"
+                      />
+                      <a
+                        href="/settings?section=password"
+                        className="text-sm text-ui-muted underline underline-offset-2 hover:text-ui-primary"
+                      >
+                        Cancel
+                      </a>
+                    </div>
+                  </form>
+                ) : (
+                  <form className="mt-5 space-y-4" action={verifyAndSendOtp}>
+                    <div className="space-y-2">
+                      <Label htmlFor="current_password">Current password</Label>
+                      <PasswordInput
+                        id="current_password"
+                        name="current_password"
+                        required
+                      />
+                    </div>
+                    <PendingSubmitButton
+                      label="Verify & send code"
+                      pendingLabel="Sending..."
+                      variant="warm"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm_password">Confirm new password</Label>
-                    <Input
-                      id="confirm_password"
-                      name="confirm_password"
-                      type="password"
-                      required
-                      minLength={PASSWORD_MIN_LENGTH}
-                      pattern={PASSWORD_POLICY_PATTERN}
-                      title={PASSWORD_POLICY_TITLE}
-                    />
-                  </div>
-                  <p className="text-xs text-ui-muted">{PASSWORD_POLICY_HINT}</p>
-                  <PendingSubmitButton
-                    label="Update password"
-                    pendingLabel="Updating..."
-                    variant="warm"
-                  />
-                </form>
+                  </form>
+                )}
               </Card>
 
               <Card className="bg-[var(--surface-muted)] p-6">
