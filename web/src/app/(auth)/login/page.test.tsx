@@ -15,14 +15,6 @@ describe("LoginPage", () => {
     expect(html).not.toContain("Separate teacher and student roles");
   });
 
-  it("shows verify notice when verify=1", async () => {
-    const html = renderToStaticMarkup(
-      await LoginPage({ searchParams: Promise.resolve({ verify: "1" }) }),
-    );
-
-    expect(html).toContain("Check your email to verify your account");
-  });
-
   it("shows confirmation success when confirmed=1", async () => {
     const html = renderToStaticMarkup(
       await LoginPage({ searchParams: Promise.resolve({ confirmed: "1" }) }),

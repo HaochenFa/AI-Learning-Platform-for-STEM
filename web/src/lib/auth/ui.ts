@@ -1,4 +1,5 @@
 export type AuthMode = "sign-in" | "sign-up" | "forgot-password";
+export type AuthResendFlow = "confirmation" | "reset";
 
 export type AuthSearchParams = {
   auth?: string;
@@ -8,6 +9,8 @@ export type AuthSearchParams = {
   error?: string;
   guest?: string;
   recovery?: string;
+  resend?: string;
+  resend_started_at?: string;
   reset?: string;
   sent?: string;
   verify?: string;
@@ -30,6 +33,8 @@ export const AUTH_MODAL_QUERY_KEYS = [
   "email",
   "error",
   "guest",
+  "resend",
+  "resend_started_at",
   "reset",
   "sent",
   "verify",
@@ -37,6 +42,14 @@ export const AUTH_MODAL_QUERY_KEYS = [
 
 export function parseAuthMode(value?: string | null): AuthMode | null {
   if (value === "sign-in" || value === "sign-up" || value === "forgot-password") {
+    return value;
+  }
+
+  return null;
+}
+
+export function parseAuthResendFlow(value?: string | null): AuthResendFlow | null {
+  if (value === "confirmation" || value === "reset") {
     return value;
   }
 

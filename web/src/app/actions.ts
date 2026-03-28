@@ -21,6 +21,10 @@ import { redirect } from "next/navigation";
 const DUPLICATE_SIGN_UP_ERROR_MESSAGE =
   "We couldn't create an account with that email. Try signing in or resetting your password.";
 
+function getEmailValue(formData: FormData, key = "email") {
+  return getFormValue(formData, key).toLowerCase();
+}
+
 function getFormValue(formData: FormData, key: string) {
   const value = formData.get(key);
   if (!value || typeof value !== "string") {
@@ -62,6 +66,29 @@ function getAuthReturnTo(
   return sanitizeInternalRedirectPath(formData.get(fieldName)) ?? fallbackPath;
 }
 
+function getResendStartedAt() {
+  return String(Date.now());
+}
+
+function buildResendStateParams(input: {
+  flow: "confirmation" | "reset";
+  accountType?: "teacher" | "student" | null;
+  email?: string;
+  sent?: boolean;
+  error?: string;
+  resendStartedAt?: string | null;
+}) {
+  return {
+    ...(input.accountType !== undefined ? { account_type: input.accountType } : {}),
+    email: input.email ?? null,
+    error: input.error ?? null,
+    resend: input.flow,
+    resend_started_at: input.resendStartedAt ?? null,
+    sent: input.flow === "reset" && input.sent ? "1" : null,
+    verify: input.flow === "confirmation" && input.sent ? "1" : null,
+  };
+}
+
 export async function signIn(formData: FormData) {
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
@@ -96,11 +123,11 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signUp(formData: FormData) {
-  const email = getFormValue(formData, "email").toLowerCase();
+  const email = getEmailValue(formData);
   const password = getFormValue(formData, "password");
   const accountType = parseAccountType(getFormValue(formData, "account_type"));
   const authReturnTo = getAuthReturnTo(formData, "/register");
-  const authSuccessTo = getAuthReturnTo(formData, "/login", "auth_success_to");
+  const authSuccessTo = getAuthReturnTo(formData, "/register", "auth_success_to");
 
   if (!accountType) {
     redirect(buildRedirectUrl(authReturnTo, { error: "Select an account type" }));
@@ -155,11 +182,22 @@ export async function signUp(formData: FormData) {
     redirect(buildRedirectUrl(authReturnTo, { error: msg }));
   }
 
-  redirect(buildRedirectUrl(authSuccessTo, { verify: "1" }));
+  redirect(
+    buildRedirectUrl(
+      authSuccessTo,
+      buildResendStateParams({
+        accountType,
+        flow: "confirmation",
+        email,
+        sent: true,
+        resendStartedAt: getResendStartedAt(),
+      }),
+    ),
+  );
 }
 
 export async function requestPasswordReset(formData: FormData) {
-  const email = getFormValue(formData, "email").toLowerCase();
+  const email = getEmailValue(formData);
   const authReturnTo = getAuthReturnTo(formData, "/forgot-password");
 
   if (!email) {
@@ -176,7 +214,117 @@ export async function requestPasswordReset(formData: FormData) {
     redirectToAuthPage(authReturnTo, error.message);
   }
 
-  redirect(buildRedirectUrl(authReturnTo, { sent: "1" }));
+  redirect(
+    buildRedirectUrl(
+      authReturnTo,
+      buildResendStateParams({
+        flow: "reset",
+        email,
+        sent: true,
+        resendStartedAt: getResendStartedAt(),
+      }),
+    ),
+  );
+}
+
+export async function resendConfirmationEmail(formData: FormData) {
+  const email = getEmailValue(formData);
+  const authReturnTo = getAuthReturnTo(formData, "/register");
+
+  if (!email) {
+    redirect(
+      buildRedirectUrl(
+        authReturnTo,
+        buildResendStateParams({
+          flow: "confirmation",
+          error: "Enter your email address.",
+        }),
+      ),
+    );
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const authRedirectUrl = getAuthRedirectUrl();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: authRedirectUrl,
+    },
+  });
+
+  if (error) {
+    redirect(
+      buildRedirectUrl(
+        authReturnTo,
+        buildResendStateParams({
+          flow: "confirmation",
+          email,
+          error: error.message,
+        }),
+      ),
+    );
+  }
+
+  redirect(
+    buildRedirectUrl(
+      authReturnTo,
+      buildResendStateParams({
+        flow: "confirmation",
+        email,
+        sent: true,
+        resendStartedAt: getResendStartedAt(),
+      }),
+    ),
+  );
+}
+
+export async function resendPasswordReset(formData: FormData) {
+  const email = getEmailValue(formData);
+  const authReturnTo = getAuthReturnTo(formData, "/forgot-password");
+
+  if (!email) {
+    redirect(
+      buildRedirectUrl(
+        authReturnTo,
+        buildResendStateParams({
+          flow: "reset",
+          error: "Enter your email address.",
+        }),
+      ),
+    );
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const authRedirectUrl = getAuthRedirectUrl();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: authRedirectUrl,
+  });
+
+  if (error) {
+    redirect(
+      buildRedirectUrl(
+        authReturnTo,
+        buildResendStateParams({
+          flow: "reset",
+          email,
+          error: error.message,
+        }),
+      ),
+    );
+  }
+
+  redirect(
+    buildRedirectUrl(
+      authReturnTo,
+      buildResendStateParams({
+        flow: "reset",
+        email,
+        sent: true,
+        resendStartedAt: getResendStartedAt(),
+      }),
+    ),
+  );
 }
 
 export async function completePasswordRecovery(formData: FormData) {

@@ -1,9 +1,12 @@
 import Link from "next/link";
 import BrandMark from "@/app/components/BrandMark";
 import AccountTypeSelector from "@/components/auth/AccountTypeSelector";
+import AuthResendForm from "@/components/auth/AuthResendForm";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import {
   requestPasswordReset,
+  resendConfirmationEmail,
+  resendPasswordReset,
   signIn,
   signUp,
 } from "@/app/actions";
@@ -20,7 +23,9 @@ import {
   PASSWORD_POLICY_TITLE,
 } from "@/lib/auth/password-policy";
 import {
+  buildRedirectUrl,
   getAuthHref,
+  parseAuthResendFlow,
   type AuthMode,
   type AuthPresentation,
   type AuthSearchParams,
@@ -74,10 +79,6 @@ function getReturnTo(mode: AuthMode, presentation: AuthPresentation) {
 }
 
 function getSuccessReturnTo(mode: AuthMode, presentation: AuthPresentation) {
-  if (mode === "sign-up") {
-    return getAuthHref("sign-in", presentation);
-  }
-
   return getAuthHref(mode, presentation);
 }
 
@@ -121,6 +122,13 @@ export default function AuthSurface({
   const reset = searchParams?.reset === "1";
   const sent = searchParams?.sent === "1";
   const guestReady = searchParams?.guest === "ready";
+  const resendFlow = parseAuthResendFlow(
+    typeof searchParams?.resend === "string" ? searchParams.resend : null,
+  );
+  const resendStartedAt =
+    typeof searchParams?.resend_started_at === "string"
+      ? searchParams.resend_started_at
+      : null;
   const defaultEmail =
     typeof searchParams?.email === "string" ? searchParams.email : "";
   const defaultAccountType =
@@ -129,7 +137,12 @@ export default function AuthSurface({
       : searchParams?.account_type === "teacher"
         ? "teacher"
         : null;
+  const signUpResendActive = mode === "sign-up" && (verify || resendFlow === "confirmation");
+  const forgotPasswordResendActive = mode === "forgot-password" && (sent || resendFlow === "reset");
   const { authReturnTo, authSuccessTo } = getHiddenRedirectFields(mode, presentation);
+  const signUpResendReturnTo = buildRedirectUrl(authReturnTo, {
+    account_type: defaultAccountType,
+  });
   const footerHref = getFooterHref(mode, presentation);
   const supportHref = getSupportHref(mode, presentation);
   const supportLabel = getSupportLabel(mode);
@@ -137,12 +150,6 @@ export default function AuthSurface({
 
   const renderLoginFeedback = mode === "sign-in" ? (
     <>
-      {verify ? (
-        <Alert variant="success" className="mb-4">
-          Check your email to verify your account, then sign in here.
-        </Alert>
-      ) : null}
-
       {confirmed ? (
         <Alert variant="success" className="mb-4">
           Your email has been verified. You can sign in now.
@@ -159,6 +166,12 @@ export default function AuthSurface({
 
   const renderSignUpFeedback = mode === "sign-up" ? (
     <>
+      {verify ? (
+        <Alert variant="success" className="mb-4">
+          Check your email to verify your account. Confirmation links expire after 5 minutes.
+        </Alert>
+      ) : null}
+
       {guestReady ? (
         <Alert variant="success" className="mb-4">
           Your guest classroom has been discarded. Finish creating your account to continue with a
@@ -172,7 +185,8 @@ export default function AuthSurface({
     <>
       {sent ? (
         <Alert variant="success" className="mb-4">
-          If an account exists for that email, we&apos;ve sent a password reset link.
+          If an account exists for that email, we&apos;ve sent a password reset link. Reset links
+          expire after 5 minutes.
         </Alert>
       ) : null}
     </>
@@ -270,44 +284,97 @@ export default function AuthSurface({
           ) : null}
 
           {mode === "sign-up" ? (
-            <form className="space-y-4" action={signUp}>
-              <input type="hidden" name="auth_return_to" value={authReturnTo} />
-              <input type="hidden" name="auth_success_to" value={authSuccessTo} />
-              <AccountTypeSelector defaultValue={defaultAccountType} />
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  defaultValue={defaultEmail}
-                  autoComplete="email"
+            <>
+              <form className="space-y-4" action={signUp}>
+                <input type="hidden" name="auth_return_to" value={authReturnTo} />
+                <input type="hidden" name="auth_success_to" value={authSuccessTo} />
+                <AccountTypeSelector defaultValue={defaultAccountType} />
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    defaultValue={defaultEmail}
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <PasswordInput
+                    id="password"
+                    name="password"
+                    required
+                    minLength={PASSWORD_MIN_LENGTH}
+                    pattern={PASSWORD_POLICY_PATTERN}
+                    title={PASSWORD_POLICY_TITLE}
+                    autoComplete="new-password"
+                  />
+                  <p className="text-xs leading-5 text-ui-muted">{PASSWORD_POLICY_HINT}</p>
+                </div>
+                <PendingSubmitButton
+                  label="Create account"
+                  pendingLabel="Creating account..."
+                  variant="warm"
+                  className="w-full"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <PasswordInput
-                  id="password"
-                  name="password"
-                  required
-                  minLength={PASSWORD_MIN_LENGTH}
-                  pattern={PASSWORD_POLICY_PATTERN}
-                  title={PASSWORD_POLICY_TITLE}
-                  autoComplete="new-password"
-                />
-                <p className="text-xs leading-5 text-ui-muted">{PASSWORD_POLICY_HINT}</p>
-              </div>
-              <PendingSubmitButton
-                label="Create account"
-                pendingLabel="Creating account..."
-                variant="warm"
-                className="w-full"
-              />
-            </form>
+              </form>
+
+              {signUpResendActive ? (
+                <div className="mt-4 space-y-3 rounded-[1.5rem] border border-default bg-white/72 p-4">
+                  <div className="space-y-1">
+                    <h2 className="text-sm font-semibold text-ui-primary">
+                      Need another confirmation email?
+                    </h2>
+                    <p className="text-xs leading-5 text-ui-muted">
+                      {defaultEmail ? (
+                        <>
+                          We can resend it to{" "}
+                          <span className="font-medium text-ui-primary">{defaultEmail}</span>. If
+                          the email address or role is wrong, update the registration form above
+                          and create your account again.
+                        </>
+                      ) : (
+                        "If the email address or role is wrong, update the registration form above and create your account again."
+                      )}
+                    </p>
+                  </div>
+
+                  <AuthResendForm
+                    action={resendConfirmationEmail}
+                    authReturnTo={signUpResendReturnTo}
+                    defaultEmail={defaultEmail}
+                    emailMode="locked"
+                    pendingLabel="Resending confirmation email..."
+                    resendStartedAt={resendStartedAt}
+                    submitLabel="Resend confirmation email"
+                    timerReadyCopy="Confirmation links stay valid for 5 minutes. You can request a new email now."
+                    timerWaitingCopy={(seconds) =>
+                      `You can resend another email in ${seconds} second${seconds === 1 ? "" : "s"}. Confirmation links stay valid for 5 minutes.`
+                    }
+                  />
+                </div>
+              ) : null}
+            </>
           ) : null}
 
-          {mode === "forgot-password" ? (
+          {mode === "forgot-password" && forgotPasswordResendActive ? (
+            <AuthResendForm
+              action={resendPasswordReset}
+              authReturnTo={authReturnTo}
+              defaultEmail={defaultEmail}
+              pendingLabel="Resending reset email..."
+              resendStartedAt={resendStartedAt}
+              submitLabel="Resend reset email"
+              timerReadyCopy="Reset links expire after 5 minutes. You can request a new email now."
+              timerWaitingCopy={(seconds) =>
+                `You can resend another email in ${seconds} second${seconds === 1 ? "" : "s"}. Reset links expire after 5 minutes.`
+              }
+            />
+          ) : null}
+
+          {mode === "forgot-password" && !forgotPasswordResendActive ? (
             <form className="space-y-4" action={requestPasswordReset}>
               <input type="hidden" name="auth_return_to" value={authReturnTo} />
               <div className="space-y-2">

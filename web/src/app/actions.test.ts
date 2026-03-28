@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { signIn, signOut, signUp } from "@/app/actions";
+import {
+  resendConfirmationEmail,
+  resendPasswordReset,
+  signIn,
+  signOut,
+  signUp,
+} from "@/app/actions";
 import { PASSWORD_POLICY_ERROR_MESSAGE } from "@/lib/auth/password-policy";
 import { redirect } from "next/navigation";
 
@@ -20,6 +26,7 @@ const {
     getSession: vi.fn(),
     getUser: vi.fn(),
     resetPasswordForEmail: vi.fn(),
+    resend: vi.fn(),
     signInWithPassword: vi.fn(),
     signOut: vi.fn(),
     signUp: vi.fn(),
@@ -47,13 +54,18 @@ vi.mock("@/lib/guest/sandbox", async () => {
   };
 });
 
-async function expectRedirect(action: () => Promise<void> | void, path: string) {
+async function expectRedirect(action: () => Promise<void> | void, path: string | RegExp) {
   try {
     await Promise.resolve().then(action);
     throw new Error("Expected redirect");
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) {
-      expect(String((error as { digest?: string }).digest)).toContain(`;${path};`);
+      const digest = String((error as { digest?: string }).digest);
+      if (typeof path === "string") {
+        expect(digest).toContain(`;${path};`);
+      } else {
+        expect(digest).toMatch(path);
+      }
       return;
     }
     throw error;
@@ -226,7 +238,10 @@ describe("auth actions", () => {
     formData.set("password", "goodpass1");
     formData.set("account_type", "student");
 
-    await expectRedirect(() => signUp(formData), "/login?verify=1");
+    await expectRedirect(
+      () => signUp(formData),
+      /;\/register\?account_type=student&email=test%40example\.com&resend=confirmation&resend_started_at=\d+&verify=1;/,
+    );
     expect(redirect).toHaveBeenCalled();
     expect(supabaseAuth.signUp).toHaveBeenCalledWith({
       email: "test@example.com",
@@ -247,9 +262,12 @@ describe("auth actions", () => {
     formData.set("password", "goodpass1");
     formData.set("account_type", "student");
     formData.set("auth_return_to", "/?auth=sign-up");
-    formData.set("auth_success_to", "/?auth=sign-in");
+    formData.set("auth_success_to", "/?auth=sign-up");
 
-    await expectRedirect(() => signUp(formData), "/?auth=sign-in&verify=1");
+    await expectRedirect(
+      () => signUp(formData),
+      /;\/\?auth=sign-up&account_type=student&email=test%40example\.com&resend=confirmation&resend_started_at=\d+&verify=1;/,
+    );
   });
 
   it("rejects sign up password shorter than 8 characters", async () => {
@@ -319,7 +337,10 @@ describe("auth actions", () => {
     const formData = new FormData();
     formData.set("email", "test@example.com");
 
-    await expectRedirect(() => requestPasswordReset(formData), "/forgot-password?sent=1");
+    await expectRedirect(
+      () => requestPasswordReset(formData),
+      /;\/forgot-password\?email=test%40example\.com&resend=reset&resend_started_at=\d+&sent=1;/,
+    );
     expect(supabaseAuth.resetPasswordForEmail).toHaveBeenCalledWith("test@example.com", {
       redirectTo: "https://ai-stem-learning-platform-group-8.vercel.app",
     });
@@ -334,7 +355,90 @@ describe("auth actions", () => {
     formData.set("email", "test@example.com");
     formData.set("auth_return_to", "/?auth=forgot-password");
 
-    await expectRedirect(() => requestPasswordReset(formData), "/?auth=forgot-password&sent=1");
+    await expectRedirect(
+      () => requestPasswordReset(formData),
+      /;\/\?auth=forgot-password&email=test%40example\.com&resend=reset&resend_started_at=\d+&sent=1;/,
+    );
+  });
+
+  it("resends confirmation email and restarts the cooldown state", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ai-stem-learning-platform-group-8.vercel.app";
+    supabaseAuth.resend.mockResolvedValueOnce({ error: null });
+
+    const formData = new FormData();
+    formData.set("email", "Edited@example.com");
+    formData.set("auth_return_to", "/register");
+
+    await expectRedirect(
+      () => resendConfirmationEmail(formData),
+      /;\/register\?email=edited%40example\.com&resend=confirmation&resend_started_at=\d+&verify=1;/,
+    );
+    expect(supabaseAuth.resend).toHaveBeenCalledWith({
+      type: "signup",
+      email: "edited@example.com",
+      options: {
+        emailRedirectTo: "https://ai-stem-learning-platform-group-8.vercel.app",
+      },
+    });
+  });
+
+  it("preserves account_type in the redirect after confirmation resend", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ai-stem-learning-platform-group-8.vercel.app";
+    supabaseAuth.resend.mockResolvedValueOnce({ error: null });
+
+    const formData = new FormData();
+    formData.set("email", "teacher@example.com");
+    formData.set("auth_return_to", "/register?account_type=teacher");
+
+    await expectRedirect(
+      () => resendConfirmationEmail(formData),
+      /;\/register\?account_type=teacher&email=teacher%40example\.com&resend=confirmation&resend_started_at=\d+&verify=1;/,
+    );
+  });
+
+  it("returns confirmation resend errors to the register surface", async () => {
+    supabaseAuth.resend.mockResolvedValueOnce({ error: { message: "Too many requests" } });
+
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("auth_return_to", "/?auth=sign-up");
+
+    await expectRedirect(
+      () => resendConfirmationEmail(formData),
+      "/?auth=sign-up&email=test%40example.com&error=Too%20many%20requests&resend=confirmation",
+    );
+  });
+
+  it("resends password reset email and restarts the cooldown state", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ai-stem-learning-platform-group-8.vercel.app";
+    supabaseAuth.resetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
+    const formData = new FormData();
+    formData.set("email", "Edited@example.com");
+    formData.set("auth_return_to", "/forgot-password");
+
+    await expectRedirect(
+      () => resendPasswordReset(formData),
+      /;\/forgot-password\?email=edited%40example\.com&resend=reset&resend_started_at=\d+&sent=1;/,
+    );
+    expect(supabaseAuth.resetPasswordForEmail).toHaveBeenCalledWith("edited@example.com", {
+      redirectTo: "https://ai-stem-learning-platform-group-8.vercel.app",
+    });
+  });
+
+  it("returns password reset resend errors to the same auth surface", async () => {
+    supabaseAuth.resetPasswordForEmail.mockResolvedValueOnce({
+      error: { message: "Reset disabled" },
+    });
+
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("auth_return_to", "/?auth=forgot-password");
+
+    await expectRedirect(
+      () => resendPasswordReset(formData),
+      "/?auth=forgot-password&email=test%40example.com&error=Reset%20disabled&resend=reset",
+    );
   });
 
   it("updates the password during recovery and redirects back to login", async () => {

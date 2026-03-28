@@ -11,6 +11,7 @@ This directory contains the schema migrations, local Supabase configuration, and
   `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login`
 - the template depends on publicly served brand assets under `web/public/email/`
 - after changing the local template config, restart local Supabase so the auth service reloads it
+- confirmation and recovery email links are expected to expire after 5 minutes; keep local `auth.email.otp_expiry` and the hosted project's Email OTP Expiration dashboard setting aligned at `300`
 
 ## What Lives Here
 

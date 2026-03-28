@@ -51,7 +51,35 @@ describe("/auth/confirm", () => {
     );
 
     expect(response.headers.get("location")).toBe(
-      "http://localhost/forgot-password?error=Your+password+reset+link+is+invalid+or+has+expired.+Request+a+new+reset+email.",
+      "http://localhost/forgot-password?error=Your%20password%20reset%20link%20is%20invalid%20or%20has%20expired.%20Request%20a%20new%20reset%20email.&resend=reset",
+    );
+  });
+
+  it("returns users to register when the confirmation link is invalid", async () => {
+    supabaseAuth.verifyOtp.mockResolvedValueOnce({ error: { message: "OTP expired" } });
+
+    const { GET } = await import("@/app/auth/confirm/route");
+    const response = await GET(
+      new NextRequest("http://localhost/auth/confirm?token_hash=bad&type=email"),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/register?error=Invalid%20or%20expired%20link.%20Request%20a%20new%20email%20and%20try%20again.&resend=confirmation",
+    );
+  });
+
+  it("forwards the email to register when a confirmation link with email param is invalid", async () => {
+    supabaseAuth.verifyOtp.mockResolvedValueOnce({ error: { message: "OTP expired" } });
+
+    const { GET } = await import("@/app/auth/confirm/route");
+    const response = await GET(
+      new NextRequest(
+        "http://localhost/auth/confirm?token_hash=bad&type=email&email=user%40example.com",
+      ),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/register?email=user%40example.com&error=Invalid%20or%20expired%20link.%20Request%20a%20new%20email%20and%20try%20again.&resend=confirmation",
     );
   });
 });
