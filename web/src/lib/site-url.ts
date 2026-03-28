@@ -15,11 +15,11 @@ function normalizeSiteUrl(url: string) {
 }
 
 export function getSiteUrl() {
+  // NEXT_PUBLIC_SITE_URL must be explicitly set in Vercel env vars (production + preview).
+  // Never fall through to VERCEL_URL / NEXT_PUBLIC_VERCEL_URL — those are per-deployment
+  // auto-generated URLs that break email redirect links and template asset fetches.
   return normalizeSiteUrl(
-    process.env.NEXT_PUBLIC_SITE_URL ??
-      process.env.NEXT_PUBLIC_VERCEL_URL ??
-      process.env.VERCEL_URL ??
-      LOCAL_SITE_URL,
+    process.env.NEXT_PUBLIC_SITE_URL ?? LOCAL_SITE_URL,
   );
 }
 
