@@ -441,11 +441,6 @@ body[data-auth-modal-open="true"] .home-hero-frame {
     linear-gradient(135deg, rgba(74, 95, 132, 1) 0%, rgba(192, 106, 79, 1) 100%);
 }
 
-.auth-pill {
-  border: 1px solid rgba(200, 190, 171, 0.6);
-  background: rgba(255, 255, 255, 0.72);
-}
-
 .auth-choice {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(247, 242, 235, 0.9) 100%);
@@ -457,10 +452,55 @@ body[data-auth-modal-open="true"] .home-hero-frame {
     color var(--motion-fast) ease;
 }
 
-.auth-choice:hover {
+.auth-choice-idle {
+  border-color: rgba(200, 190, 171, 0.55);
+  color: var(--text-subtle);
+}
+
+.auth-choice-active {
+  border-color: color-mix(in srgb, var(--accent-primary) 42%, #ffffff);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-soft) 62%, #ffffff) 0%,
+      rgba(255, 255, 255, 0.98) 100%
+    );
+  box-shadow:
+    0 0 0 1px rgba(192, 106, 79, 0.08) inset,
+    0 12px 28px rgba(192, 106, 79, 0.1);
+}
+
+.auth-choice:hover,
+.auth-choice:focus-within {
   border-color: color-mix(in srgb, var(--accent-primary) 45%, #ffffff);
   box-shadow: 0 12px 32px rgba(20, 20, 19, 0.06);
   transform: translateY(-1px);
+}
+
+.auth-choice-indicator {
+  transition:
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    transform var(--motion-standard) cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.auth-choice-indicator-idle {
+  border-color: rgba(200, 190, 171, 0.75);
+  background: rgba(255, 255, 255, 0.86);
+  color: transparent;
+}
+
+.auth-choice-indicator-active {
+  border-color: color-mix(in srgb, var(--accent-primary) 45%, #ffffff);
+  background: var(--accent-primary);
+  color: var(--accent-foreground-strong);
+  transform: scale(1.02);
+}
+
+.auth-choice-hint {
+  border: 1px solid rgba(200, 190, 171, 0.45);
+  background: rgba(255, 255, 255, 0.64);
 }
 
 @media (prefers-reduced-motion: reduce) {

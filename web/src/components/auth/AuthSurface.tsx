@@ -1,5 +1,6 @@
 import Link from "next/link";
 import BrandMark from "@/app/components/BrandMark";
+import AccountTypeSelector from "@/components/auth/AccountTypeSelector";
 import PendingSubmitButton from "@/app/components/PendingSubmitButton";
 import {
   requestPasswordReset,
@@ -19,7 +20,6 @@ import {
   PASSWORD_POLICY_TITLE,
 } from "@/lib/auth/password-policy";
 import {
-  buildRedirectUrl,
   getAuthHref,
   type AuthMode,
   type AuthPresentation,
@@ -36,6 +36,7 @@ type AuthCopy = {
   eyebrow: string;
   title: string;
   description: string;
+  supportNote?: string;
   footerLabel: string;
   footerMode: AuthMode;
   footerLinkLabel: string;
@@ -47,6 +48,7 @@ const AUTH_COPY: Record<AuthMode, AuthCopy> = {
     title: "Welcome back",
     description:
       "Sign in to manage classes, review AI outputs, and keep every student workflow grounded in your blueprint.",
+    supportNote: undefined,
     footerLabel: "New here?",
     footerMode: "sign-up",
     footerLinkLabel: "Create an account",
@@ -56,6 +58,8 @@ const AUTH_COPY: Record<AuthMode, AuthCopy> = {
     title: "Create an account",
     description:
       "Start with one editable blueprint, then publish clear, auditable AI learning experiences for teachers and students.",
+    supportNote:
+      "Pick the role that matches how you’ll use the platform. This is the one setup choice that shapes your workspace.",
     footerLabel: "Already have an account?",
     footerMode: "sign-in",
     footerLinkLabel: "Sign in",
@@ -65,6 +69,7 @@ const AUTH_COPY: Record<AuthMode, AuthCopy> = {
     title: "Reset your password",
     description:
       "We will email a secure recovery link so you can get back into your workspace without losing momentum.",
+    supportNote: undefined,
     footerLabel: "Remembered your password?",
     footerMode: "sign-in",
     footerLinkLabel: "Back to sign in",
@@ -200,6 +205,9 @@ export default function AuthSurface({
               <p className="max-w-[34ch] text-sm leading-6 text-ui-muted sm:text-[15px]">
                 {copy.description}
               </p>
+              {copy.supportNote ? (
+                <p className="max-w-[38ch] text-sm leading-6 text-ui-subtle">{copy.supportNote}</p>
+              ) : null}
             </div>
           </div>
 
@@ -209,11 +217,6 @@ export default function AuthSurface({
               ×
             </DialogClose>
           ) : null}
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-ui-subtle">
-          <span className="auth-pill rounded-full px-3 py-1">Email-only authentication</span>
-          <span className="auth-pill rounded-full px-3 py-1">Separate teacher and student roles</span>
         </div>
 
         <div className="mt-6 border-t border-default pt-5">
@@ -269,37 +272,7 @@ export default function AuthSurface({
             <form className="space-y-4" action={signUp}>
               <input type="hidden" name="auth_return_to" value={authReturnTo} />
               <input type="hidden" name="auth_success_to" value={authSuccessTo} />
-              <div className="space-y-2">
-                <span className="text-sm font-medium text-ui-muted">Account type</span>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <input
-                      type="radio"
-                      name="account_type"
-                      value="teacher"
-                      defaultChecked={defaultAccountType === "teacher"}
-                      className="peer sr-only"
-                    />
-                    <span className="auth-choice flex min-h-14 items-center justify-between rounded-2xl border border-default px-4 py-3 text-sm font-medium text-ui-subtle peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-ui-primary">
-                      <span>Teacher</span>
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-ui-muted">Manage</span>
-                    </span>
-                  </label>
-                  <label className="block">
-                    <input
-                      type="radio"
-                      name="account_type"
-                      value="student"
-                      defaultChecked={defaultAccountType === "student"}
-                      className="peer sr-only"
-                    />
-                    <span className="auth-choice flex min-h-14 items-center justify-between rounded-2xl border border-default px-4 py-3 text-sm font-medium text-ui-subtle peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-ui-primary">
-                      <span>Student</span>
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-ui-muted">Learn</span>
-                    </span>
-                  </label>
-                </div>
-              </div>
+              <AccountTypeSelector defaultValue={defaultAccountType} />
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input

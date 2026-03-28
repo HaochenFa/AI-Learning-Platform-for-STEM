@@ -11,6 +11,8 @@ describe("LoginPage", () => {
     expect(html).toContain("Password");
     expect(html).toContain("Show password");
     expect(html).toContain("Sign in");
+    expect(html).not.toContain("Email-only authentication");
+    expect(html).not.toContain("Separate teacher and student roles");
   });
 
   it("shows verify notice when verify=1", async () => {
