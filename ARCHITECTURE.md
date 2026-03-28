@@ -161,6 +161,30 @@ The web app uses Next.js 16 App Router with server actions as the main write pat
 | `web/src/lib/ai/python-*.ts` | frontend-to-backend adapters for AI domains |
 | `web/src/lib/chat/python-workspace.ts` | frontend adapter for chat workspace endpoints |
 
+### Auth Surface Architecture
+
+The entire public auth flow — sign-in, sign-up, and forgot-password — is handled by a single shared component: `web/src/components/auth/AuthSurface.tsx`. It renders in two presentations:
+
+- **Modal** on the home page `/`, triggered by `?auth=sign-in`, `?auth=sign-up`, or `?auth=forgot-password` query params. `HomeAuthDialog` wraps it.
+- **Page** at the dedicated routes `/login`, `/register`, and `/forgot-password`, all sharing `AuthShell.tsx` as their outer wrapper.
+
+Auth state (pending email, resend timer, confirmation flow) is fully URL-driven — no separate client state. The sign-up form collapses to a resend-only surface after the confirmation email is sent; the two states are mutually exclusive and server-rendered via search params. Recovery and confirmation link failures redirect users to resend-ready states rather than dead-end error pages.
+
+Auth URL and redirect helpers live in `web/src/lib/auth/ui.ts`; the server-side auth context helper is `web/src/lib/auth/session.ts`.
+
+```mermaid
+flowchart LR
+    LP["/ (landing page)\n?auth=sign-in/sign-up/forgot-password"] --> Modal[Auth Modal\nHomeAuthDialog]
+    FallbackRoutes["/login · /register\n/forgot-password"] --> AuthPage[Auth Page\nAuthShell]
+
+    Modal --> |shared| AS[AuthSurface component]
+    AuthPage --> |shared| AS
+
+    AS --> |email sent| Resend[Resend-only view\nURL-driven state]
+    AS --> |confirmed| Callback[/auth/confirm]
+    Callback --> Dashboard[Teacher or Student Dashboard]
+```
+
 ### Middleware role
 
 `web/middleware.ts` centralizes route protection and guest-session enforcement.

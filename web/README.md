@@ -88,6 +88,8 @@ flowchart LR
 | `src/components/ui/` | shared UI primitives |
 | `src/components/icons/` | centralized icon registry |
 | `src/components/providers/` | global providers including motion |
+| `src/components/auth/` | shared auth surface — `AuthSurface`, `HomeAuthDialog`, `AuthResendForm` |
+| `src/lib/auth/` | auth session helpers (`session.ts`, `ui.ts`), password policy |
 | `src/lib/ai/` | frontend-to-backend adapters for AI domains |
 | `src/lib/chat/` | chat generation and workspace adapters |
 | `src/lib/actions/` | higher-level server-action helpers such as insights and teaching brief |
@@ -202,6 +204,9 @@ uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload
 - Supabase email templates should use the SSR confirm callback path:
   - `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`
   - `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
+- The branded confirmation email HTML lives in `supabase/templates/confirmation.html` — paste it into Supabase Dashboard → Auth → Email Templates → Confirm signup for hosted environments.
+- All auth flows (sign-in, sign-up, forgot-password) share a single `AuthSurface` component (`web/src/components/auth/AuthSurface.tsx`). It renders as a modal on `/` (triggered by `?auth=…` params) or as a standalone page at `/login`, `/register`, and `/forgot-password`. Do not add auth form markup outside this component.
+- After sign-up, the form collapses to a resend-only view — both states are URL-driven via search params, not local React state.
 
 ## Guest Mode Notes
 

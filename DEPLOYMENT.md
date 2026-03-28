@@ -78,6 +78,10 @@ Create one project per hosted environment, typically:
 
 ### Recommended Email Templates
 
+The platform uses a branded confirmation email. Apply the full HTML from `supabase/templates/confirmation.html` in the Supabase Dashboard under **Auth → Email Templates → Confirm signup**. Do not use the default Supabase template — the branded one wires the confirmation button to the app's SSR callback route.
+
+The URL patterns embedded in the templates are:
+
 - Confirm signup:
 
 ```text
@@ -89,6 +93,8 @@ Create one project per hosted environment, typically:
 ```text
 {{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery
 ```
+
+Set **Email OTP Expiration** to `300` seconds in the Supabase dashboard to match the 5-minute link lifetime the app communicates to users. Keep the local `auth.email.otp_expiry` in `supabase/config.toml` aligned to the same value.
 
 ### Required Database Capabilities
 

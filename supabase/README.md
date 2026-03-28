@@ -21,6 +21,7 @@ This directory contains the schema migrations, local Supabase configuration, and
 | `migrations_archive/` | historical archived migration files not used by the active CLI path |
 | `functions/material-worker/` | material processing worker |
 | `functions/guest-sandbox-cleanup/` | guest sandbox cleanup worker |
+| `templates/confirmation.html` | branded confirmation email template — paste into Supabase Dashboard → Auth → Email Templates |
 | `config.toml` | local Supabase configuration |
 
 ## Supabase Responsibilities In This Project

@@ -11,13 +11,14 @@ STEM Learning Platform with GenAI - A production-ready educational platform wher
 ## Common Commands
 
 ```bash
-pnpm install        # Install all dependencies (from monorepo root)
-pnpm dev           # Run Next.js dev server (uses --webpack; required for Next.js 16 + React 19)
-pnpm build         # Build for production (--webpack required; turbopack not yet stable)
-pnpm start         # Run production server
-pnpm lint          # Run ESLint
-pnpm test          # Run tests
-pnpm test:watch    # Run tests in watch mode
+pnpm install             # Install all dependencies (from monorepo root)
+pnpm dev                # Run Next.js dev server (uses --webpack; required for Next.js 16 + React 19)
+pnpm build              # Build for production (--webpack required; turbopack not yet stable)
+pnpm start              # Run production server
+pnpm lint               # Run ESLint
+pnpm test               # Run Vitest unit tests
+pnpm test:watch         # Run Vitest in watch mode
+pnpm export:mermaid-png # Export Mermaid diagrams in ARCHITECTURE.md as PNG images
 
 # Python backend
 pip install -r backend/requirements.txt                                                          # Install Python deps
@@ -25,11 +26,39 @@ uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload      
 python3 -m unittest discover -s backend/tests -p 'test_*.py'                                    # Run Python tests
 ```
 
-Run a single test file:
+Run a single Vitest unit test file:
 
 ```bash
 pnpm vitest run path/to/testfile.test.ts
 ```
+
+### E2E Tests (Playwright)
+
+E2E tests live in `tests/` and run against a deployed URL (default: Vercel preview/production).
+
+```bash
+# First-time setup
+pnpm exec playwright install          # Install browser binaries
+cp tests/.env.example tests/.env     # Fill in credentials (gitignored)
+
+# Run all E2E tests
+npx playwright test --config tests/playwright.config.ts
+
+# Run a single spec
+npx playwright test --config tests/playwright.config.ts tests/e2e/teacher-nav.spec.ts
+
+# Open HTML report after a run
+npx playwright show-report tests/results/html-report
+```
+
+Required env vars in `tests/.env`:
+
+| Variable | Description |
+|----------|-------------|
+| `E2E_BASE_URL` | Target URL (defaults to Vercel deployment) |
+| `E2E_TEACHER_EMAIL` / `E2E_TEACHER_PASSWORD` | Teacher test account |
+| `E2E_STUDENT_EMAIL` / `E2E_STUDENT_PASSWORD` | Student test account (optional) |
+| `E2E_JOIN_CODE` | Valid class join code (optional; skips join-class test if absent) |
 
 ## Git Remotes
 
@@ -105,6 +134,13 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 | Activity access/assignments | `web/src/lib/activities/` |
 | Analytics/class insights | `backend/app/analytics.py` |
 | Global styles & design tokens | `web/src/app/globals.css` |
+| Auth session helpers (server-side) | `web/src/lib/auth/session.ts` |
+| Auth URL/redirect helpers | `web/src/lib/auth/ui.ts` |
+| Auth surface (modal + page) | `web/src/components/auth/AuthSurface.tsx` |
+| Guest mode config + utilities | `web/src/lib/guest/` |
+| Supabase email templates | `supabase/templates/` |
+| E2E test specs | `tests/e2e/` |
+| Playwright config | `tests/playwright.config.ts` |
 
 ## Architecture
 
@@ -113,6 +149,7 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 - `web/` - Next.js application with App Router
 - `backend/` - Python FastAPI service for AI provider orchestration
 - `supabase/` - Database migrations and Supabase configuration
+- `tests/` - Playwright E2E test suite (runs against deployed URL)
 
 **Key Boundaries**:
 
@@ -134,10 +171,12 @@ mcp__supabase__execute_sql --sql "SELECT 1"
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SECRET_KEY`
+   - `NEXT_PUBLIC_SITE_URL` (e.g. `http://localhost:3000`; used for auth email redirect links)
    - At least one AI provider key: `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY`
    - `PYTHON_BACKEND_URL` (default: `http://localhost:8001` for local dev)
-   - `PYTHON_BACKEND_API_KEY` (required when `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS=false`)
-   - `PYTHON_BACKEND_ALLOW_UNAUTHENTICATED_REQUESTS` (set `true` for local dev without API key)
+   - `PYTHON_BACKEND_API_KEY` (leave blank for local dev — backend allows unauthenticated by default)
+3. Optional variables:
+   - `NEXT_PUBLIC_GUEST_MODE_ENABLED` — set `true` to enable the guest entry flow (off by default)
 
 ## Key Design Patterns
 
@@ -150,6 +189,10 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 **Canvas / Generative Layout**: `backend/app/canvas.py` supports AI-driven layout generation for the student chat view and teacher insights panel. Layouts are generated per-session using the blueprint as context.
 
 **Class Analytics**: `backend/app/analytics.py` + migration `0013_add_class_insights_snapshots.sql` persist aggregated class intelligence snapshots for the teacher dashboard.
+
+**Auth Surface**: A single `AuthSurface` component handles all auth flows (sign-in, sign-up, forgot-password). It renders as a **modal** on the home page (triggered by `?auth=sign-in` / `?auth=sign-up` query params) or as a **page** at `/login` and `/register`. The `HomeAuthDialog` wraps the modal variant. Auth helpers live in `web/src/lib/auth/ui.ts` (`getAuthHref`, `buildRedirectUrl`) and `session.ts` (`getAuthContext`).
+
+**Guest Mode**: Toggled by `NEXT_PUBLIC_GUEST_MODE_ENABLED=true`. Guests sign in via Supabase Anon Auth and get a sandboxed session (8h max, 1h inactivity, 5 sessions/hour rate limit). The entry flow is at `/guest/enter`. Guest mode is enforced at the DB layer via RLS (migrations `0015`–`0021`). Guest config lives in `web/src/lib/guest/`.
 
 **Security**: RLS enforced on all tables, input validation on every API route and server action, file uploads are size-limited and content-type checked. AI context restricted to approved materials and blueprint.
 
@@ -173,9 +216,11 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 ## Important Notes
 
 - Email/password auth only; `profiles.account_type` is immutable (teacher or student)
+- Guest sessions use Supabase Anon Auth — not email/password. They are sandboxed and expire automatically.
 - Material ingestion is queue-driven on Supabase (`pgmq` + Edge Function worker)
 - Chat uses long-session context engineering with memory compaction
 - All AI outputs are saved before use and are editable/auditable by teachers
+- Branded confirmation email template lives in `supabase/templates/confirmation.html` (must be applied in Supabase Dashboard → Auth → Email Templates)
 
 ## Lessons Learned
 
@@ -185,3 +230,4 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 - **Cursor pagination validation**: Cursor tokens passed to PostgREST must be validated as UUID + ISO-8601 format before string interpolation to prevent injection. See `backend/app/chat_workspace.py`.
 - **Message timestamp ordering**: When persisting user + assistant message pairs, offset assistant timestamp by 1ms to guarantee correct ordering in queries that sort by `created_at`.
 - **Supabase Storage iframe embedding**: Supabase Storage serves files with `X-Frame-Options` headers that block cross-origin iframe embedding. Never use signed URLs directly as iframe `src`. Instead, fetch the file as a blob via `fetch(signedUrl)`, create a same-origin blob URL with `URL.createObjectURL(blob)`, and use that. Always clean up with `URL.revokeObjectURL()` in both the dialog close handler and a `useEffect` cleanup. See `MaterialActionsMenu.tsx` for the reference implementation.
+- **CSS keyframes + Tailwind v4 centering**: Tailwind v4 applies centering via the standalone CSS `translate` property (not inside `transform`). Keyframe `transform` values must therefore contain only scale/Y-offset; never embed `-50% -50%` centering offsets inside a `@keyframes` block — doing so fights the framework and breaks dialog positioning.

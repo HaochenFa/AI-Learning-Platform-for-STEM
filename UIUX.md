@@ -84,6 +84,28 @@ flowchart TD
 - preview-as-student stays within the class shell rather than switching accounts
 - guests are kept inside sandbox-compatible destinations
 
+### Auth surface navigation model
+
+Public auth uses a **home-first hybrid** pattern. The primary unauthenticated entry point opens sign-in, sign-up, and forgot-password inside a modal launched directly from `/` via `?auth=…` query params. Dedicated page routes (`/login`, `/register`, `/forgot-password`) remain as compact fallbacks for deep links, validation round-trips, and non-JS access.
+
+Both presentations share a single `AuthSurface` component — auth markup is never duplicated across pages. Modal state is URL-driven and server-rendered, so the confirmation and resend flows survive full page reloads without any client-side state management.
+
+After a sign-up email is sent, the form collapses into a resend-only surface. The two states (registration form vs. resend button) are mutually exclusive and driven by URL search params — this keeps confirmation recovery available in-place without a separate route. Invalid or expired confirmation links redirect back to the resend-ready sign-up state; invalid recovery links redirect to the resend-ready forgot-password state.
+
+```mermaid
+flowchart TD
+    LP[Landing Page] --> |"?auth=sign-in\n?auth=sign-up\n?auth=forgot-password"| Modal[Auth Modal]
+    FallbackRoutes["/login · /register · /forgot-password"] --> AuthPage[Auth Page]
+
+    Modal --> |shared| AS[AuthSurface]
+    AuthPage --> |shared| AS
+
+    AS --> |"sign-up or forgot-password:\nemail sent"| Resend["Resend-only view\n(form collapses, URL-driven)"]
+    AS --> |"sign-in or confirmed"| Dashboard[Teacher or Student Dashboard]
+
+    Resend --> |"link expired → back to resend-ready"| AS
+```
+
 ## 5. Frontend Layering
 
 The frontend stack is layered intentionally rather than being a flat collection of pages and classes.

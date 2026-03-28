@@ -44,7 +44,7 @@ The platform is intentionally split into distinct role-oriented experiences rath
 
 ```mermaid
 flowchart TD
-    LP[Landing Page] --> AUTH[Auth and Onboarding]
+    LP[Landing Page] --> |"?auth= modal or fallback route"| AUTH[Auth]
     LP --> GUEST[Guest Entry]
 
     AUTH --> TD[Teacher Dashboard]
