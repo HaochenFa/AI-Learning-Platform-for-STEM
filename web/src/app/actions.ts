@@ -154,13 +154,10 @@ export async function signUp(formData: FormData) {
       redirect(buildRedirectUrl(authReturnTo, { error: signOutResult.error.message }));
     }
 
-    redirect(
-      buildRedirectUrl(authReturnTo, {
-        guest: "ready",
-        email: email || null,
-        account_type: accountType,
-      }),
-    );
+    // After signing out the anonymous session, fall through to create the real account
+    // immediately. Redirecting back with guest=ready and asking the user to re-submit
+    // is unreliable: if the signOut cookie-clearing does not persist across the redirect,
+    // getAuthContext() on the next submit re-detects the user as a guest, causing a loop.
   }
 
   const supabase = await createServerSupabaseClient();
