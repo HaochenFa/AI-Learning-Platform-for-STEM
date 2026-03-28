@@ -2,19 +2,21 @@ import Link from "next/link";
 import AmbientBackground from "@/app/components/AmbientBackground";
 import BrandMark from "@/app/components/BrandMark";
 import HeroContent from "@/app/components/HeroContent";
+import AuthSurface from "@/components/auth/AuthSurface";
+import HomeAuthDialog from "@/components/auth/HomeAuthDialog";
 import { getAuthContext } from "@/lib/auth/session";
 import { isGuestModeEnabled } from "@/lib/guest/config";
 import { getGuestLandingFeedback } from "@/lib/guest/errors";
-
-type SearchParams = {
-  error?: string;
-  guest?: string;
-};
+import {
+  getAuthHref,
+  parseAuthMode,
+  type AuthSearchParams,
+} from "@/lib/auth/ui";
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams?: Promise<SearchParams>;
+  searchParams?: Promise<AuthSearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
   const { user, profile, isEmailVerified } = await getAuthContext();
@@ -26,6 +28,9 @@ export default async function HomePage({
     error: typeof resolvedSearchParams?.error === "string" ? resolvedSearchParams.error : null,
     guest: typeof resolvedSearchParams?.guest === "string" ? resolvedSearchParams.guest : null,
   });
+  const authMode = !isAuthed
+    ? parseAuthMode(typeof resolvedSearchParams?.auth === "string" ? resolvedSearchParams.auth : null)
+    : null;
 
   const dashboardHref =
     accountType === "teacher"
@@ -34,13 +39,17 @@ export default async function HomePage({
         ? "/student/dashboard"
         : "/dashboard";
 
-  const primaryHref = !isAuthed ? "/register" : accountType === "teacher" ? "/classes/new" : "/join";
+  const primaryHref = !isAuthed
+    ? getAuthHref("sign-up", "modal")
+    : accountType === "teacher"
+      ? "/classes/new"
+      : "/join";
   const primaryLabel = !isAuthed
     ? "Create account"
     : accountType === "teacher"
       ? "Create a class"
       : "Join a class";
-  const secondaryHref = isAuthed ? dashboardHref : "/login";
+  const secondaryHref = isAuthed ? dashboardHref : getAuthHref("sign-in", "modal");
   const secondaryLabel = isAuthed ? "Go to dashboard" : "Sign in";
   const guestHref = !isAuthed && isGuestModeEnabled() ? "/guest/enter" : undefined;
   const guestLabel = guestHref ? "Continue as guest" : undefined;
@@ -59,12 +68,13 @@ export default async function HomePage({
           <Link
             className="ui-motion-color text-sm text-ui-muted hover:text-accent"
             href={secondaryHref}
+            scroll={isAuthed}
           >
             {secondaryLabel} →
           </Link>
         </header>
 
-        <main className="hero-shell rounded-[2rem] border border-default px-8 pb-12 pt-10 shadow-sm sm:px-12">
+        <main className="home-hero-frame hero-shell rounded-[2rem] border border-default px-8 pb-12 pt-10 shadow-sm sm:px-12">
           <HeroContent
             primaryHref={primaryHref}
             primaryLabel={primaryLabel}
@@ -76,6 +86,18 @@ export default async function HomePage({
           />
         </main>
       </div>
+
+      {!isAuthed ? (
+        <HomeAuthDialog mode={authMode}>
+          {authMode ? (
+            <AuthSurface
+              mode={authMode}
+              presentation="modal"
+              searchParams={resolvedSearchParams}
+            />
+          ) : null}
+        </HomeAuthDialog>
+      ) : null}
     </div>
   );
 }

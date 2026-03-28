@@ -95,6 +95,9 @@ export default function HeroContent({
   guestLabel,
   guestFeedback,
 }: HeroContentProps) {
+  const primaryScroll = !primaryHref.startsWith("/?auth=");
+  const secondaryScroll = !secondaryHref.startsWith("/?auth=");
+
   return (
     <div className="space-y-10">
       {/* Zone A — Headline + CTA */}
@@ -142,10 +145,13 @@ export default function HeroContent({
 
         <motion.div variants={STAGGER_ITEM} className="flex flex-wrap items-center gap-5">
           <Button asChild variant="warm" size="lg" className="ui-motion-lift">
-            <Link href={primaryHref}>{primaryLabel}</Link>
+            <Link href={primaryHref} scroll={primaryScroll}>
+              {primaryLabel}
+            </Link>
           </Button>
           <Link
             href={secondaryHref}
+            scroll={secondaryScroll}
             className="text-sm ui-motion-color text-ui-muted hover:text-accent"
           >
             {secondaryLabel} →

@@ -11,6 +11,10 @@ import {
   resetGuestSandbox,
   switchGuestRole,
 } from "@/lib/guest/sandbox";
+import {
+  buildRedirectUrl,
+  sanitizeInternalRedirectPath,
+} from "@/lib/auth/ui";
 import { getAuthRedirectUrl } from "@/lib/site-url";
 import { redirect } from "next/navigation";
 
@@ -47,15 +51,21 @@ function redirectToAuthPage(path: string, message?: string) {
     redirect(path);
   }
 
-  const resolvedMessage = message ?? "Unexpected authentication error";
-  const url = new URL(path, "http://localhost");
-  url.searchParams.set("error", resolvedMessage);
-  redirect(`${url.pathname}?${url.searchParams.toString()}`);
+  redirect(buildRedirectUrl(path, { error: message ?? "Unexpected authentication error" }));
+}
+
+function getAuthReturnTo(
+  formData: FormData,
+  fallbackPath: string,
+  fieldName = "auth_return_to",
+) {
+  return sanitizeInternalRedirectPath(formData.get(fieldName)) ?? fallbackPath;
 }
 
 export async function signIn(formData: FormData) {
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
+  const authReturnTo = getAuthReturnTo(formData, "/login");
 
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -64,7 +74,7 @@ export async function signIn(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(buildRedirectUrl(authReturnTo, { error: error.message }));
   }
 
   if (data?.user) {
@@ -89,43 +99,41 @@ export async function signUp(formData: FormData) {
   const email = getFormValue(formData, "email").toLowerCase();
   const password = getFormValue(formData, "password");
   const accountType = parseAccountType(getFormValue(formData, "account_type"));
+  const authReturnTo = getAuthReturnTo(formData, "/register");
+  const authSuccessTo = getAuthReturnTo(formData, "/login", "auth_success_to");
 
   if (!accountType) {
-    redirect("/register?error=Select%20an%20account%20type");
+    redirect(buildRedirectUrl(authReturnTo, { error: "Select an account type" }));
   }
 
   const passwordValidation = validatePasswordPolicy(password);
   if (!passwordValidation.ok) {
-    redirect(`/register?error=${encodeURIComponent(passwordValidation.message)}`);
+    redirect(buildRedirectUrl(authReturnTo, { error: passwordValidation.message }));
   }
 
   const existingContext = await getAuthContext();
   if (existingContext.guestSessionError) {
-    redirect(`/register?error=${encodeURIComponent(existingContext.guestSessionError)}`);
+    redirect(buildRedirectUrl(authReturnTo, { error: existingContext.guestSessionError }));
   }
 
   if (existingContext.isGuest && existingContext.sandboxId) {
     const discarded = await discardGuestSandbox(existingContext.sandboxId);
     if (!discarded.ok) {
-      redirect(
-        `/register?error=${encodeURIComponent(
-          discarded.error ?? "Unable to discard guest sandbox.",
-        )}`,
-      );
+      redirect(buildRedirectUrl(authReturnTo, { error: discarded.error ?? "Unable to discard guest sandbox." }));
     }
 
     const signOutResult = await existingContext.supabase.auth.signOut();
     if (signOutResult?.error) {
-      redirect(`/register?error=${encodeURIComponent(signOutResult.error.message)}`);
+      redirect(buildRedirectUrl(authReturnTo, { error: signOutResult.error.message }));
     }
 
-    const redirectUrl = new URL("/register", "http://localhost");
-    redirectUrl.searchParams.set("guest", "ready");
-    if (email) {
-      redirectUrl.searchParams.set("email", email);
-    }
-    redirectUrl.searchParams.set("account_type", accountType);
-    redirect(redirectUrl.pathname + "?" + redirectUrl.searchParams.toString());
+    redirect(
+      buildRedirectUrl(authReturnTo, {
+        guest: "ready",
+        email: email || null,
+        account_type: accountType,
+      }),
+    );
   }
 
   const supabase = await createServerSupabaseClient();
@@ -144,17 +152,18 @@ export async function signUp(formData: FormData) {
       ? DUPLICATE_SIGN_UP_ERROR_MESSAGE
       : error.message;
 
-    redirect(`/register?error=${encodeURIComponent(msg)}`);
+    redirect(buildRedirectUrl(authReturnTo, { error: msg }));
   }
 
-  redirect("/login?verify=1");
+  redirect(buildRedirectUrl(authSuccessTo, { verify: "1" }));
 }
 
 export async function requestPasswordReset(formData: FormData) {
   const email = getFormValue(formData, "email").toLowerCase();
+  const authReturnTo = getAuthReturnTo(formData, "/forgot-password");
 
   if (!email) {
-    redirectToAuthPage("/forgot-password", "Enter your email address.");
+    redirectToAuthPage(authReturnTo, "Enter your email address.");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -164,10 +173,10 @@ export async function requestPasswordReset(formData: FormData) {
   });
 
   if (error) {
-    redirectToAuthPage("/forgot-password", error.message);
+    redirectToAuthPage(authReturnTo, error.message);
   }
 
-  redirect("/forgot-password?sent=1");
+  redirect(buildRedirectUrl(authReturnTo, { sent: "1" }));
 }
 
 export async function completePasswordRecovery(formData: FormData) {

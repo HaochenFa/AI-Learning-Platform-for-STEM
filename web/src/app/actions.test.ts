@@ -89,6 +89,19 @@ describe("auth actions", () => {
     expect(redirect).toHaveBeenCalled();
   });
 
+  it("returns sign-in errors back to the home auth modal when requested", async () => {
+    supabaseAuth.signInWithPassword.mockResolvedValueOnce({
+      error: { message: "Invalid login" },
+    });
+
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("password", "bad");
+    formData.set("auth_return_to", "/?auth=sign-in");
+
+    await expectRedirect(() => signIn(formData), "/?auth=sign-in&error=Invalid%20login");
+  });
+
   it("redirects to dashboard on successful sign in", async () => {
     supabaseAuth.signInWithPassword.mockResolvedValueOnce({ error: null });
 
@@ -225,6 +238,20 @@ describe("auth actions", () => {
     });
   });
 
+  it("can return successful sign up verification to the home auth modal", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ai-stem-learning-platform-group-8.vercel.app";
+    supabaseAuth.signUp.mockResolvedValueOnce({ error: null });
+
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("password", "goodpass1");
+    formData.set("account_type", "student");
+    formData.set("auth_return_to", "/?auth=sign-up");
+    formData.set("auth_success_to", "/?auth=sign-in");
+
+    await expectRedirect(() => signUp(formData), "/?auth=sign-in&verify=1");
+  });
+
   it("rejects sign up password shorter than 8 characters", async () => {
     const formData = new FormData();
     formData.set("email", "test@example.com");
@@ -296,6 +323,18 @@ describe("auth actions", () => {
     expect(supabaseAuth.resetPasswordForEmail).toHaveBeenCalledWith("test@example.com", {
       redirectTo: "https://ai-stem-learning-platform-group-8.vercel.app",
     });
+  });
+
+  it("returns password reset status to the home auth modal when requested", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ai-stem-learning-platform-group-8.vercel.app";
+    supabaseAuth.resetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
+    const { requestPasswordReset } = await import("@/app/actions");
+    const formData = new FormData();
+    formData.set("email", "test@example.com");
+    formData.set("auth_return_to", "/?auth=forgot-password");
+
+    await expectRedirect(() => requestPasswordReset(formData), "/?auth=forgot-password&sent=1");
   });
 
   it("updates the password during recovery and redirects back to login", async () => {

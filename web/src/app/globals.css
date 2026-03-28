@@ -265,6 +265,67 @@ h3 {
   box-shadow: var(--shadow-card-hover);
 }
 
+.dialog-overlay-base[data-state="open"] {
+  animation: dialog-overlay-in var(--motion-standard) ease forwards;
+}
+
+.dialog-overlay-base[data-state="closed"] {
+  animation: dialog-overlay-out var(--motion-fast) ease forwards;
+}
+
+.dialog-content-base[data-state="open"] {
+  animation: dialog-content-in 320ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.dialog-content-base[data-state="closed"] {
+  animation: dialog-content-out 180ms ease forwards;
+}
+
+.dialog-content-static[data-state="open"],
+.dialog-content-static[data-state="closed"] {
+  animation: none;
+}
+
+@keyframes dialog-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-content-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, calc(-50% + 18px), 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+@keyframes dialog-content-out {
+  from {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-50%, calc(-50% + 10px), 0) scale(0.992);
+  }
+}
+
 /* ─── Focus ─────────────────────────────────────── */
 
 :where(a, button, input, select, textarea, [role="button"]):focus-visible {
@@ -338,6 +399,88 @@ h3 {
   border-color: rgba(192, 106, 79, 0.3);
   box-shadow: 0 4px 20px rgba(192, 106, 79, 0.08);
   transform: translateY(-1px);
+}
+
+.home-hero-frame {
+  transition:
+    transform var(--motion-standard) cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    filter var(--motion-standard) ease,
+    opacity var(--motion-fast) ease;
+  transform-origin: top center;
+}
+
+body[data-auth-modal-open="true"] .home-hero-frame {
+  filter: saturate(0.94) blur(0.2px);
+  opacity: 0.92;
+  transform: scale(0.988);
+}
+
+.auth-surface {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 247, 241, 0.96) 100%),
+    radial-gradient(circle at top right, rgba(74, 95, 132, 0.12), transparent 42%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 22px 60px rgba(20, 20, 19, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.auth-surface-orb {
+  position: absolute;
+  inset: -10% -18% auto auto;
+  height: 220px;
+  width: 220px;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle, rgba(74, 95, 132, 0.18) 0%, rgba(74, 95, 132, 0.04) 42%, transparent 72%);
+  pointer-events: none;
+}
+
+.auth-mark {
+  background:
+    linear-gradient(135deg, rgba(74, 95, 132, 1) 0%, rgba(192, 106, 79, 1) 100%);
+}
+
+.auth-pill {
+  border: 1px solid rgba(200, 190, 171, 0.6);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.auth-choice {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(247, 242, 235, 0.9) 100%);
+  transition:
+    transform var(--motion-standard) cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    box-shadow var(--motion-standard) ease,
+    color var(--motion-fast) ease;
+}
+
+.auth-choice:hover {
+  border-color: color-mix(in srgb, var(--accent-primary) 45%, #ffffff);
+  box-shadow: 0 12px 32px rgba(20, 20, 19, 0.06);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay-base[data-state="open"],
+  .dialog-overlay-base[data-state="closed"],
+  .dialog-content-base[data-state="open"],
+  .dialog-content-base[data-state="closed"] {
+    animation: none;
+  }
+
+  .home-hero-frame,
+  .auth-choice {
+    transition: none;
+  }
+
+  body[data-auth-modal-open="true"] .home-hero-frame {
+    filter: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ─── Dashboard ambient ──────────────────────────── */
