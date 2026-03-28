@@ -284,7 +284,19 @@ export default function AuthSurface({
           ) : null}
 
           {mode === "sign-up" ? (
-            <>
+            signUpResendActive ? (
+              <AuthResendForm
+                action={resendConfirmationEmail}
+                authReturnTo={signUpResendReturnTo}
+                defaultEmail={defaultEmail}
+                emailMode="locked"
+                pendingLabel="Resending confirmation email..."
+                resendStartedAt={resendStartedAt}
+                submitLabel="Resend confirmation email"
+                timerReadyCopy="Confirmation links stay valid for 5 minutes. You can request a new email now."
+                timerWaitingCopy="You can resend another email in {seconds}. Confirmation links stay valid for 5 minutes."
+              />
+            ) : (
               <form className="space-y-4" action={signUp}>
                 <input type="hidden" name="auth_return_to" value={authReturnTo} />
                 <input type="hidden" name="auth_success_to" value={authSuccessTo} />
@@ -320,41 +332,7 @@ export default function AuthSurface({
                   className="w-full"
                 />
               </form>
-
-              {signUpResendActive ? (
-                <div className="mt-4 space-y-3 rounded-[1.5rem] border border-default bg-white/72 p-4">
-                  <div className="space-y-1">
-                    <h2 className="text-sm font-semibold text-ui-primary">
-                      Need another confirmation email?
-                    </h2>
-                    <p className="text-xs leading-5 text-ui-muted">
-                      {defaultEmail ? (
-                        <>
-                          We can resend it to{" "}
-                          <span className="font-medium text-ui-primary">{defaultEmail}</span>. If
-                          the email address or role is wrong, update the registration form above
-                          and create your account again.
-                        </>
-                      ) : (
-                        "If the email address or role is wrong, update the registration form above and create your account again."
-                      )}
-                    </p>
-                  </div>
-
-                  <AuthResendForm
-                    action={resendConfirmationEmail}
-                    authReturnTo={signUpResendReturnTo}
-                    defaultEmail={defaultEmail}
-                    emailMode="locked"
-                    pendingLabel="Resending confirmation email..."
-                    resendStartedAt={resendStartedAt}
-                    submitLabel="Resend confirmation email"
-                    timerReadyCopy="Confirmation links stay valid for 5 minutes. You can request a new email now."
-                    timerWaitingCopy="You can resend another email in {seconds}. Confirmation links stay valid for 5 minutes."
-                  />
-                </div>
-              ) : null}
-            </>
+            )
           ) : null}
 
           {mode === "forgot-password" && forgotPasswordResendActive ? (
