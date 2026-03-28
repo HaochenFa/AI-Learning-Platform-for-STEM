@@ -181,7 +181,7 @@ flowchart LR
     AuthPage --> |shared| AS
 
     AS --> |email sent| Resend[Resend-only view\nURL-driven state]
-    AS --> |confirmed| Callback[/auth/confirm]
+    AS --> |confirmed| Callback["/auth/confirm"]
     Callback --> Dashboard[Teacher or Student Dashboard]
 ```
 
