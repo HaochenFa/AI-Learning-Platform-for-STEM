@@ -113,6 +113,45 @@ describe("requestClassTeachingBrief", () => {
     });
   });
 
+  it("preserves students-to-watch entries that have only a display name", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            status: "ready",
+            generated_at: "2026-03-27T09:42:00Z",
+            is_stale: false,
+            has_evidence: true,
+            payload: {
+              summary: "Brief",
+              strongest_action: "Action",
+              attention_items: [],
+              misconceptions: [],
+              students_to_watch: [{ display_name: "Jordan K." }],
+              next_step: "Next step",
+              recommended_activity: { type: "quiz", reason: "Reason" },
+              evidence_basis: "Evidence",
+            },
+            error_message: null,
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const result = await requestClassTeachingBrief({
+      classId: "11111111-1111-1111-1111-111111111111",
+      userId: "teacher-1",
+      forceRefresh: false,
+      accessToken: "session-token",
+    });
+
+    expect(result.payload?.studentsToWatch).toEqual([
+      { studentId: "", displayName: "Jordan K.", reason: "" },
+    ]);
+  });
+
   it("preserves non-empty recommended activity labels from the backend", async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(

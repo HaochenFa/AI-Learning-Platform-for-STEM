@@ -284,19 +284,7 @@ export default function AuthSurface({
           ) : null}
 
           {mode === "sign-up" ? (
-            signUpResendActive ? (
-              <AuthResendForm
-                action={resendConfirmationEmail}
-                authReturnTo={signUpResendReturnTo}
-                defaultEmail={defaultEmail}
-                emailMode="locked"
-                pendingLabel="Resending confirmation email..."
-                resendStartedAt={resendStartedAt}
-                submitLabel="Resend confirmation email"
-                timerReadyCopy="Confirmation links stay valid for 5 minutes. You can request a new email now."
-                timerWaitingCopy="You can resend another email in {seconds}. Confirmation links stay valid for 5 minutes."
-              />
-            ) : (
+            <>
               <form className="space-y-4" action={signUp}>
                 <input type="hidden" name="auth_return_to" value={authReturnTo} />
                 <input type="hidden" name="auth_success_to" value={authSuccessTo} />
@@ -332,7 +320,26 @@ export default function AuthSurface({
                   className="w-full"
                 />
               </form>
-            )
+              {signUpResendActive && defaultEmail ? (
+                <div className="mt-4 space-y-3 border-t border-default pt-4">
+                  <p className="text-sm text-ui-muted">
+                    If your email address is wrong, update it above and click{" "}
+                    <strong>Create account</strong> again.
+                  </p>
+                  <AuthResendForm
+                    action={resendConfirmationEmail}
+                    authReturnTo={signUpResendReturnTo}
+                    defaultEmail={defaultEmail}
+                    emailMode="locked"
+                    pendingLabel="Resending confirmation email..."
+                    resendStartedAt={resendStartedAt}
+                    submitLabel="Resend confirmation email"
+                    timerReadyCopy="Confirmation links stay valid for 5 minutes. You can request a new email now."
+                    timerWaitingCopy="You can resend another email in {seconds}. Confirmation links stay valid for 5 minutes."
+                  />
+                </div>
+              ) : null}
+            </>
           ) : null}
 
           {mode === "forgot-password" ? (

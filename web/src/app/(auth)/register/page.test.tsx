@@ -19,6 +19,24 @@ describe("RegisterPage", () => {
     expect(html).not.toContain("Separate teacher and student roles");
   });
 
+  it("shows only the sign-up form when the resend state has no email", async () => {
+    const html = renderToStaticMarkup(
+      await RegisterPage({
+        searchParams: Promise.resolve({
+          resend: "confirmation",
+          error: "Invalid or expired link. Request a new email and try again.",
+        }),
+      }),
+    );
+
+    // sign-up form is visible so the user can re-register
+    expect(html).toContain("Create account");
+    expect(html).toContain("Account type");
+
+    // resend panel is absent — there is no email address to resend to
+    expect(html).not.toContain("Resend confirmation email");
+  });
+
   it("shows error message when provided", async () => {
     const html = renderToStaticMarkup(
       await RegisterPage({
@@ -45,17 +63,17 @@ describe("RegisterPage", () => {
     // success alert remains
     expect(html).toContain("Check your email to verify your account");
 
-    // resend button replaces the registration button
+    // resend button is present
     expect(html).toContain("Resend confirmation email");
-    expect(html).not.toContain("Create account");
 
-    // locked email is displayed
+    // email is pre-filled
     expect(html).toContain("teacher@example.com");
 
-    // full registration form is gone
-    expect(html).not.toContain("Account type");
+    // full registration form remains so the user can correct typos or role
+    expect(html).toContain("Create account");
+    expect(html).toContain("Account type");
 
-    // extra resend card is gone
-    expect(html).not.toContain("If the email address or role is wrong");
+    // correction guidance is shown (email only — role cannot be corrected via re-signup)
+    expect(html).toContain("If your email address is wrong");
   });
 });

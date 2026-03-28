@@ -68,6 +68,21 @@ describe("/auth/confirm", () => {
     );
   });
 
+  it("preserves a plus-addressed email forwarded from an invalid confirmation link", async () => {
+    supabaseAuth.verifyOtp.mockResolvedValueOnce({ error: { message: "OTP expired" } });
+
+    const { GET } = await import("@/app/auth/confirm/route");
+    const response = await GET(
+      new NextRequest(
+        "http://localhost/auth/confirm?token_hash=bad&type=email&email=user%2Balias%40example.com",
+      ),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/register?email=user%2Balias%40example.com&error=Invalid%20or%20expired%20link.%20Request%20a%20new%20email%20and%20try%20again.&resend=confirmation",
+    );
+  });
+
   it("forwards the email to register when a confirmation link with email param is invalid", async () => {
     supabaseAuth.verifyOtp.mockResolvedValueOnce({ error: { message: "OTP expired" } });
 

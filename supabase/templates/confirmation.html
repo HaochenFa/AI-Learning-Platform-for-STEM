@@ -119,7 +119,7 @@
                         <tr>
                           <td style="padding: 0 0 24px 0">
                             <a
-                              href="{{ if .RedirectTo }}{{ .RedirectTo }}{{ else }}{{ .SiteURL }}{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login&email={{ .Email }}"
+                              href="{{ if .RedirectTo }}{{ .RedirectTo }}{{ else }}{{ .SiteURL }}{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login&email={{ .Email | urlquery }}"
                               style="
                                 display: inline-block;
                                 padding: 14px 26px;
@@ -149,7 +149,7 @@
                             If the button does not open, copy this link into your browser:
                             <br />
                             <span style="word-break: break-all; color: #8b4631">
-                              {{ if .RedirectTo }}{{ .RedirectTo }}{{ else }}{{ .SiteURL }}{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login&email={{ .Email }}
+                              {{ if .RedirectTo }}{{ .RedirectTo }}{{ else }}{{ .SiteURL }}{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login&email={{ .Email | urlquery }}
                             </span>
                           </td>
                         </tr>

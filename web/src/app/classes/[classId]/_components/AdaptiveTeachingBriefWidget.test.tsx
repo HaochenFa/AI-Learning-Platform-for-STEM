@@ -236,6 +236,26 @@ describe("AdaptiveTeachingBriefWidget", () => {
     });
   });
 
+  it("renders name-only students-to-watch entries when expanded", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AdaptiveTeachingBriefWidget
+        state={makeState({
+          payload: {
+            ...makeState().payload!,
+            studentsToWatch: [{ studentId: "", displayName: "Jordan K.", reason: "" }],
+          },
+        })}
+        onRefresh={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /expand/i }));
+
+    expect(screen.getByText(/jordan k/i)).toBeInTheDocument();
+  });
+
   it("shows a compact error state when a refresh request rejects and no payload exists", async () => {
     const user = userEvent.setup();
     vi.mocked(refreshClassTeachingBrief).mockRejectedValue(new Error("Network broke"));

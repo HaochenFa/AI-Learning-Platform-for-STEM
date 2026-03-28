@@ -201,8 +201,8 @@ export function AdaptiveTeachingBriefWidget({
                     Who to watch
                   </p>
                   <ul className="space-y-2 text-sm text-ui-primary">
-                    {liveState.payload.studentsToWatch.map((student) => (
-                      <li key={student.studentId}>
+                    {liveState.payload.studentsToWatch.map((student, index) => (
+                      <li key={student.studentId || `${student.displayName}-${index}`}>
                         <span className="font-medium">{student.displayName}:</span> {student.reason}
                       </li>
                     ))}

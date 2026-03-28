@@ -285,11 +285,18 @@ export async function requestClassTeachingBrief(input: {
             topicTitle: normalizeBriefText(item.topic_title ?? item.topic ?? item.title),
             description: normalizeBriefText(item.description),
           })).filter((item) => item.topicTitle.length > 0 || item.description.length > 0),
-          studentsToWatch: (payload.payload.students_to_watch ?? []).map((student) => ({
-            studentId: normalizeBriefText(student.student_id),
-            displayName: normalizeBriefText(student.display_name) || normalizeBriefText(student.student_id) || "Unknown",
-            reason: normalizeBriefText(student.reason),
-          })).filter((student) => student.studentId.length > 0 || student.reason.length > 0),
+          studentsToWatch: (payload.payload.students_to_watch ?? [])
+            .filter((student) => {
+              const rawId = normalizeBriefText(student.student_id);
+              const rawName = normalizeBriefText(student.display_name);
+              const rawReason = normalizeBriefText(student.reason);
+              return rawId.length > 0 || rawName.length > 0 || rawReason.length > 0;
+            })
+            .map((student) => ({
+              studentId: normalizeBriefText(student.student_id),
+              displayName: normalizeBriefText(student.display_name) || normalizeBriefText(student.student_id) || "Unknown",
+              reason: normalizeBriefText(student.reason),
+            })),
           nextStep: normalizeBriefText(payload.payload.next_step),
           recommendedActivity: normalizeRecommendedActivity(payload.payload.recommended_activity),
           evidenceBasis: normalizeBriefText(payload.payload.evidence_basis),
