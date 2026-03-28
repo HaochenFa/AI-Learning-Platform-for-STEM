@@ -17,7 +17,7 @@ type AuthResendFormProps = {
   resendStartedAt?: string | null;
   submitLabel: string;
   timerReadyCopy: string;
-  timerWaitingCopy: (seconds: number) => string;
+  timerWaitingCopy: string;
 };
 
 function getRemainingSeconds(resendStartedAt?: string | null, cooldownMs = 60_000) {
@@ -117,7 +117,12 @@ export default function AuthResendForm({
         disabled={remainingSeconds > 0}
       />
       <p className="text-xs leading-5 text-ui-muted" aria-live="polite">
-        {remainingSeconds > 0 ? timerWaitingCopy(remainingSeconds) : timerReadyCopy}
+        {remainingSeconds > 0
+          ? timerWaitingCopy.replace(
+              "{seconds}",
+              `${remainingSeconds} second${remainingSeconds === 1 ? "" : "s"}`,
+            )
+          : timerReadyCopy}
       </p>
     </form>
   );

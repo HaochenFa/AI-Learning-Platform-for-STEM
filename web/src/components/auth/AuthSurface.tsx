@@ -350,9 +350,7 @@ export default function AuthSurface({
                     resendStartedAt={resendStartedAt}
                     submitLabel="Resend confirmation email"
                     timerReadyCopy="Confirmation links stay valid for 5 minutes. You can request a new email now."
-                    timerWaitingCopy={(seconds) =>
-                      `You can resend another email in ${seconds} second${seconds === 1 ? "" : "s"}. Confirmation links stay valid for 5 minutes.`
-                    }
+                    timerWaitingCopy="You can resend another email in {seconds}. Confirmation links stay valid for 5 minutes."
                   />
                 </div>
               ) : null}
@@ -368,9 +366,7 @@ export default function AuthSurface({
               resendStartedAt={resendStartedAt}
               submitLabel="Resend reset email"
               timerReadyCopy="Reset links expire after 5 minutes. You can request a new email now."
-              timerWaitingCopy={(seconds) =>
-                `You can resend another email in ${seconds} second${seconds === 1 ? "" : "s"}. Reset links expire after 5 minutes.`
-              }
+              timerWaitingCopy="You can resend another email in {seconds}. Reset links expire after 5 minutes."
             />
           ) : null}
 

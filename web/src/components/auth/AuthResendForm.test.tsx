@@ -26,7 +26,7 @@ describe("AuthResendForm", () => {
         resendStartedAt={String(Date.now())}
         submitLabel="Resend confirmation email"
         timerReadyCopy="You can request a new email now."
-        timerWaitingCopy={(seconds) => `You can resend another email in ${seconds} seconds.`}
+        timerWaitingCopy="You can resend another email in {seconds}."
       />,
     );
 
@@ -54,7 +54,7 @@ describe("AuthResendForm", () => {
         pendingLabel="Resending reset email..."
         submitLabel="Resend reset email"
         timerReadyCopy="You can request a new email now."
-        timerWaitingCopy={(seconds) => `You can resend another email in ${seconds} seconds.`}
+        timerWaitingCopy="You can resend another email in {seconds}."
       />,
     );
 
@@ -83,7 +83,7 @@ describe("AuthResendForm", () => {
         pendingLabel="Resending confirmation email..."
         submitLabel="Resend confirmation email"
         timerReadyCopy="You can request a new email now."
-        timerWaitingCopy={(seconds) => `You can resend another email in ${seconds} seconds.`}
+        timerWaitingCopy="You can resend another email in {seconds}."
       />,
     );
 
