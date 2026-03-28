@@ -51,6 +51,9 @@ export default function AuthResendForm({
   timerReadyCopy,
   timerWaitingCopy,
 }: AuthResendFormProps) {
+  if (process.env.NODE_ENV !== "production" && !timerWaitingCopy.includes("{seconds}")) {
+    console.warn("AuthResendForm: timerWaitingCopy is missing the {seconds} placeholder.");
+  }
   const [email, setEmail] = useState(defaultEmail);
   const [remainingSeconds, setRemainingSeconds] = useState(
     getRemainingSeconds(resendStartedAt, cooldownMs),

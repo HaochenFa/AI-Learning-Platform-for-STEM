@@ -335,39 +335,39 @@ export default function AuthSurface({
             )
           ) : null}
 
-          {mode === "forgot-password" && forgotPasswordResendActive ? (
-            <AuthResendForm
-              action={resendPasswordReset}
-              authReturnTo={authReturnTo}
-              defaultEmail={defaultEmail}
-              pendingLabel="Resending reset email..."
-              resendStartedAt={resendStartedAt}
-              submitLabel="Resend reset email"
-              timerReadyCopy="Reset links expire after 5 minutes. You can request a new email now."
-              timerWaitingCopy="You can resend another email in {seconds}. Reset links expire after 5 minutes."
-            />
-          ) : null}
-
-          {mode === "forgot-password" && !forgotPasswordResendActive ? (
-            <form className="space-y-4" action={requestPasswordReset}>
-              <input type="hidden" name="auth_return_to" value={authReturnTo} />
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-              <PendingSubmitButton
-                label="Send reset link"
-                pendingLabel="Sending link..."
-                variant="warm"
-                className="w-full"
+          {mode === "forgot-password" ? (
+            forgotPasswordResendActive ? (
+              <AuthResendForm
+                action={resendPasswordReset}
+                authReturnTo={authReturnTo}
+                defaultEmail={defaultEmail}
+                pendingLabel="Resending reset email..."
+                resendStartedAt={resendStartedAt}
+                submitLabel="Resend reset email"
+                timerReadyCopy="Reset links expire after 5 minutes. You can request a new email now."
+                timerWaitingCopy="You can resend another email in {seconds}. Reset links expire after 5 minutes."
               />
-            </form>
+            ) : (
+              <form className="space-y-4" action={requestPasswordReset}>
+                <input type="hidden" name="auth_return_to" value={authReturnTo} />
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <PendingSubmitButton
+                  label="Send reset link"
+                  pendingLabel="Sending link..."
+                  variant="warm"
+                  className="w-full"
+                />
+              </form>
+            )
           ) : null}
         </div>
 
