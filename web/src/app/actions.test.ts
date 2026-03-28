@@ -161,12 +161,14 @@ describe("auth actions", () => {
     );
   });
 
-  it("discards the guest sandbox and redirects back to register before creating a real account", async () => {
+  it("discards the guest sandbox and creates the account in a single step", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://ai-stem-learning-platform-group-8.vercel.app";
     getAuthContextMock.mockResolvedValue({
       isGuest: true,
       sandboxId: "sandbox-1",
       supabase: { auth: supabaseAuth },
     });
+    supabaseAuth.signUp.mockResolvedValueOnce({ error: null });
 
     const formData = new FormData();
     formData.set("email", "test@example.com");
@@ -175,12 +177,19 @@ describe("auth actions", () => {
 
     await expectRedirect(
       () => signUp(formData),
-      "/register?guest=ready&email=test%40example.com&account_type=teacher",
+      /;\/register\?account_type=teacher&email=test%40example\.com&resend=confirmation&resend_started_at=\d+&verify=1;/,
     );
 
     expect(discardGuestSandboxMock).toHaveBeenCalledWith("sandbox-1");
     expect(supabaseAuth.signOut).toHaveBeenCalled();
-    expect(supabaseAuth.signUp).not.toHaveBeenCalled();
+    expect(supabaseAuth.signUp).toHaveBeenCalledWith({
+      email: "test@example.com",
+      password: "goodpass1",
+      options: {
+        data: { account_type: "teacher" },
+        emailRedirectTo: "https://ai-stem-learning-platform-group-8.vercel.app",
+      },
+    });
   });
 
   it("fails closed when guest sandbox discard fails", async () => {
