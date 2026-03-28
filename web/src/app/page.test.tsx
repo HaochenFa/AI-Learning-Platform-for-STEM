@@ -10,6 +10,12 @@ vi.mock("@/lib/auth/session", () => ({
   getAuthContext: getAuthContextMock,
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(() => ({ replace: vi.fn() })),
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+}));
+
 describe("HomePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();

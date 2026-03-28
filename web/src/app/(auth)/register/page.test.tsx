@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import RegisterPage from "@/app/(auth)/register/page";
-import { PASSWORD_POLICY_HINT } from "@/lib/auth/password-policy";
 
 describe("RegisterPage", () => {
   it("renders the registration form", async () => {
@@ -43,10 +42,20 @@ describe("RegisterPage", () => {
       }),
     );
 
+    // success alert remains
     expect(html).toContain("Check your email to verify your account");
+
+    // resend button replaces the registration button
     expect(html).toContain("Resend confirmation email");
-    expect(html).toContain("Account type");
-    expect(html).toContain(PASSWORD_POLICY_HINT);
-    expect(html).toContain("If the email address or role is wrong");
+    expect(html).not.toContain("Create account");
+
+    // locked email is displayed
+    expect(html).toContain("teacher@example.com");
+
+    // full registration form is gone
+    expect(html).not.toContain("Account type");
+
+    // extra resend card is gone
+    expect(html).not.toContain("If the email address or role is wrong");
   });
 });

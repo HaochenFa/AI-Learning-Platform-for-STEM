@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { queryClassData } from "@/lib/actions/insights";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/auth/session", () => ({
-  requireVerifiedUser: vi.fn(),
+  requireGuestOrVerifiedUser: vi.fn(),
 }));
 
 const supabaseFromMock = vi.fn();
@@ -41,7 +41,7 @@ describe("queryClassData", () => {
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
     process.env.PYTHON_BACKEND_API_KEY = "backend-key";
 
-    vi.mocked(requireVerifiedUser).mockResolvedValue({
+    vi.mocked(requireGuestOrVerifiedUser).mockResolvedValue({
       user: { id: "teacher-1" },
       accessToken: "session-token",
     } as never);

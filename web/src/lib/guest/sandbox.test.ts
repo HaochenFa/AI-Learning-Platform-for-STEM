@@ -156,8 +156,8 @@ describe("provisionGuestSandbox", () => {
               class_id: "class-existing",
               status: "active",
               guest_role: "teacher",
-              expires_at: "2026-03-27T08:00:00.000Z",
-              last_seen_at: "2026-03-27T12:00:00.000Z",
+              expires_at: "2099-12-31T23:59:59.000Z",
+              last_seen_at: "2099-12-31T12:00:00.000Z",
             },
           });
         }

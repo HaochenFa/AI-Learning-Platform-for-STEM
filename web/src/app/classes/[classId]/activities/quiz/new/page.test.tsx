@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import NewQuizDraftPage from "@/app/classes/[classId]/activities/quiz/new/page";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
 
 const supabaseFromMock = vi.fn();
 
 vi.mock("@/lib/auth/session", () => ({
-  requireVerifiedUser: vi.fn(),
+  requireGuestOrVerifiedUser: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -15,6 +15,9 @@ vi.mock("next/navigation", () => ({
     error.digest = `NEXT_REDIRECT;replace;${url};307;`;
     throw error;
   }),
+  useRouter: vi.fn(() => ({ replace: vi.fn() })),
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
 }));
 
 function makeBuilder(result: unknown) {
@@ -40,7 +43,7 @@ function makeBuilder(result: unknown) {
 
 describe("NewQuizDraftPage", () => {
   it("renders quiz generation fields", async () => {
-    vi.mocked(requireVerifiedUser).mockResolvedValueOnce({
+    vi.mocked(requireGuestOrVerifiedUser).mockResolvedValueOnce({
       supabase: { from: supabaseFromMock },
       user: { id: "teacher-1", email: "teacher@example.com" },
       profile: { id: "teacher-1", account_type: "teacher" },

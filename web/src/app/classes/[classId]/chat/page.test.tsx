@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import ClassChatCompatibilityPage from "@/app/classes/[classId]/chat/page";
 
 const supabaseAuth = {
-  getUser: vi.fn(),
+  getSession: vi.fn(),
 };
 const supabaseFromMock = vi.fn();
 
@@ -19,6 +19,9 @@ vi.mock("next/navigation", () => ({
     error.digest = `NEXT_REDIRECT;replace;${url};307;`;
     throw error;
   }),
+  useRouter: vi.fn(() => ({ replace: vi.fn() })),
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
 }));
 
 function makeBuilder(result: unknown) {
@@ -27,6 +30,7 @@ function makeBuilder(result: unknown) {
   builder.select = vi.fn(() => builder);
   builder.eq = vi.fn(() => builder);
   builder.single = vi.fn(async () => resolveResult());
+  builder.maybeSingle = vi.fn(async () => resolveResult());
   builder.then = (
     onFulfilled: (value: unknown) => unknown,
     onRejected: (reason: unknown) => unknown,
@@ -57,7 +61,7 @@ async function expectRedirect(action: () => Promise<void> | void, path: string) 
 
 describe("ClassChatCompatibilityPage", () => {
   it("redirects student members to class chat-focused view", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "student-1" } } });
+    supabaseAuth.getSession.mockResolvedValueOnce({ data: { session: { user: { id: "student-1", email_confirmed_at: "2026-01-01T00:00:00.000Z" } } } });
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
@@ -67,6 +71,9 @@ describe("ClassChatCompatibilityPage", () => {
           },
           error: null,
         });
+      }
+      if (table === "profiles") {
+        return makeBuilder({ data: { id: "student-1", account_type: "student", display_name: "Student" }, error: null });
       }
       if (table === "enrollments") {
         return makeBuilder({ data: { role: "student" }, error: null });
@@ -84,7 +91,7 @@ describe("ClassChatCompatibilityPage", () => {
   });
 
   it("redirects teachers to class monitor anchor", async () => {
-    supabaseAuth.getUser.mockResolvedValueOnce({ data: { user: { id: "teacher-1" } } });
+    supabaseAuth.getSession.mockResolvedValueOnce({ data: { session: { user: { id: "teacher-1", email_confirmed_at: "2026-01-01T00:00:00.000Z" } } } });
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
@@ -94,6 +101,9 @@ describe("ClassChatCompatibilityPage", () => {
           },
           error: null,
         });
+      }
+      if (table === "profiles") {
+        return makeBuilder({ data: { id: "teacher-1", account_type: "teacher", display_name: "Teacher" }, error: null });
       }
       if (table === "enrollments") {
         return makeBuilder({ data: null, error: null });
