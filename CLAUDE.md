@@ -116,12 +116,8 @@ supabase start
 supabase functions logs <function-name>
 ```
 
-Apply migrations via MCP (if configured):
-
-```bash
-# Use the supabase MCP tool to execute SQL
-mcp__supabase__execute_sql --sql "SELECT 1"
-```
+Apply migrations via the Supabase MCP tool (Claude tool call, not CLI):
+use `mcp__supabase__execute_sql` with `sql: "SELECT 1"` as a tool parameter.
 
 ## Key File Paths
 
@@ -210,8 +206,8 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 
 ## Plans and Trackers
 
-- Store all implementation plans, session trackers, and working notes under `.claude/plans/` — not in `docs/` or the repo root.
-- `.claude/` is gitignored-safe for local-only files and avoids branch noise for plan files that don't belong in PR diffs.
+- Superpowers skills save specs to `docs/superpowers/specs/` and implementation plans to `docs/superpowers/plans/` — committed to git and checked in with the repo.
+- Ad-hoc session notes and local-only scratch files go in `.claude/` (gitignored).
 
 ## Important Notes
 
