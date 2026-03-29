@@ -26,10 +26,10 @@ uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload      
 python3 -m unittest discover -s backend/tests -p 'test_*.py'                                    # Run Python tests
 ```
 
-Run a single Vitest unit test file:
+Run a single Vitest unit test file from the repo root:
 
 ```bash
-pnpm vitest run path/to/testfile.test.ts
+pnpm --dir web vitest run path/to/testfile.test.ts
 ```
 
 ### E2E Tests (Playwright)
