@@ -222,6 +222,11 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 - All AI outputs are saved before use and are editable/auditable by teachers
 - Branded confirmation email template lives in `supabase/templates/confirmation.html` (must be applied in Supabase Dashboard → Auth → Email Templates)
 
+## Parallel Agent Workflows
+
+- **Worktrees before agents**: When dispatching parallel subagents, create all git worktrees sequentially in the main session first (`git worktree add` requires `dangerouslyDisableSandbox`), then dispatch agents. Parallel `git worktree add` calls race for `.git/index.lock` and fail.
+- **PRs after agents**: Subagents cannot run `gh pr create` without sandbox elevation. Have each agent commit and push, then open PRs from the main session using `dangerouslyDisableSandbox: true`.
+
 ## Lessons Learned
 
 - **Edge Function Secrets**: When using AI providers (like `OPENROUTER_*`) in Supabase Edge Functions, secrets must be set in **Edge Function Secrets** (in Supabase Dashboard → Edge Functions → Secrets), not in the Vault. Edge Functions cannot access Vault secrets.
