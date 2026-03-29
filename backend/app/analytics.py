@@ -26,6 +26,11 @@ logger = logging.getLogger(__name__)
 
 analytics_router = APIRouter(prefix="/v1/analytics")
 
+# TTL for the class_insights_snapshots cache.
+# The insights snapshot is heavy (multiple DB round-trips + an LLM call), so
+# results are cached for 1 hour.  This TTL strategy is separate from the
+# teaching-brief day-boundary strategy — see _is_same_utc_day below for why
+# two freshness mechanisms exist.
 INSIGHTS_CACHE_TTL_SECONDS = 3600  # 1 hour
 
 BLOOM_LEVELS_ORDERED = ["remember", "understand", "apply", "analyze", "evaluate", "create"]
@@ -77,6 +82,8 @@ Rules:
 
 
 class ClassInsightsRequest(BaseModel):
+    """Request body for the class insights endpoint."""
+
     user_id: str
     class_id: str
     sandbox_id: str | None = None
@@ -84,6 +91,8 @@ class ClassInsightsRequest(BaseModel):
 
 
 class ClassTeachingBriefRequest(BaseModel):
+    """Request body for the teaching brief endpoint."""
+
     user_id: str
     class_id: str
     sandbox_id: str | None = None
@@ -91,7 +100,20 @@ class ClassTeachingBriefRequest(BaseModel):
 
 
 def compute_risk_level(avg_score: float, completion_rate: float) -> str:
-    """Compute at-risk level per plan thresholds."""
+    """Compute at-risk level per plan thresholds.
+
+    Risk is ``"high"`` only when both score and completion are poor; a single
+    failing dimension yields ``"medium"``.  This avoids over-flagging students
+    who have good scores but few submissions (e.g. late starters).
+
+    Args:
+        avg_score: Student's average score across attempted assignments (0–1).
+        completion_rate: Fraction of assigned work that has been submitted or
+            reviewed (0–1).
+
+    Returns:
+        ``"high"``, ``"medium"``, or ``"low"``.
+    """
     if avg_score < 0.60 and completion_rate < 0.50:
         return "high"
     if avg_score < 0.70 or completion_rate < 0.50:
@@ -100,6 +122,14 @@ def compute_risk_level(avg_score: float, completion_rate: float) -> str:
 
 
 def compute_topic_status(avg_score: float) -> str:
+    """Map an average topic score to a traffic-light status string.
+
+    Args:
+        avg_score: Average score across all submissions for a topic (0–1).
+
+    Returns:
+        ``"critical"`` (< 60%), ``"warning"`` (60–75%), or ``"good"`` (> 75%).
+    """
     if avg_score < 0.60:
         return "critical"
     if avg_score <= 0.75:
@@ -108,7 +138,15 @@ def compute_topic_status(avg_score: float) -> str:
 
 
 def format_display_name(display_name: str | None) -> str:
-    """Format display_name as 'First L.' — first word + last-word initial + period."""
+    """Format display_name as 'First L.' — first word + last-word initial + period.
+
+    Args:
+        display_name: Raw display name string, or ``None``.
+
+    Returns:
+        Abbreviated name (e.g. ``"Alice B."``), or ``"Unknown"`` when the input
+        is empty or ``None``.
+    """
     if not display_name or not display_name.strip():
         return "Unknown"
     parts = display_name.strip().split()
@@ -118,12 +156,31 @@ def format_display_name(display_name: str | None) -> str:
 
 
 def _normalize_teaching_brief_text(value: Any) -> str:
+    """Return a stripped string, or ``""`` for non-string inputs.
+
+    Args:
+        value: Any value; only ``str`` instances are returned non-empty.
+
+    Returns:
+        Stripped string or ``""``.
+    """
     if not isinstance(value, str):
         return ""
     return value.strip()
 
 
 def _coerce_teaching_brief_items(value: Any) -> list[Any]:
+    """Coerce a teaching brief list field to a list, wrapping singletons.
+
+    The LLM occasionally returns a single dict instead of a one-element list
+    for fields like ``attention_items``.  This helper normalises both shapes.
+
+    Args:
+        value: A list, a singleton, or ``None``.
+
+    Returns:
+        A list (possibly empty).
+    """
     if value is None:
         return []
     if isinstance(value, list):
@@ -137,9 +194,28 @@ def _normalize_teaching_brief_payload(
     topics_by_id: dict[str, dict[str, Any]],
     display_names: dict[str, str],
 ) -> dict[str, Any]:
+    """Validate and normalise the raw LLM teaching brief dict.
+
+    Resolves topic IDs from titles (when the LLM omits ``topic_id`` but
+    supplies a matching title), fills in display names for student entries,
+    and coerces all list fields from potential singletons.
+
+    Args:
+        payload: Raw parsed JSON from the LLM response.
+        topics_by_id: Dict mapping topic UUID → topic info dict (used for
+            title-to-ID resolution).
+        display_names: Dict mapping student UUID → abbreviated display name.
+
+    Returns:
+        A normalised dict matching the teaching brief schema.
+
+    Raises:
+        ValueError: If ``payload`` is not a dict.
+    """
     if not isinstance(payload, dict):
         raise ValueError("Teaching brief payload must be a JSON object.")
 
+    # Build a case-folded title → topic_id lookup for fuzzy matching.
     topic_id_by_title = {
         _normalize_teaching_brief_text(topic_info.get("title")).casefold(): topic_id
         for topic_id, topic_info in topics_by_id.items()
@@ -172,6 +248,7 @@ def _normalize_teaching_brief_payload(
             item.get("topic_title") or item.get("topic") or item.get("title")
         )
         topic_id = _normalize_teaching_brief_text(item.get("topic_id")) or None
+        # Fall back to title-based lookup when the LLM omits topic_id.
         if topic_id is None and topic_title:
             topic_id = topic_id_by_title.get(topic_title.casefold())
 
@@ -190,6 +267,7 @@ def _normalize_teaching_brief_payload(
 
         student_id = _normalize_teaching_brief_text(item.get("student_id"))
         display_name = _normalize_teaching_brief_text(item.get("display_name"))
+        # Back-fill display name from the DB-sourced lookup when the LLM omits it.
         if not display_name and student_id:
             display_name = display_names.get(student_id, "Unknown")
 
@@ -225,7 +303,22 @@ def _normalize_teaching_brief_payload(
 
 
 def _get_cached_snapshot(client: httpx.Client, settings: Settings, class_id: str) -> dict[str, Any] | None:
-    """Return cached snapshot if it exists and is less than 1 hour old, else None."""
+    """Return cached snapshot if it exists and is less than 1 hour old, else None.
+
+    Uses the TTL-based ``INSIGHTS_CACHE_TTL_SECONDS`` freshness strategy
+    (contrast with the teaching brief's day-boundary strategy in
+    ``_is_same_utc_day``).  The two mechanisms serve different use cases:
+    - Insights: expensive aggregation, stale-while-revalidate on a rolling hour.
+    - Teaching brief: daily cadence aligned to the teacher's working day.
+
+    Args:
+        client: Active ``httpx.Client`` to reuse for the DB query.
+        settings: Application settings.
+        class_id: UUID of the class whose snapshot to retrieve.
+
+    Returns:
+        The cached payload dict, or ``None`` if absent or expired.
+    """
     base_url = _supabase_base_url(settings)
     url = (
         f"{base_url}/rest/v1/class_insights_snapshots"
@@ -254,6 +347,18 @@ def _get_cached_snapshot(client: httpx.Client, settings: Settings, class_id: str
 
 
 def _upsert_snapshot(client: httpx.Client, settings: Settings, class_id: str, payload: dict[str, Any]) -> None:
+    """Write or overwrite the class insights snapshot row for the given class.
+
+    Uses PostgREST's ``on_conflict=class_id`` + ``resolution=merge-duplicates``
+    to upsert so concurrent writes for the same class converge on the latest
+    payload rather than raising a unique constraint error.
+
+    Args:
+        client: Active ``httpx.Client``.
+        settings: Application settings.
+        class_id: UUID of the class.
+        payload: The full insights payload dict to persist.
+    """
     base_url = _supabase_base_url(settings)
     url = f"{base_url}/rest/v1/class_insights_snapshots?on_conflict=class_id"
     response = client.post(
@@ -284,7 +389,26 @@ def _check_teacher_enrollment(
     class_id: str,
     sandbox_id: str | None = None,
 ) -> None:
-    """Raise ClassDomainError(403) if the actor cannot use teacher-only analytics for this class."""
+    """Raise ClassDomainError(403) if the actor cannot use teacher-only analytics for this class.
+
+    Authorization flow:
+    1. If a ``sandbox_id`` is present the request is a guest session — defer to
+       ``resolve_guest_class_access`` which handles guest-mode ACL.
+    2. Otherwise check the ``classes`` table: the class owner is implicitly a
+       teacher.
+    3. If the actor is not the owner, check the ``enrollments`` table for a
+       ``teacher`` or ``ta`` role.
+
+    Args:
+        client: Active ``httpx.Client``.
+        settings: Application settings.
+        user_id: UUID of the requesting user.
+        class_id: UUID of the class.
+        sandbox_id: Optional sandbox UUID for guest-mode requests.
+
+    Raises:
+        ClassDomainError: With status 403 (forbidden) or 404 (class not found).
+    """
     guest_access = resolve_guest_class_access(
         client,
         settings,
@@ -353,6 +477,18 @@ def _check_teacher_access(
     class_id: str,
     sandbox_id: str | None = None,
 ) -> None:
+    """Thin wrapper around ``_check_teacher_enrollment`` for call-site readability.
+
+    Exists so that callers use a semantically clearer name while the full access
+    logic lives in one place.
+
+    Args:
+        client: Active ``httpx.Client``.
+        settings: Application settings.
+        user_id: UUID of the requesting user.
+        class_id: UUID of the class.
+        sandbox_id: Optional sandbox UUID for guest-mode requests.
+    """
     _check_teacher_enrollment(
         client,
         settings,
@@ -366,11 +502,38 @@ def _generate_insights_payload(
     settings: Settings,
     class_id: str,
 ) -> dict[str, Any]:
-    """Synchronous aggregation + LLM synthesis. Returns the full insights payload dict."""
+    """Synchronous aggregation + LLM synthesis. Returns the full insights payload dict.
+
+    This function performs all data collection and computation inline in a single
+    blocking call (wrapped in ``run_in_threadpool`` by the route handler).  It
+    opens its own ``httpx.Client`` session so it can be called independently of
+    the route-level client.
+
+    Data pipeline (see numbered section headers below):
+    1–10.  Fetch all required DB tables: enrollments, blueprint, topics,
+           objectives, activities, assignments, submissions, recipients, chat
+           messages, profiles.
+    11.    Aggregate per-student scores and completion.
+    12.    Aggregate topic-level average scores and attempt counts.
+    13.    Compute Bloom taxonomy breakdown.
+    14.    Compute class-level summary statistics.
+    15.    Run LLM synthesis to produce executive summary, key findings,
+           interventions, and per-student mini-summaries.
+
+    Args:
+        settings: Application settings (Supabase credentials + AI provider keys).
+        class_id: UUID of the class to generate insights for.
+
+    Returns:
+        A full insights payload dict ready to be upserted and returned to the
+        caller.
+    """
     _require_supabase_credentials(settings)
     timeout_seconds = max(30, settings.ai_request_timeout_ms / 1000)
     base_url = _supabase_base_url(settings)
 
+    # trust_env=False: prevents httpx picking up proxy env vars in production,
+    # which causes silent connection failures. See CLAUDE.md Lessons Learned.
     with httpx.Client(timeout=timeout_seconds, trust_env=False) as client:
         # --- 1. Fetch enrolled students ---
         enrolled_url = (
@@ -395,6 +558,7 @@ def _generate_insights_payload(
             blueprint_id = bp_rows[0].get("id") if isinstance(bp_rows[0], dict) else None
 
         # --- 3. Fetch topics + objectives ---
+        # Objectives carry Bloom taxonomy levels which are used in step 13.
         topics_by_id: dict[str, dict[str, Any]] = {}
         bloom_levels_by_topic: dict[str, list[str]] = defaultdict(list)
 
@@ -443,6 +607,8 @@ def _generate_insights_payload(
                     }
 
         # --- 5. Empty state check ---
+        # Return a zero-filled payload early when there are no quiz activities,
+        # avoiding unnecessary DB round-trips for steps 6–15.
         if not activities_by_id:
             return _build_empty_payload()
 
@@ -478,6 +644,8 @@ def _generate_insights_payload(
             return _build_empty_payload()
 
         # --- 8. Fetch assignment_recipients for completion rate ---
+        # Completion is determined by recipient status ("submitted" / "reviewed"),
+        # not by the presence of a submission row, to handle partial submissions.
         recipients: list[dict[str, Any]] = []
         if assignment_to_activity:
             assignment_ids_param = ",".join(quote(aid, safe="") for aid in assignment_to_activity)
@@ -544,6 +712,7 @@ def _generate_insights_payload(
 
         # Build per-student data
         # Track total assignments assigned to determine denominator
+        # (denominator = total number of assignments in the class, not just attempted ones)
         all_assignment_ids = set(assignment_to_activity.keys())
 
         students_data: list[dict[str, Any]] = []
@@ -555,6 +724,9 @@ def _generate_insights_payload(
 
             for assignment_id, activity_id in assignment_to_activity.items():
                 scores = sub_scores.get((assignment_id, student_id), [])
+                # Best score: the highest attempt for this assignment.
+                # Only the best score feeds into avg_score; zero is shown in
+                # activity_breakdown for completeness.
                 best = max(scores) if scores else None
                 activity_info = activities_by_id.get(activity_id, {})
                 activity_breakdown.append({
@@ -571,7 +743,9 @@ def _generate_insights_payload(
             attempted_scores = [s for slist in student_assignment_scores.values() for s in slist]
             avg_score = sum(attempted_scores) / len(attempted_scores) if attempted_scores else 0.0
 
-            # Completion rate
+            # Completion rate: completed / all_assigned.
+            # Denominator is all_assignment_ids (class-wide), not just the
+            # assignments this student attempted, to penalise non-starters.
             assigned_count = len(all_assignment_ids)
             completed_count = sum(
                 1 for aid in all_assignment_ids
@@ -593,6 +767,8 @@ def _generate_insights_payload(
             })
 
         # --- 12. Topic-level aggregations ---
+        # Accumulate all submission scores (including retakes) for each topic.
+        # Using all scores (not just best) produces an unbiased topic average.
         topic_scores: dict[str, list[float]] = defaultdict(list)
         topic_attempt_counts: dict[str, int] = defaultdict(int)
 
@@ -622,6 +798,16 @@ def _generate_insights_payload(
             })
 
         # --- 13. Bloom breakdown ---
+        # Each Bloom level's score is the average of topic averages (not of raw
+        # submissions) to weight topics equally regardless of attempt volume.
+        # A topic contributes to every Bloom level listed in its objectives, so
+        # a single topic can appear in multiple Bloom buckets — this is the
+        # cross-join: topic → [level1, level2, ...] → each level gets the same
+        # topic avg_score added to its accumulator.
+        #
+        # The resulting ratio (bloom_breakdown[level]) represents the average
+        # class performance on objectives at that cognitive complexity tier,
+        # expressed as a fraction of maximum score (0–1).
         bloom_scores: dict[str, list[float]] = defaultdict(list)
         for topic_id, topic_info in topics_by_id.items():
             scores = topic_scores.get(topic_id, [])
@@ -635,6 +821,7 @@ def _generate_insights_payload(
         bloom_breakdown: dict[str, float | None] = {}
         for level in BLOOM_LEVELS_ORDERED:
             level_scores = bloom_scores.get(level, [])
+            # None indicates no objectives at this Bloom level exist in the blueprint.
             bloom_breakdown[level] = round(sum(level_scores) / len(level_scores), 4) if level_scores else None
 
         # --- 14. Class summary ---
@@ -657,6 +844,8 @@ def _generate_insights_payload(
         }
 
         # --- 15. LLM synthesis ---
+        # Only the anonymised statistical aggregate is sent to the LLM — no raw
+        # student-identifiable data beyond student_id (which is a UUID).
         ai_narrative: dict[str, Any] | None = None
         try:
             stats_for_llm = {
@@ -717,6 +906,15 @@ def _generate_insights_payload(
 
 
 def _build_empty_payload() -> dict[str, Any]:
+    """Return a zero-filled insights payload for classes with no quiz data.
+
+    Used as an early-return sentinel when there are no published quiz activities
+    or no submissions yet, so the frontend always receives a structurally valid
+    payload regardless of class state.
+
+    Returns:
+        An insights payload dict with ``is_empty=True`` and zero/None values.
+    """
     return {
         "generated_at": datetime.now(UTC).isoformat(),
         "class_summary": {
@@ -737,10 +935,30 @@ def _build_empty_payload() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Teaching Brief snapshot helpers (day-based freshness)
 # ---------------------------------------------------------------------------
+#
+# Two freshness strategies are used across this module:
+#
+# 1. ``INSIGHTS_CACHE_TTL_SECONDS`` (rolling 1-hour TTL) — used for the
+#    full class insights snapshot.  Appropriate for a heavy background
+#    computation that can serve a slightly stale result within an hour.
+#
+# 2. ``_is_same_utc_day`` (day-boundary TTL) — used for the teaching brief.
+#    Teachers check their brief at the start of each working day; a brief from
+#    yesterday is always stale regardless of when within the day it was built.
+#    A rolling TTL would allow a brief generated at 23:59 to remain "fresh"
+#    until 00:59 the next day, which would be misleading.
+# ---------------------------------------------------------------------------
 
 
 def _is_same_utc_day(dt: datetime) -> bool:
-    """Return True if *dt* falls on the current UTC calendar day."""
+    """Return True if *dt* falls on the current UTC calendar day.
+
+    Args:
+        dt: A timezone-aware datetime to test (should already be UTC).
+
+    Returns:
+        ``True`` when ``dt.date() == datetime.now(UTC).date()``.
+    """
     now = datetime.now(UTC)
     return dt.date() == now.date()
 
@@ -748,7 +966,23 @@ def _is_same_utc_day(dt: datetime) -> bool:
 def _get_cached_teaching_brief_snapshot(
     client: httpx.Client, settings: Settings, class_id: str
 ) -> dict[str, Any] | None:
-    """Return cached teaching brief snapshot with staleness annotation, or None."""
+    """Return cached teaching brief snapshot with staleness annotation, or None.
+
+    Unlike ``_get_cached_snapshot`` (which discards stale rows), this function
+    always returns the row when one exists and annotates it with ``is_stale``.
+    The caller uses that flag to decide whether to regenerate or serve the stale
+    data while a background build is in progress.
+
+    Args:
+        client: Active ``httpx.Client``.
+        settings: Application settings.
+        class_id: UUID of the class.
+
+    Returns:
+        A dict with ``"status"``, ``"is_stale"``, ``"payload"``,
+        ``"generated_at"``, ``"has_evidence"``, and ``"error_message"`` fields,
+        or ``None`` if no row exists.
+    """
     base_url = _supabase_base_url(settings)
     url = (
         f"{base_url}/rest/v1/class_teaching_brief_snapshots"
@@ -772,6 +1006,9 @@ def _get_cached_teaching_brief_snapshot(
 
     status = row.get("status", "ready")
     payload = row.get("payload")
+    # A snapshot that is currently being generated is always "stale" from the
+    # perspective of UI freshness — the generating flag itself signals that an
+    # update is in flight.
     is_stale = not _is_same_utc_day(generated_at) if status != "generating" else True
 
     return {
@@ -792,7 +1029,18 @@ def _upsert_teaching_brief_snapshot(
     payload: dict[str, Any] | None,
     error_message: str | None,
 ) -> None:
-    """Upsert a teaching brief snapshot row."""
+    """Upsert a teaching brief snapshot row.
+
+    Args:
+        client: Active ``httpx.Client``.
+        settings: Application settings.
+        class_id: UUID of the class.
+        status: One of ``"generating"``, ``"ready"``, ``"no_data"``, or
+            ``"error"``.
+        payload: Normalised teaching brief dict, or ``None`` for non-ready
+            statuses.
+        error_message: Error string to persist on failure, or ``None``.
+    """
     base_url = _supabase_base_url(settings)
     url = f"{base_url}/rest/v1/class_teaching_brief_snapshots?on_conflict=class_id"
     body: dict[str, Any] = {
@@ -825,8 +1073,28 @@ def _mark_teaching_brief_generating(
 ) -> bool:
     """Compare-and-set: mark snapshot as 'generating' only if not already generating.
 
+    CAS (compare-and-set) pattern: the PATCH is filtered by
+    ``status=neq.generating``, so it matches the row only when the current
+    status is something other than "generating".  PostgREST returns the updated
+    rows in the response; an empty list means the filter did not match (i.e.
+    another concurrent request already set generating=True).
+
+    Race prevented: without this guard, two simultaneous teacher-dashboard loads
+    would both see ``is_stale=True``, both call the LLM, and both try to write
+    the same snapshot row.  The CAS ensures only the first caller proceeds;
+    the second sees an empty PATCH result and returns the in-progress state.
+
     Returns True if the mark succeeded (caller should proceed with generation),
     False if another caller already set generating.
+
+    Args:
+        client: Active ``httpx.Client``.
+        settings: Application settings.
+        class_id: UUID of the class.
+
+    Returns:
+        ``True`` if this caller won the CAS and should build the brief.
+        ``False`` if another request is already building it.
     """
     base_url = _supabase_base_url(settings)
     url = (
@@ -856,6 +1124,17 @@ def _gather_teaching_brief_evidence(
 
     Returns a dict with 'has_evidence' bool and 'data' dict when evidence exists.
     Reuses the same aggregation patterns as _generate_insights_payload.
+
+    Args:
+        client: Active ``httpx.Client`` (passed in from the calling context so
+            connection reuse is preserved).
+        settings: Application settings.
+        class_id: UUID of the class.
+
+    Returns:
+        ``{"has_evidence": False}`` when there is nothing to brief on, or
+        ``{"has_evidence": True, "data": {...}}`` with all raw evidence tables
+        pre-fetched and ready for ``_generate_teaching_brief_payload``.
     """
     base_url = _supabase_base_url(settings)
 
@@ -1039,7 +1318,25 @@ def _generate_teaching_brief_payload(
     settings: Settings,
     evidence: dict[str, Any],
 ) -> dict[str, Any]:
-    """Synthesize a teaching brief from gathered evidence via LLM."""
+    """Synthesize a teaching brief from gathered evidence via LLM.
+
+    Aggregates per-student scores and completion from the raw evidence tables,
+    calls the LLM with ``TEACHING_BRIEF_SYSTEM_PROMPT``, and normalises the
+    response through ``_normalize_teaching_brief_payload``.
+
+    Args:
+        settings: Application settings (AI provider keys and timeouts).
+        evidence: Evidence dict returned by ``_gather_teaching_brief_evidence``
+            (must have ``"has_evidence": True``).
+
+    Returns:
+        A normalised teaching brief payload dict.
+
+    Raises:
+        RuntimeError: Propagated from ``generate_with_fallback`` on LLM failure.
+        ValueError: From ``_normalize_teaching_brief_payload`` on schema mismatch.
+        json.JSONDecodeError: If the LLM response is not valid JSON.
+    """
     data = evidence["data"]
     student_ids = data["student_ids"]
     activities_by_id = data["activities_by_id"]
@@ -1145,13 +1442,47 @@ def _generate_teaching_brief_payload(
     )
 
 
+# Teaching brief freshness state machine:
+#
+#   generating=True  →  return 202 (another request is already building it)
+#   force_refresh    →  bypass cache, rebuild unconditionally
+#   is_stale         →  rebuild (TTL expired or day boundary crossed)
+#   else             →  return cached snapshot
+#
+# The `generating` flag uses a compare-and-set (CAS) pattern via
+# _mark_teaching_brief_generating to prevent duplicate concurrent builds.
 def get_class_teaching_brief(
     settings: Settings, request: ClassTeachingBriefRequest
 ) -> dict[str, Any]:
-    """Main entry point for teaching brief. Handles day-based caching and generation."""
+    """Main entry point for teaching brief. Handles day-based caching and generation.
+
+    Implements the freshness state machine described in the block comment above.
+    The function covers five distinct branches:
+
+    1. Cached + fresh + not force_refresh → serve immediately.
+    2. Cached + status=generating + not force_refresh → return in-progress state.
+    3. Cached + (stale or force_refresh) → attempt CAS mark and regenerate.
+    4. No cached snapshot + no evidence → persist no_data and return.
+    5. No cached snapshot + evidence + not force_refresh → return "empty" state
+       so the UI can show a "Generate Brief" CTA.
+    6. No cached snapshot + evidence + force_refresh → generate first brief.
+
+    Args:
+        settings: Application settings.
+        request: Teaching brief request with ``class_id``, ``user_id``,
+            ``sandbox_id``, and ``force_refresh``.
+
+    Returns:
+        A dict with ``"status"``, ``"is_stale"``, ``"payload"``,
+        ``"generated_at"``, and ``"has_evidence"`` fields.
+
+    Raises:
+        ClassDomainError: If the actor is not authorised for this class.
+    """
     _require_supabase_credentials(settings)
     timeout_seconds = max(30, settings.ai_request_timeout_ms / 1000)
 
+    # trust_env=False: prevents httpx picking up proxy env vars in production.
     with httpx.Client(timeout=timeout_seconds, trust_env=False) as client:
         _check_teacher_access(
             client,
@@ -1163,15 +1494,15 @@ def get_class_teaching_brief(
 
         cached = _get_cached_teaching_brief_snapshot(client, settings, request.class_id)
 
-        # If cached and fresh and not force_refresh, return immediately
+        # --- Guard: return fresh cache immediately ---
         if cached is not None and not cached["is_stale"] and not request.force_refresh:
             return cached
 
-        # If status is 'generating' and not force_refresh, return current state
+        # --- Guard: another request is already building the brief ---
         if cached is not None and cached.get("status") == "generating" and not request.force_refresh:
             return cached
 
-        # If stale or force_refresh, try to regenerate
+        # --- Stale or force_refresh: attempt CAS and regenerate ---
         if cached is not None and (cached["is_stale"] or request.force_refresh):
             # Try CAS mark
             marked = _mark_teaching_brief_generating(client, settings, request.class_id)
@@ -1214,7 +1545,8 @@ def get_class_teaching_brief(
                     request.class_id,
                     exc,
                 )
-                # Preserve old payload on soft failure
+                # Preserve old payload on soft failure so the teacher still sees
+                # yesterday's brief rather than a blank screen.
                 _upsert_teaching_brief_snapshot(
                     client, settings, request.class_id, "error",
                     cached.get("payload") if cached else None,
@@ -1229,7 +1561,7 @@ def get_class_teaching_brief(
                     "error_message": str(exc),
                 }
 
-        # No cached snapshot at all — first-time visit
+        # --- No cached snapshot at all — first-time visit ---
         evidence = _gather_teaching_brief_evidence(client, settings, request.class_id)
         if not evidence["has_evidence"]:
             _upsert_teaching_brief_snapshot(
@@ -1288,7 +1620,23 @@ def get_class_teaching_brief(
 
 
 def get_class_insights(settings: Settings, request: ClassInsightsRequest) -> dict[str, Any]:
-    """Main entry point for class insights. Handles caching and generation."""
+    """Main entry point for class insights. Handles caching and generation.
+
+    Uses the rolling TTL strategy (``INSIGHTS_CACHE_TTL_SECONDS``) rather than
+    the day-boundary strategy used by the teaching brief.  Fetches the cached
+    snapshot when not force_refresh; generates and upserts a fresh one otherwise.
+
+    Args:
+        settings: Application settings.
+        request: Class insights request with ``class_id``, ``user_id``,
+            ``sandbox_id``, and ``force_refresh``.
+
+    Returns:
+        The full insights payload dict.
+
+    Raises:
+        ClassDomainError: If the actor is not authorised for this class.
+    """
     _require_supabase_credentials(settings)
     timeout_seconds = max(30, settings.ai_request_timeout_ms / 1000)
 
@@ -1317,6 +1665,19 @@ def get_class_insights(settings: Settings, request: ClassInsightsRequest) -> dic
 
 @analytics_router.post("/class-insights")
 async def class_insights_route(request: Request, payload: ClassInsightsRequest):
+    """FastAPI route handler for the class insights endpoint.
+
+    Offloads synchronous generation to a thread pool via ``run_in_threadpool``
+    to avoid blocking the async event loop during the DB + LLM round-trips.
+
+    Args:
+        request: The FastAPI ``Request`` object (used for auth and request_id).
+        payload: The validated ``ClassInsightsRequest`` body.
+
+    Returns:
+        An ``ApiEnvelope`` JSON response with the insights payload on success,
+        or an error envelope on ``ClassDomainError`` / ``RuntimeError``.
+    """
     from app.main import _authorize_request
 
     settings, _, unauthorized = await _authorize_request(request)
@@ -1352,6 +1713,16 @@ async def class_insights_route(request: Request, payload: ClassInsightsRequest):
 
 @analytics_router.post("/class-teaching-brief")
 async def class_teaching_brief_route(request: Request, payload: ClassTeachingBriefRequest):
+    """FastAPI route handler for the teaching brief endpoint.
+
+    Args:
+        request: The FastAPI ``Request`` object.
+        payload: The validated ``ClassTeachingBriefRequest`` body.
+
+    Returns:
+        An ``ApiEnvelope`` JSON response with the teaching brief on success,
+        or an error envelope on ``ClassDomainError`` / ``RuntimeError``.
+    """
     from app.main import _authorize_request
 
     settings, _, unauthorized = await _authorize_request(request)
@@ -1399,7 +1770,25 @@ Rules:
 
 
 def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> dict:
-    """Generate a chart spec from a natural language teacher query using available class insights data."""
+    """Generate a chart spec from a natural language teacher query using available class insights data.
+
+    Prioritises the cached insights snapshot for rich numeric context (scores,
+    completion rates, Bloom breakdown).  Falls back to a lightweight context
+    (topics and activity titles only) when no snapshot is cached or the class
+    is empty.
+
+    Args:
+        settings: Application settings.
+        request: ``DataQueryRequest`` with ``class_id``, ``user_id``, ``query``,
+            and optional ``sandbox_id``.
+
+    Returns:
+        A validated chart specification dict (see ``CHART_SPEC_SCHEMA``).
+
+    Raises:
+        ClassDomainError: If the actor is not authorised.
+        RuntimeError: If the LLM returns an empty or invalid JSON response.
+    """
     _require_supabase_credentials(settings)
     timeout_seconds = max(30, settings.ai_request_timeout_ms / 1000)
     base_url = _supabase_base_url(settings)
@@ -1463,7 +1852,9 @@ def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> 
             logger.warning("Snapshot fetch failed for class %s: %s", request.class_id, exc)
 
     if rich_context and not rich_context.get("class_summary", {}).get("is_empty"):
-        # Use the full insights snapshot for rich chart generation
+        # Use the full insights snapshot for rich chart generation.
+        # Scores are converted from 0–1 fractions to 0–100 percentages here
+        # because the chart schema expects integer/percentage values.
         class_summary = rich_context.get("class_summary", {})
         topics_from_cache = rich_context.get("topics", [])
         students_from_cache = rich_context.get("students", [])
@@ -1543,6 +1934,16 @@ def generate_data_query_chart(settings: Settings, request: DataQueryRequest) -> 
 
 @analytics_router.post("/data-query")
 async def data_query_route(request: Request, payload: DataQueryRequest):
+    """FastAPI route handler for the data-query (chart generation) endpoint.
+
+    Args:
+        request: The FastAPI ``Request`` object.
+        payload: The validated ``DataQueryRequest`` body.
+
+    Returns:
+        An ``ApiEnvelope`` JSON response with ``{"spec": <chart_spec>}`` on
+        success, or an error envelope on failure.
+    """
     from app.main import _authorize_request
 
     settings, actor_user_id, unauthorized = await _authorize_request(request, require_actor_user=True)
