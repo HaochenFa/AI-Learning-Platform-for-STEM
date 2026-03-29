@@ -22,6 +22,11 @@ import {
   parseReflection,
 } from "@/lib/chat/validation";
 
+/**
+ * Discriminated union returned by server actions that produce an AI chat
+ * response.  The `ok: false` branch carries a user-facing error string; the
+ * `ok: true` branch carries the full model response for the client to render.
+ */
 type ChatActionResult =
   | {
       ok: true;
@@ -34,6 +39,23 @@ type ChatActionResult =
 
 const CHAT_GENERATION_ERROR_MESSAGE = "Unable to generate a chat response right now. Please try again.";
 
+/**
+ * Generates a generative canvas layout spec for a given chat exchange.
+ *
+ * The canvas is an AI-driven visual layout rendered alongside the chat view to
+ * surface diagrams, concept maps, or structured summaries for the student's
+ * current question and the AI's answer.  The `hint` tells the backend which
+ * canvas type to generate (e.g. concept map, step-by-step).
+ *
+ * Returns a result object rather than redirecting so the client component can
+ * update the canvas pane without a full page reload.
+ *
+ * @param classId   The class context used to scope the canvas generation.
+ * @param hint      Describes the desired canvas type and any rendering hints.
+ * @param context   The student's question and the AI's answer that the canvas
+ *                  should visualise.
+ * @returns         `{ ok: true, spec }` on success, or `{ ok: false, error }`.
+ */
 export async function generateCanvasAction(
   classId: string,
   hint: CanvasHint,
@@ -76,6 +98,8 @@ function toFriendlyChatActionError(error: unknown) {
     return CHAT_GENERATION_ERROR_MESSAGE;
   }
 
+  // Next.js internally uses NEXT_REDIRECT errors for redirect() calls; they
+  // must not be swallowed and surfaced as a user-visible error string.
   if (/NEXT_REDIRECT/i.test(error.message)) {
     return CHAT_GENERATION_ERROR_MESSAGE;
   }
@@ -83,6 +107,20 @@ function toFriendlyChatActionError(error: unknown) {
   return error.message;
 }
 
+/**
+ * Sends a single chat message in an open-practice (unassigned) session and
+ * returns the AI-generated response.
+ *
+ * Open-practice sessions have no assignment context — questions are answered
+ * using the class's published blueprint and retrieved material context only.
+ * There is no transcript persistence; the client is responsible for maintaining
+ * the `transcript` form field across turns.
+ *
+ * @param classId    The class context for blueprint/material retrieval.
+ * @param formData   Must contain `message` (the user's text) and `transcript`
+ *                   (JSON-encoded `ChatTurn[]` of prior turns in this session).
+ * @returns          `{ ok: true, response }` or `{ ok: false, error }`.
+ */
 export async function sendOpenPracticeMessage(
   classId: string,
   formData: FormData,
@@ -105,6 +143,8 @@ export async function sendOpenPracticeMessage(
   let transcript: ChatTurn[];
   try {
     message = parseChatMessage(formData.get("message"));
+    // `parseChatTurns` decodes the JSON-serialised chat history sent by the
+    // client; the full prior transcript is passed to the AI to maintain context.
     transcript = parseChatTurns(formData.get("transcript"));
   } catch (error) {
     return {
@@ -136,6 +176,21 @@ export async function sendOpenPracticeMessage(
   }
 }
 
+/**
+ * Creates a new chat assignment activity and immediately assigns it to the
+ * whole class.
+ *
+ * Chat assignments are created in `published` status directly (no draft phase)
+ * because the assignment instructions are the only editable field and can be
+ * supplied in one step.
+ *
+ * Requires a published blueprint to exist for the class — the assignment is
+ * anchored to the blueprint so the AI's responses are scoped to approved course
+ * materials.
+ *
+ * @param classId    The class to create the assignment in.
+ * @param formData   Must contain `title`, `instructions`, and optionally `due_at`.
+ */
 export async function createChatAssignment(classId: string, formData: FormData) {
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
@@ -206,6 +261,8 @@ export async function createChatAssignment(classId: string, formData: FormData) 
         instructions,
         mode: "assignment",
       },
+      // Chat assignments go live immediately; no draft review step is needed
+      // because the teacher supplies all content upfront (title + instructions).
       status: "published",
       created_by: user.id,
     })
@@ -244,11 +301,33 @@ export async function createChatAssignment(classId: string, formData: FormData) 
   redirect(`/classes/${classId}/assignments/${assignmentId}/review?created=1`);
 }
 
+/**
+ * Sends a single chat message within a graded assignment session and returns
+ * the AI-generated response.
+ *
+ * Unlike `sendOpenPracticeMessage`, this action loads the assignment context so
+ * the AI can be given the teacher's specific instructions for the assignment
+ * (`assignmentInstructions`).  The transcript is provided by the client and is
+ * not persisted server-side between turns — persistence happens only on final
+ * submission via `submitChatAssignment`.
+ *
+ * The transcript format is a JSON-encoded `ChatTurn[]` where each turn has
+ * `role: "user" | "assistant"` and `content: string`.  The client is
+ * responsible for appending the returned `response` to its local transcript
+ * before the next call.
+ *
+ * @param classId        The class owning the assignment.
+ * @param assignmentId   The specific assignment the student is working on.
+ * @param formData       Must contain `message` and `transcript` (JSON-encoded
+ *                       `ChatTurn[]` of turns so far in this session).
+ * @returns              `{ ok: true, response }` or `{ ok: false, error }`.
+ */
 export async function sendAssignmentMessage(
   classId: string,
   assignmentId: string,
   formData: FormData,
 ): Promise<ChatActionResult> {
+  // --- Auth and class membership ---
   const { supabase, user, authError, sandboxId } = await requireAuthenticatedUser({ accountType: "student" });
 
   if (!user) {
@@ -263,10 +342,13 @@ export async function sendAssignmentMessage(
     return { ok: false, error: "Class access required." };
   }
 
+  // --- Message and transcript parsing ---
   let message: string;
   let transcript: ChatTurn[];
   try {
     message = parseChatMessage(formData.get("message"));
+    // `parseChatTurns` decodes the client-maintained JSON transcript.
+    // Each element is `{ role: "user"|"assistant", content: string }`.
     transcript = parseChatTurns(formData.get("transcript"));
   } catch (error) {
     return {
@@ -275,6 +357,7 @@ export async function sendAssignmentMessage(
     };
   }
 
+  // --- Thread resolution ---
   let assignmentContext: Awaited<ReturnType<typeof loadStudentAssignmentContext>>;
   try {
     assignmentContext = await loadStudentAssignmentContext({
@@ -291,11 +374,14 @@ export async function sendAssignmentMessage(
     };
   }
 
+  // Extract assignment-specific instructions from the activity config; null
+  // if the field is absent so the AI falls back to generic grounding.
   const assignmentInstructions =
     typeof assignmentContext.activity.config.instructions === "string"
       ? assignmentContext.activity.config.instructions
       : null;
 
+  // --- AI call ---
   try {
     const response = await generateGroundedChatResponse({
       classId,
@@ -320,11 +406,35 @@ export async function sendAssignmentMessage(
   }
 }
 
+/**
+ * Finalises a student's chat assignment by persisting the full conversation
+ * transcript and reflection as a submission row.
+ *
+ * Upsert-vs-insert logic:
+ *   Chat assignments allow the student to re-submit (e.g. to continue the
+ *   conversation and update their reflection before the due date).  To support
+ *   this, the action first queries for an existing submission for this student
+ *   and assignment:
+ *    - If a row **exists**, it is **updated** (`UPDATE`) with the new transcript
+ *      and a refreshed `submitted_at` timestamp.  This preserves the original
+ *      submission row ID so any teacher feedback linked to it remains valid.
+ *    - If **no row exists**, a new row is **inserted** (`INSERT`).
+ *   This manual check-then-write is used instead of a DB upsert because a
+ *   unique constraint on `(assignment_id, student_id)` is not enforced —
+ *   multiple quiz attempts for the same assignment are allowed via separate
+ *   rows; only chat submissions follow the one-row-per-student pattern.
+ *
+ * @param classId        The class owning the assignment.
+ * @param assignmentId   The assignment being submitted.
+ * @param formData       Must contain `transcript` (JSON-encoded `ChatTurn[]`)
+ *                       and `reflection` (the student's written reflection text).
+ */
 export async function submitChatAssignment(
   classId: string,
   assignmentId: string,
   formData: FormData,
 ) {
+  // --- Auth ---
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
   if (!user) {
     redirect("/login");
@@ -337,6 +447,8 @@ export async function submitChatAssignment(
   let transcript: ChatTurn[];
   let reflection: string;
   try {
+    // `parseChatTurns` validates and decodes the JSON-serialised conversation
+    // history; `parseReflection` validates and trims the reflection text.
     transcript = parseChatTurns(formData.get("transcript"));
     reflection = parseReflection(formData.get("reflection"));
   } catch (error) {
@@ -347,6 +459,7 @@ export async function submitChatAssignment(
     return;
   }
 
+  // Require at least one exchange so the student cannot submit a blank session.
   if (transcript.length === 0) {
     redirectWithError(
       `/classes/${classId}/assignments/${assignmentId}/chat`,
@@ -378,6 +491,9 @@ export async function submitChatAssignment(
     reflection,
   });
 
+  // --- Upsert logic ---
+  // Look up the most recent existing submission for this student + assignment.
+  // `.maybeSingle()` returns null (not an error) when no row exists.
   const { data: existingSubmission, error: existingSubmissionError } = await supabase
     .from("submissions")
     .select("id")
@@ -396,6 +512,8 @@ export async function submitChatAssignment(
   }
 
   if (existingSubmission) {
+    // Re-submit path: update the existing row to preserve any teacher feedback
+    // already linked to this submission ID.
     const { error: updateError } = await supabase
       .from("submissions")
       .update({
@@ -412,6 +530,7 @@ export async function submitChatAssignment(
       return;
     }
   } else {
+    // First submission path: insert a new row.
     const { error: insertError } = await supabase.from("submissions").insert({
       assignment_id: assignmentId,
       student_id: user.id,
@@ -428,6 +547,7 @@ export async function submitChatAssignment(
     }
   }
 
+  // --- Status update ---
   try {
     await markRecipientStatus({
       supabase,
@@ -446,11 +566,39 @@ export async function submitChatAssignment(
   redirect(`/classes/${classId}/assignments/${assignmentId}/chat?submitted=1`);
 }
 
+/**
+ * Records a teacher's review of a student's chat submission, attaching a
+ * score and/or feedback.
+ *
+ * Permission check sequence:
+ *   1. **Authenticated teacher** — `requireAuthenticatedUser({ accountType: "teacher" })`
+ *      ensures the caller has an active session and the teacher role.
+ *   2. **Class teacher** — `getClassAccess` verifies the teacher is a member
+ *      of *this specific class* (not just any class), preventing cross-class
+ *      review of other teachers' assignments.
+ *   3. **Assignment belongs to class** — the `assignments` table is queried
+ *      with both `id` and `class_id` filters, so a teacher cannot review a
+ *      submission by forging an `assignmentId` from another class.
+ *   4. **Submission belongs to assignment** — the `submissions` table is
+ *      queried with both `id` and `assignment_id`, ensuring the `submissionId`
+ *      param actually corresponds to the claimed assignment.
+ *
+ * Unlike `reviewQuizSubmission`, a comment or highlight is **always** required
+ * (score alone is not enough) because chat submissions involve qualitative
+ * assessment that benefits from written feedback.
+ *
+ * @param classId        The class owning the assignment.
+ * @param submissionId   The submission to review.
+ * @param formData       May contain `score` (0–100) and must contain at least
+ *                       one of `comment` or `highlights` (JSON array).
+ *                       Must also contain `assignment_id`.
+ */
 export async function reviewChatSubmission(
   classId: string,
   submissionId: string,
   formData: FormData,
 ) {
+  // --- Auth: authenticated teacher ---
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
@@ -466,6 +614,7 @@ export async function reviewChatSubmission(
     return;
   }
 
+  // --- Auth: class-level teacher access ---
   const role = await getClassAccess(supabase, classId, user.id);
   if (!role.found || !role.isTeacher) {
     redirectWithError(`/classes/${classId}`, "Teacher access required.");
@@ -486,6 +635,8 @@ export async function reviewChatSubmission(
   const comment = getFormString(formData, "comment");
   const highlights = parseHighlights(formData.get("highlights"));
 
+  // At least a comment or highlight is required — score-only reviews are not
+  // accepted for chat assignments (see JSDoc above).
   if (!comment && highlights.length === 0) {
     redirectWithError(
       `/classes/${classId}/assignments/${assignmentId}/review`,
@@ -494,6 +645,7 @@ export async function reviewChatSubmission(
     return;
   }
 
+  // --- Auth: submission belongs to assignment ---
   const { data: submission, error: submissionError } = await supabase
     .from("submissions")
     .select("id,assignment_id,student_id")
@@ -509,6 +661,7 @@ export async function reviewChatSubmission(
     return;
   }
 
+  // --- Auth: assignment belongs to class ---
   const { data: assignment, error: assignmentError } = await supabase
     .from("assignments")
     .select("id,class_id")
@@ -524,6 +677,8 @@ export async function reviewChatSubmission(
     return;
   }
 
+  // Score is always written (even when null) to allow clearing a previously
+  // set score if the teacher changes their mind.
   const { error: scoreError } = await supabase
     .from("submissions")
     .update({ score })

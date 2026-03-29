@@ -99,7 +99,28 @@ async function logQuizAiRequest(input: {
   }
 }
 
+/**
+ * Generates a new quiz draft via the Python AI backend and persists it as a
+ * `draft` activity with its questions.
+ *
+ * Generation is scoped to a single topic when `topic_id` is supplied — the
+ * blueprint context is narrowed to that topic's title, description, and
+ * objectives before being sent to the AI.  Without a topic the full published
+ * blueprint context is used.
+ *
+ * If question insertion fails after the activity row has been created, the
+ * orphaned activity is deleted to avoid stale draft rows.
+ *
+ * AI provider usage (provider, model, token counts, latency) is always logged
+ * to `ai_requests`, even on error, so that generation costs are auditable.
+ *
+ * @param classId    The class this quiz belongs to.
+ * @param formData   Must contain `title`, `instructions`, and optionally
+ *                   `question_count` (defaults to `DEFAULT_QUIZ_QUESTION_COUNT`)
+ *                   and `topic_id` for topic-scoped generation.
+ */
 export async function generateQuizDraft(classId: string, formData: FormData) {
+  // --- Auth and access ---
   const { supabase, user, authError, sandboxId, accessToken } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
     redirect("/login");
@@ -139,6 +160,7 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
     return;
   }
 
+  // --- Blueprint loading ---
   let blueprintId = "";
   try {
     blueprintId = await requirePublishedBlueprintId(supabase, classId);
@@ -160,6 +182,7 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
   let usedLatencyMs: number | null = null;
 
   try {
+    // --- Topic scoping ---
     const fullBlueprintContext = await loadPublishedBlueprintContext(classId);
     let blueprintContextStr = fullBlueprintContext.blueprintContext;
 
@@ -194,6 +217,7 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
       }
     }
 
+    // --- AI call ---
     const retrievalQuery = `Generate ${questionCount} multiple choice quiz questions. ${instructions}`;
     const materialContext = await retrieveMaterialContext(classId, retrievalQuery, undefined, {
       accessToken,
@@ -212,12 +236,15 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
     usedModel = pythonResult.model;
     usedUsage = pythonResult.usage;
     usedLatencyMs = pythonResult.latencyMs;
+
+    // Truncate to the requested count in case the AI returned extras.
     const trimmedQuestions = pythonResult.payload.questions.slice(0, questionCount);
 
     if (trimmedQuestions.length === 0) {
       throw new Error("The quiz generator returned no valid questions.");
     }
 
+    // --- Persistence ---
     const { data: activity, error: activityError } = await supabase
       .from("activities")
       .insert({
@@ -231,8 +258,14 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
         config: {
           mode: "assignment",
           questionCount,
+          // Allow 2 attempts so students can improve their score after reviewing
+          // feedback from the first attempt.
           attemptLimit: 2,
+          // "best_of_attempts" means the recorded score is the highest across all
+          // attempts rather than the most recent.
           scoringPolicy: "best_of_attempts",
+          // Correct answers are revealed only after the student has used all
+          // attempts, preventing answer-peeking mid-quiz.
           revealPolicy: "after_final_attempt",
           instructions,
         },
@@ -255,6 +288,7 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
 
     const { error: questionsError } = await supabase.from("quiz_questions").insert(questionRows);
     if (questionsError) {
+      // Roll back the activity row so we do not leave an orphaned draft with no questions.
       const { error: cleanupActivityError } = await supabase
         .from("activities")
         .delete()
@@ -307,6 +341,24 @@ export async function generateQuizDraft(classId: string, formData: FormData) {
   }
 }
 
+/**
+ * Persists edits to an existing quiz draft or published quiz.
+ *
+ * Questions are upserted keyed on `(activity_id, order_index)`.  After the
+ * upsert, stale questions whose `order_index` is now beyond the end of the
+ * updated list are deleted.
+ *
+ * `trimStaleQuestions` uses `order_index >= newLength` rather than deleting
+ * by question ID because the teacher may have reordered, replaced, or
+ * reduced the question list.  Deleting by ID would require the client to
+ * track and send tombstones for removed questions; using the index boundary
+ * is simpler and equally safe — `order_index` is the canonical question
+ * position and is unique per activity.
+ *
+ * @param classId      The class that owns the quiz.
+ * @param activityId   The quiz activity to update.
+ * @param formData     Must contain `quiz_payload` (JSON-encoded draft payload).
+ */
 export async function saveQuizDraft(classId: string, activityId: string, formData: FormData) {
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
@@ -354,6 +406,8 @@ export async function saveQuizDraft(classId: string, activityId: string, formDat
     return;
   }
 
+  // Preserve existing config fields (e.g. attemptLimit, scoringPolicy) that are
+  // not part of the draft payload to avoid silently overwriting them.
   const currentConfig =
     activity.config && typeof activity.config === "object"
       ? (activity.config as Record<string, unknown>)
@@ -367,6 +421,8 @@ export async function saveQuizDraft(classId: string, activityId: string, formDat
         ...currentConfig,
         mode: "assignment",
         questionCount: payload.questions.length,
+        // Hardcoded policies — same values used at generation time.
+        // See `generateQuizDraft` for policy documentation.
         attemptLimit: 2,
         scoringPolicy: "best_of_attempts",
         revealPolicy: "after_final_attempt",
@@ -405,6 +461,10 @@ export async function saveQuizDraft(classId: string, activityId: string, formDat
     return;
   }
 
+  // --- Trim stale questions ---
+  // Delete questions whose order_index is >= the new list length.
+  // This handles reductions and replacements without requiring the client
+  // to send explicit tombstones for removed questions (see JSDoc above).
   const { error: trimStaleQuestionsError } = await supabase
     .from("quiz_questions")
     .delete()
@@ -422,6 +482,19 @@ export async function saveQuizDraft(classId: string, activityId: string, formDat
   redirect(`/classes/${classId}/activities/quiz/${activityId}/edit?saved=1`);
 }
 
+/**
+ * Transitions a quiz activity from `draft` to `published`, making it
+ * available for assignment creation.
+ *
+ * Publishing is idempotent: if the activity is already published the action
+ * redirects as though it just succeeded rather than returning an error.
+ *
+ * At least one question must exist before publishing to prevent empty quizzes
+ * from being assigned to students.
+ *
+ * @param classId      The class that owns the quiz.
+ * @param activityId   The draft quiz activity to publish.
+ */
 export async function publishQuizActivity(classId: string, activityId: string) {
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "teacher" });
   if (!user) {
@@ -450,6 +523,7 @@ export async function publishQuizActivity(classId: string, activityId: string) {
     return;
   }
 
+  // Idempotent: already published — treat as success so re-submissions don't error.
   if (activity.status !== "draft") {
     redirect(`/classes/${classId}/activities/quiz/${activityId}/edit?published=1`);
     return;
@@ -493,6 +567,17 @@ export async function publishQuizActivity(classId: string, activityId: string) {
   redirect(`/classes/${classId}/activities/quiz/${activityId}/edit?published=1`);
 }
 
+/**
+ * Creates a whole-class assignment for a published quiz activity.
+ *
+ * The activity must already be in `published` status — teachers must publish
+ * before assigning so students cannot be assigned a quiz that is still being
+ * edited.
+ *
+ * @param classId      The class to assign the quiz to.
+ * @param activityId   The published quiz activity.
+ * @param formData     Must contain optionally `due_at` (ISO-8601 datetime string).
+ */
 export async function createQuizAssignment(
   classId: string,
   activityId: string,
@@ -566,7 +651,44 @@ export async function createQuizAssignment(
   }
 }
 
+/**
+ * Accepts and scores a student's quiz attempt, then persists it as a
+ * submission row.
+ *
+ * Attempt-limit enforcement:
+ *   The attempt limit is read from `activity.config.attemptLimit` (default 2).
+ *   Prior submissions are counted **before** the insert.  If the student has
+ *   already used all attempts they are blocked with a redirect error.  This
+ *   check is re-run **after** a `23505` duplicate-key error to distinguish
+ *   the "genuinely out of attempts" case from a transient double-submit.
+ *
+ * Race-condition handling (code 23505):
+ *   Two simultaneous form submissions (e.g. double-click or two open tabs) can
+ *   both pass the pre-insert attempt-limit check and race to insert.  PostgREST
+ *   returns error code `23505` (PostgreSQL unique violation) for the second
+ *   insert.  When that happens, the count is re-fetched: if the student is now
+ *   at the limit the "no attempts remaining" error is shown; otherwise a
+ *   "already recorded" message is shown so the student reviews their existing
+ *   attempt rather than re-submitting.
+ *
+ * Scoring:
+ *   `gradeQuizAttempt` computes `scoreRaw` (correct answers), `scorePercent`
+ *   (0–100), and `maxPoints` (total questions).  The `score` column on the
+ *   `submissions` row stores `scorePercent` so it can be compared across
+ *   attempts.
+ *
+ * Best-score computation:
+ *   `getBestScorePercent` scans the student's prior submissions (before this
+ *   attempt) and returns the highest `scorePercent`.  The current attempt's
+ *   score is passed as a candidate so the function returns the overall maximum
+ *   across all attempts including this one.
+ *
+ * @param classId        The class owning the assignment.
+ * @param assignmentId   The assignment being attempted.
+ * @param formData       Must contain `answers` (JSON-encoded answer array).
+ */
 export async function submitQuizAttempt(classId: string, assignmentId: string, formData: FormData) {
+  // --- Auth and class membership ---
   const { supabase, user, authError } = await requireAuthenticatedUser({ accountType: "student" });
   if (!user) {
     redirect("/login");
@@ -607,6 +729,8 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
     return;
   }
 
+  // --- Attempt-limit check ---
+  // Fall back to 2 if the config field is missing (defensive default).
   const attemptLimit =
     typeof assignmentContext.activity.config.attemptLimit === "number"
       ? assignmentContext.activity.config.attemptLimit
@@ -626,6 +750,7 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
     studentId: user.id,
   });
 
+  // Block the student before fetching questions to avoid unnecessary DB work.
   if (priorSubmissions.length >= attemptLimit) {
     redirectWithError(
       `/classes/${classId}/assignments/${assignmentId}/quiz`,
@@ -648,6 +773,7 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
     return;
   }
 
+  // --- Answer validation ---
   let submittedAnswers: ReturnType<typeof parseQuizAnswers>;
   try {
     submittedAnswers = parseQuizAnswers(formData.get("answers"));
@@ -661,6 +787,7 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
 
   const questionIds = questionRows.map((question) => question.id);
   const answerQuestionIds = submittedAnswers.map((answer) => answer.questionId);
+  // Reject partial submissions — every question must have exactly one answer.
   if (answerQuestionIds.length !== questionIds.length) {
     redirectWithError(
       `/classes/${classId}/assignments/${assignmentId}/quiz`,
@@ -669,6 +796,7 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
     return;
   }
 
+  // Reject duplicate question IDs in the submitted answers payload.
   if (new Set(answerQuestionIds).size !== answerQuestionIds.length) {
     redirectWithError(
       `/classes/${classId}/assignments/${assignmentId}/quiz`,
@@ -677,6 +805,7 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
     return;
   }
 
+  // --- Scoring ---
   const questions = questionRows.map((row) => ({
     id: row.id,
     question: row.question,
@@ -693,6 +822,9 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
     answers: submittedAnswers,
   });
 
+  // --- Persistence ---
+  // Attempt number is 1-based and derived from prior submission count so it
+  // is always in sync even if a previous attempt was recorded concurrently.
   const attemptNumber = priorSubmissions.length + 1;
   const payload: QuizAttemptSubmissionContent = {
     mode: "quiz_attempt",
@@ -714,6 +846,11 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
   });
 
   if (insertError) {
+    // 23505 = PostgreSQL unique-violation.  Two simultaneous submits (double-click
+    // or two open tabs) can both pass the pre-insert attempt-limit check and race
+    // to insert.  Re-fetch the submission count to determine which message to show:
+    //  - At limit → "no attempts remaining" (the race was for the final slot).
+    //  - Under limit → "already recorded" (a true duplicate of the same attempt).
     if (insertError.code === "23505") {
       const latestSubmissions = await listStudentSubmissions({
         supabase,
@@ -741,6 +878,8 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
   }
 
   try {
+    // Transition recipient status: "in_progress" while attempts remain,
+    // "submitted" once the final attempt is used.
     const attemptsUsedAfterSubmit = priorSubmissions.length + 1;
     const nextStatus = attemptsUsedAfterSubmit >= attemptLimit ? "submitted" : "in_progress";
     await markRecipientStatus({
@@ -757,10 +896,29 @@ export async function submitQuizAttempt(classId: string, assignmentId: string, f
     });
   }
 
+  // Best-score aggregation: takes the maximum scorePercent across all attempts
+  // (prior + this one).  Displayed on the results page so the student always
+  // sees their personal best rather than just the most recent attempt's score.
   const bestScore = getBestScorePercent(priorSubmissions, graded.scorePercent);
   redirect(`/classes/${classId}/assignments/${assignmentId}/quiz?submitted=1&best=${bestScore}`);
 }
 
+/**
+ * Records a teacher's review of a student's quiz submission, optionally
+ * overriding the auto-graded score and attaching feedback.
+ *
+ * At least one of `score`, `comment`, or a non-empty `highlights` array is
+ * required — submitting an empty review form is rejected.
+ *
+ * Score updates and feedback insertion are intentionally separate operations
+ * so that a score change does not require re-writing the feedback record and
+ * vice versa.
+ *
+ * @param classId        The class owning the assignment.
+ * @param submissionId   The submission to review.
+ * @param formData       May contain `score` (0–100), `comment`, `highlights`
+ *                       (JSON array), and must contain `assignment_id`.
+ */
 export async function reviewQuizSubmission(
   classId: string,
   submissionId: string,
@@ -801,6 +959,8 @@ export async function reviewQuizSubmission(
   const comment = getFormString(formData, "comment");
   const highlights = parseHighlights(formData.get("highlights"));
 
+  // Require at least some review content so empty submissions cannot mark a
+  // student's work as reviewed without any actual feedback.
   if (score === null && !comment && highlights.length === 0) {
     redirectWithError(
       `/classes/${classId}/assignments/${assignmentId}/review`,
@@ -824,6 +984,8 @@ export async function reviewQuizSubmission(
     return;
   }
 
+  // Score override is optional — skip the update when the teacher did not
+  // change the auto-graded score.
   if (score !== null) {
     const { error: scoreError } = await supabase
       .from("submissions")
