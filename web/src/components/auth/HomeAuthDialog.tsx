@@ -49,6 +49,7 @@ export default function HomeAuthDialog({ mode, children }: HomeAuthDialogProps) 
 
   useLayoutEffect(() => {
     if (!open || !mode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setScale(1);
       return;
     }

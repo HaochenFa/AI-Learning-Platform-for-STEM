@@ -3,7 +3,7 @@
  */
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react"; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { OtpInput } from "@/components/ui/otp-input";
 
 beforeAll(() => {
