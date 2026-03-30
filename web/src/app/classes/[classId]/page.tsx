@@ -17,6 +17,14 @@ import { requireGuestOrVerifiedUser } from "@/lib/auth/session";
 import { getClassTeachingBrief } from "@/lib/actions/teaching-brief";
 import { cn } from "@/lib/utils";
 
+/**
+ * URL search params accepted by the class overview page.
+ *
+ * - `error` — flash error message surfaced from a prior redirect.
+ * - `uploaded` — material upload outcome: `"processing"` | `"ready"` | `"failed"`.
+ * - `view` — deep-link to a student widget; currently only `"chat"` is supported.
+ * - `as` — role override for teachers: `"student"` activates student preview mode.
+ */
 type SearchParams = {
   error?: string;
   uploaded?: string;
@@ -45,6 +53,12 @@ function formatAssignmentStatus(value: string | null | undefined) {
   return "Assigned";
 }
 
+/**
+ * Colour-coded pill badge that labels an activity type.
+ *
+ * Renders the type string inside a token-driven CSS class
+ * (`pill-chat`, `pill-quiz`, `pill-flashcards`) defined in `globals.css`.
+ */
 function ActivityTypePill({ type }: { type: "chat" | "quiz" | "flashcards" }) {
   return (
     <span
@@ -60,6 +74,13 @@ function ActivityTypePill({ type }: { type: "chat" | "quiz" | "flashcards" }) {
   );
 }
 
+/**
+ * Clickable list row representing a single assignment.
+ *
+ * Renders the activity type pill, title, due date, and an action label
+ * ("Review" for teachers, "Open" for students). Links to either the teacher
+ * review page (`reviewHref`) or the student assignment workspace (`openHref`).
+ */
 function AssignmentRow({
   assignment,
   reviewHref,
@@ -100,6 +121,32 @@ function AssignmentRow({
   );
 }
 
+/**
+ * Top-level class page — renders the teacher dashboard or the student hub
+ * depending on the resolved role.
+ *
+ * **Role resolution (three-step):**
+ * 1. Guest users: role comes from `guestRole` in the sandbox session.
+ * 2. Real teachers: `classRow.owner_id === user.id` OR `enrollment.role` is
+ *    `"teacher"` or `"ta"`.
+ * 3. Teacher in student preview: `?as=student` activates `isStudentPreview`,
+ *    overriding `isTeacher` to `false` so the student render path is used
+ *    while a preview banner is shown at the top.
+ *
+ * **Data loading strategy (three sequential batches):**
+ * - Batch 1 (parallel): class row + caller's enrollment record.
+ * - Batch 2 (parallel): published blueprint + materials list (teachers only).
+ * - Batch 3 (conditional): teacher assignments OR student recipients — run
+ *   after role is known to avoid fetching unnecessary data.
+ *
+ * **Render paths:**
+ * - Student / preview → delegates entirely to `<StudentClassExperience />`.
+ * - Teacher → full dashboard with upload form, assignment cards, blueprint
+ *   panel, materials library, and `<TeacherChatMonitorPanel />`.
+ *
+ * @param params.classId The class UUID from the dynamic URL segment.
+ * @param searchParams Optional URL search params — see `SearchParams`.
+ */
 export default async function ClassOverviewPage({
   params,
   searchParams,
@@ -113,6 +160,8 @@ export default async function ClassOverviewPage({
   const context = await requireGuestOrVerifiedUser();
   const { supabase, user, isGuest, guestRole, guestClassId } = context;
 
+  // --- Guest class guard ---
+  // Redirect guests who somehow navigate to a class outside their sandbox.
   if (isGuest && guestClassId && guestClassId !== classId) {
     redirect(`/classes/${guestClassId}`);
   }
@@ -137,9 +186,12 @@ export default async function ClassOverviewPage({
     redirect("/dashboard");
   }
 
+  // --- Role resolution ---
   const isActualTeacher =
     classRow.owner_id === user.id || enrollment?.role === "teacher" || enrollment?.role === "ta";
 
+  // isStudentPreview: teacher previews the student view via ?as=student.
+  // isTeacher: false in preview mode so the student render path is used.
   const isStudentPreview = !isGuest && isActualTeacher && resolvedSearchParams?.as === "student";
   const isTeacher = isGuest ? guestRole === "teacher" : isActualTeacher && !isStudentPreview;
 

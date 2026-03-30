@@ -27,11 +27,46 @@ type AssignmentChatPanelProps = {
   isSubmitted: boolean;
 };
 
+/**
+ * State machine for a generative canvas panel attached to an AI response.
+ *
+ * - `"loading"` — canvas generation is in-flight; show a skeleton.
+ * - `"revealed"` — generation succeeded; `spec` holds the layout descriptor.
+ * - `"error"` — generation failed; render the canvas in an error state with an inline error banner.
+ */
 type CanvasEntry = {
   state: "loading" | "revealed" | "error";
   spec: CanvasSpec | null;
 };
 
+/**
+ * Chat UI for a graded assignment session.
+ *
+ * **Two-form architecture:**
+ * 1. Chat form — sends student messages and requests/loads AI replies via
+ *    `sendAssignmentMessage`. Wrapped in `startTransition` to keep the
+ *    reflection textarea and other UI interactive during the server round-trip.
+ * 2. Submit form — persists the reflection and submits the full transcript via
+ *    `submitChatAssignment`. Once submitted, both forms become read-only.
+ *
+ * **`useTransition` rationale:**
+ * The AI round-trip is wrapped in `startTransition` so React marks the update
+ * as non-urgent. `isPending` drives the button's loading state without blocking
+ * unrelated parts of the page (e.g., typing in the reflection textarea).
+ *
+ * **`canvasRequestRef` deduplication:**
+ * Each AI response may include a `canvas_hint` that triggers an async canvas
+ * generation call. `canvasRequestRef` maps `assistantIndex → requestId` using a
+ * `useRef` (not state) so the async IIFE can read the latest value synchronously
+ * to detect and discard stale responses without causing extra re-renders.
+ *
+ * @param classId The class UUID — forwarded to server actions for RLS.
+ * @param assignmentId The assignment UUID — forwarded to server actions.
+ * @param instructions The teacher-authored assignment prompt shown at the top.
+ * @param initialTranscript Prior turns loaded server-side (for returning students).
+ * @param initialReflection Prior reflection text — pre-fills the reflection textarea.
+ * @param isSubmitted When `true`, locks both forms; the submit button label changes.
+ */
 export default function AssignmentChatPanel({
   classId,
   assignmentId,
@@ -46,6 +81,9 @@ export default function AssignmentChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [canvasMap, setCanvasMap] = useState<Map<number, CanvasEntry>>(new Map());
+  // canvasRequestRef maps assistantIndex → requestId.
+  // Using a ref (not state) lets the async canvas IIFE read the latest value
+  // synchronously inside the closure without triggering extra re-renders on update.
   const canvasRequestRef = useRef(new Map<number, number>());
 
   const serializedTranscript = useMemo(() => JSON.stringify(transcript), [transcript]);
@@ -96,8 +134,12 @@ export default function AssignmentChatPanel({
       const canvasHint = result.response.canvas_hint;
       if (canvasHint) {
         const assistantIndex = nextTranscript.length - 1;
+        // Increment requestId so any prior in-flight canvas call for this
+        // turn is recognised as stale and its result discarded on arrival.
         const requestId = (canvasRequestRef.current.get(assistantIndex) ?? 0) + 1;
         canvasRequestRef.current.set(assistantIndex, requestId);
+
+        // --- Canvas phase: loading ---
         setCanvasMap((current) => {
           const next = new Map(current);
           next.set(assistantIndex, { state: "loading", spec: null });
@@ -110,6 +152,8 @@ export default function AssignmentChatPanel({
               studentQuestion: trimmed,
               aiAnswer: result.response.answer,
             });
+            // --- Stale-request guard ---
+            // Discard the result if another canvas request superseded this one.
             if (canvasRequestRef.current.get(assistantIndex) !== requestId) return;
             setCanvasMap((current) => {
               const next = new Map(current);

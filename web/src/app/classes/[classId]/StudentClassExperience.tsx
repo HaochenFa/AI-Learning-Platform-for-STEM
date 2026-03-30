@@ -21,8 +21,24 @@ type ActivityAssignmentSummary = {
   status?: string;
 };
 
+/**
+ * Identifies which workspace is currently focused.
+ *
+ * `null` (stored as `FocusWidget | null` in state) means the widget card grid
+ * is shown. A non-null value collapses the grid into `ClassWorkspaceShell`
+ * with the matching workspace rendered as the `main` slot.
+ */
 type FocusWidget = "chat" | "chat_assignments" | "quizzes" | "flashcards" | "blueprint";
 
+/**
+ * Props for the student class hub.
+ *
+ * - `initialView` — pre-selects a widget on mount; used for `?view=chat` deep-links
+ *   so the AI Chat workspace opens immediately without a grid tap.
+ * - `isPreviewMode` — true when a teacher is viewing via `?as=student`; shows a
+ *   dismissal banner and appends `?as=student` to all assignment links so the
+ *   teacher stays in preview mode when navigating into individual activities.
+ */
 type StudentClassExperienceProps = {
   classId: string;
   classTitle: string;
@@ -100,6 +116,24 @@ function AssignmentRow({
   );
 }
 
+/**
+ * Client-side student class hub with a `FocusWidget` state machine.
+ *
+ * **FocusWidget state machine:**
+ * `activeWidget === null` → shows the widget card grid (home view).
+ * `activeWidget !== null` → collapses into `ClassWorkspaceShell` with the
+ *   selected workspace in the `main` slot and a sidebar tool-switcher.
+ *
+ * **URL synchronisation:**
+ * A `useEffect` keeps the `?view=chat` param in sync with `activeWidget` so
+ * the AI Chat workspace can be deep-linked and the browser back button works.
+ * Only `"chat"` is persisted in the URL; other widget states are transient.
+ *
+ * **Preview mode:**
+ * When `isPreviewMode` is true, a teacher is previewing the student view via
+ * `?as=student`. A dismissal banner is shown, breadcrumbs point to the teacher
+ * dashboard, and `previewQuerySuffix` appends `?as=student` to assignment links.
+ */
 export default function StudentClassExperience({
   classId,
   classTitle,
@@ -124,6 +158,8 @@ export default function StudentClassExperience({
   const previewQuerySuffix = isPreviewMode ? "?as=student" : "";
   const dashboardHref = isPreviewMode ? "/teacher/dashboard" : "/student/dashboard";
 
+  // Keep ?view= in sync with activeWidget so the AI Chat workspace can be
+  // deep-linked. Only "chat" is persisted; other widgets don't update the URL.
   useEffect(() => {
     const currentView = searchParams.get("view");
     if (activeWidget === "chat" && currentView !== "chat") {
