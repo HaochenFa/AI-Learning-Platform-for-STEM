@@ -10,6 +10,19 @@ type Props = {
   interventions: NonNullable<ClassInsightsPayload["ai_narrative"]>["interventions"];
 };
 
+/**
+ * List of AI-generated intervention suggestions for underperforming topics.
+ *
+ * Each intervention names the struggling topic, explains why it was flagged,
+ * suggests a remediation action, and provides a one-click link to generate
+ * a targeted quiz for that topic (pre-filled via `?topicId=` query param).
+ *
+ * Returns `null` when the intervention list is empty — the parent conditionally
+ * renders this component only when `interventions.length > 0`.
+ *
+ * @param classId The class UUID — used to build the quiz creation URL.
+ * @param interventions AI-generated intervention items from `ai_narrative`.
+ */
 export default function InterventionSuggestions({ classId, interventions }: Props) {
   if (interventions.length === 0) {
     return null;

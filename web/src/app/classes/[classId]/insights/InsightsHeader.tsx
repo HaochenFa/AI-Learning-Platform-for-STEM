@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { getClassInsights } from "@/lib/actions/insights";
 
+/** Props for the insights page header. */
 type InsightsHeaderProps = {
   classId: string;
   generatedAt: string;
@@ -22,6 +23,17 @@ function timeAgo(isoString: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+/**
+ * Insights page header with snapshot timestamp and manual refresh button.
+ *
+ * Displays when the last analytics snapshot was generated using a human-
+ * friendly relative time string (e.g. "5m ago", "2h ago").
+ *
+ * **Refresh flow:** Clicking "Refresh" calls `getClassInsights(classId, true)`
+ * with `forceRefresh=true` to bypass the cache and trigger a fresh snapshot
+ * computation on the backend. On success, `router.refresh()` re-fetches the
+ * Server Component tree without a full navigation.
+ */
 export default function InsightsHeader({ classId, generatedAt }: InsightsHeaderProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

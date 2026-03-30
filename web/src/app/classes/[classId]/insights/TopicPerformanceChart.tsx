@@ -16,7 +16,9 @@ type Props = {
   topics: ClassInsightsPayload["topics"];
 };
 
-/* Recharts needs raw hex — pull from computed CSS vars at render time */
+// Recharts does not support CSS custom properties (var(--...)) in fill/stroke.
+// These hex values are kept in sync with the corresponding CSS token hues
+// defined in globals.css — update both if the design tokens change.
 const STATUS_CHART_COLORS = {
   critical: "#f43e5e", /* matches --status-error-border base hue */
   warning: "#f59e0b",  /* matches --status-warning-border base hue */
@@ -27,6 +29,20 @@ function statusColor(status: "good" | "warning" | "critical") {
   return STATUS_CHART_COLORS[status];
 }
 
+/**
+ * Horizontal bar chart showing average quiz score per blueprint topic.
+ *
+ * **Colour coding:** Each bar is coloured by `topic.status`:
+ * - `"good"` (≥ 75%) — green.
+ * - `"warning"` (60–74%) — amber.
+ * - `"critical"` (< 60%) — red.
+ * Status thresholds are computed server-side in `backend/app/analytics.py`.
+ *
+ * **Label truncation:** Topic titles longer than 20 chars are trimmed to 18
+ * chars + ellipsis to keep the Y-axis labels readable at `fontSize: 11`.
+ *
+ * @param topics Array of topic performance rows from the insights snapshot.
+ */
 export default function TopicPerformanceChart({ topics }: Props) {
   if (topics.length === 0) {
     return (

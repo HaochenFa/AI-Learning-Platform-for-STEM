@@ -15,6 +15,21 @@ type Props = {
   classId: string;
 };
 
+/**
+ * AI-generated narrative panel showing an executive summary, key findings,
+ * and an optional on-demand generative canvas visual.
+ *
+ * **Canvas generation:** Clicking "Generate Visual Summary" calls
+ * `queryClassData` with a condensed version of the narrative (≤ 500 chars).
+ * The call is wrapped in `startTransition` so the rest of the panel stays
+ * interactive during the server round-trip.
+ *
+ * Returns `null`-equivalent (empty card) when `narrative` is absent — this
+ * happens when the analytics snapshot has not yet been generated.
+ *
+ * @param narrative AI narrative from the insights snapshot, or `null`.
+ * @param classId The class UUID — forwarded to `queryClassData` for RLS.
+ */
 export default function AIInsightPanel({ narrative, classId }: Props) {
   const [canvasStatus, setCanvasStatus] = useState<CanvasState>("idle");
   const [canvasSpec, setCanvasSpec] = useState<CanvasSpec | undefined>(undefined);

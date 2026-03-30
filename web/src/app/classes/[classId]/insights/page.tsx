@@ -13,6 +13,24 @@ import InterventionSuggestions from "./InterventionSuggestions";
 import StudentOverviewTable from "./StudentOverviewTable";
 import DataQueryPanel from "./DataQueryPanel";
 
+/**
+ * Teacher-only page for AI-powered class intelligence.
+ *
+ * **Access control:** Requires the caller to be the class owner or enrolled
+ * as `"teacher"` / `"ta"`. Students are redirected to the class overview.
+ *
+ * **Three render states (based on `getClassInsights` result):**
+ * 1. Error — snapshot fetch failed; shows an empty-state error card.
+ * 2. Empty — no quiz submissions yet; shows a prompt to create the first quiz.
+ * 3. Data — full dashboard: summary cards, AI narrative, charts, student table,
+ *    and a natural-language data query panel.
+ *
+ * Data is loaded via `getClassInsights`, which reads from the persisted analytics
+ * snapshot table (`class_insights_snapshots`). Snapshots are refreshed on demand
+ * via the `InsightsHeader` refresh button.
+ *
+ * @param params.classId The class UUID from the dynamic URL segment.
+ */
 export default async function ClassInsightsPage({
   params,
 }: {

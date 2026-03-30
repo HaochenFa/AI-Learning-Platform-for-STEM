@@ -36,6 +36,15 @@ function pct(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+/**
+ * Sortable overview table of all enrolled students.
+ *
+ * Clicking any row opens the `StudentDrillDownSheet` for that student,
+ * showing their per-activity breakdown, AI mini-summary, and a bar chart
+ * of individual activity scores.
+ *
+ * @param students Array of student performance rows from the insights snapshot.
+ */
 export default function StudentOverviewTable({ students }: Props) {
   const [selectedStudent, setSelectedStudent] = useState<
     ClassInsightsPayload["students"][number] | null

@@ -42,6 +42,20 @@ function pct(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+/**
+ * Side sheet (drawer) for per-student drill-down from the `StudentOverviewTable`.
+ *
+ * Displays:
+ * - Risk badge + aggregate metrics (avg score, completion rate, chat count).
+ * - AI mini-summary (if present in the snapshot — absent for students with
+ *   very little activity).
+ * - Horizontal bar chart of per-activity scores.
+ * - Text list of activity titles with score and attempt count.
+ *
+ * @param student The full student performance row from the insights snapshot.
+ * @param open Controls the sheet's open/closed state.
+ * @param onClose Called when the sheet is dismissed.
+ */
 export default function StudentDrillDownSheet({ student, open, onClose }: Props) {
   const chartData = student.activity_breakdown.map((a) => ({
     name: a.title.length > 16 ? `${a.title.slice(0, 14)}…` : a.title,

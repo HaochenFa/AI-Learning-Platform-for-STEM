@@ -16,6 +16,19 @@ type Props = {
   students: ClassInsightsPayload["students"];
 };
 
+/**
+ * Scatter plot mapping each student's quiz completion rate against their
+ * average score, with bubble size encoding chat message volume.
+ *
+ * **Axis semantics:**
+ * - X (0–100%) — `completion_rate`: fraction of assigned quizzes attempted.
+ * - Y (0–100%) — `avg_score`: mean score across completed quiz attempts.
+ * - Z (bubble size) — `chat_message_count * 15 + 40`, clamped to a minimum
+ *   of 40 so every student is visible even with zero chat activity.
+ *
+ * Students in the bottom-left quadrant (low completion AND low score) are the
+ * most at-risk and will appear as small bubbles far from the top-right.
+ */
 export default function StudentEngagementScatter({ students }: Props) {
   if (students.length === 0) {
     return (

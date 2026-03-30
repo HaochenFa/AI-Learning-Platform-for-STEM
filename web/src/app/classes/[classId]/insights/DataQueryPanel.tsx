@@ -13,6 +13,19 @@ type DataQueryPanelProps = {
   classId: string;
 };
 
+/**
+ * Natural-language query panel that generates a `GenerativeCanvas` chart
+ * from the teacher's free-text question about their class data.
+ *
+ * **Flow:** Teacher types a question (max 500 chars) → `queryClassData` is
+ * called on the backend → the AI returns a `CanvasSpec` → `GenerativeCanvas`
+ * renders the appropriate chart type (bar, line, scatter, etc.).
+ *
+ * The submit call is wrapped in `startTransition` so the input textarea
+ * remains interactive while the server round-trip is in-flight.
+ *
+ * @param classId The class UUID — forwarded to `queryClassData` for RLS scoping.
+ */
 export default function DataQueryPanel({ classId }: DataQueryPanelProps) {
   const [query, setQuery] = useState("");
   const [canvasStatus, setCanvasStatus] = useState<CanvasState>("idle");

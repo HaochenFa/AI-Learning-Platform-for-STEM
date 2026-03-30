@@ -24,6 +24,10 @@ const LEVEL_LABELS: Record<BloomLevel, string> = {
   create: "Create",
 };
 
+// BLOOM_ORDER controls the axis sequence on the radar chart.
+// The levels follow Bloom's taxonomy from lower-order (remember) to
+// higher-order (create), which produces the expected cognitive complexity
+// gradient when read clockwise around the chart.
 const BLOOM_ORDER: BloomLevel[] = [
   "remember",
   "understand",
@@ -33,7 +37,19 @@ const BLOOM_ORDER: BloomLevel[] = [
   "create",
 ];
 
+/**
+ * Radar chart showing class performance across Bloom's taxonomy levels.
+ *
+ * **Partial-data guard:** Individual Bloom levels may be `null` when no quiz
+ * questions have been tagged with that cognitive level. `hasData` checks
+ * whether at least one level has data before rendering the chart. Levels with
+ * `null` values render as `0` on the chart to keep the axes consistent.
+ *
+ * @param bloom_breakdown Map of Bloom level → 0–1 average score (or `null` if
+ *   no questions tagged at that level have been attempted yet).
+ */
 export default function BloomRadarChart({ bloom_breakdown }: Props) {
+  // hasData: at least one level has been evaluated — otherwise show empty state.
   const hasData = BLOOM_ORDER.some(
     (level) => bloom_breakdown[level] != null,
   );

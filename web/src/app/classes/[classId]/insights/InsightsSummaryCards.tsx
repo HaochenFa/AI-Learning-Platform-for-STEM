@@ -1,12 +1,18 @@
 import { Card, CardContent } from "@/components/ui/card";
 import type { ClassInsightsPayload } from "@/lib/actions/insights";
 
+/** Props for the summary cards strip. */
 type Props = { summary: ClassInsightsPayload["class_summary"] };
 
+/** Formats a 0–1 fraction as a percentage string, e.g. `0.724` → `"72%"`. */
 function pct(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+/**
+ * Single KPI tile: a prominent metric value with a label above and
+ * an optional sub-label below (e.g. "enrolled", "class average").
+ */
 function StatCard({
   label,
   value,
@@ -27,6 +33,12 @@ function StatCard({
   );
 }
 
+/**
+ * Four-up KPI strip at the top of the insights dashboard.
+ *
+ * Displays: enrolled student count, class average score, at-risk student count,
+ * and average chat message count as a proxy for engagement.
+ */
 export default function InsightsSummaryCards({ summary }: Props) {
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
