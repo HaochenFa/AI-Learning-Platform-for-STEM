@@ -37,7 +37,7 @@ function pct(value: number) {
 }
 
 /**
- * Sortable overview table of all enrolled students.
+ * Overview table of all enrolled students.
  *
  * Clicking any row opens the `StudentDrillDownSheet` for that student,
  * showing their per-activity breakdown, AI mini-summary, and a bar chart
