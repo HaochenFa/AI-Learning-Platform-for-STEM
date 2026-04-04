@@ -5,7 +5,6 @@ import {
   getGuestSessionExpiredMessage,
   isGuestSandboxExpired,
 } from "@/lib/guest/session-expiry";
-import { consumeGuestEntryRateLimit } from "@/lib/guest/entry-rate-limit";
 import { type GuestProvisionFailureCode } from "@/lib/guest/errors";
 import { isGuestMutableStoragePath } from "@/lib/guest/storage";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -88,6 +87,12 @@ async function expireGuestSandbox(
     })
     .eq("id", sandboxId)
     .eq("status", "active");
+
+  // Decrement the global active-session counter so the returning user's new
+  // session slot can be acquired without double-counting the expired row.
+  // The cleanup worker would also do this, but only after cron runs — without
+  // this call the returning user inflates active_sessions until cleanup runs.
+  await releaseGuestSessionSlot();
 }
 
 /**
@@ -147,6 +152,18 @@ async function removeGuestSandboxStorageObjects(
 }
 
 /**
+ * Releases a previously acquired global session quota slot.
+ *
+ * Called in the provision failure path when `acquire_guest_session_service`
+ * succeeded but a later step (anonymous auth or sandbox insert/clone) failed.
+ * Prevents leaking an active-session slot count if provisioning rolls back.
+ */
+async function releaseGuestSessionSlot(): Promise<void> {
+  const adminSupabase = createAdminSupabaseClient();
+  await adminSupabase.rpc("release_guest_session_slot_service", {});
+}
+
+/**
  * Provisions a new guest sandbox for the current server session.
  *
  * Thin public wrapper around `provisionGuestSandboxWithOptions` for callers
@@ -165,9 +182,10 @@ export async function provisionGuestSandbox(): Promise<GuestSandboxResult> {
  *
  * The function handles seven distinct situations a caller may arrive in:
  *
- * 1. **No existing session** — Perform rate-limit check (if `ipAddress` is
- *    provided), create an anonymous Supabase user, insert a sandbox row, and
- *    run `clone_guest_sandbox` to stamp a copy of the template class.
+ * 1. **No existing session** — Check the global session quota via
+ *    `acquire_guest_session_service`, create an anonymous Supabase user,
+ *    insert a sandbox row, and run `clone_guest_sandbox` to stamp a copy of
+ *    the template class.
  *
  * 2. **Existing anonymous user with an active, valid sandbox that already has
  *    a `class_id`** — Return immediately; nothing to do.
@@ -195,14 +213,9 @@ export async function provisionGuestSandbox(): Promise<GuestSandboxResult> {
  * sign out a pre-existing anonymous user whose session was only partially
  * usable.
  *
- * @param options.ipAddress  Caller IP used for the per-IP rate-limit check.
- *                           Omit to skip the rate-limit check (e.g., for
- *                           server-to-server calls).
  * @returns  `GuestSandboxResult` with the provisioned `classId` and `sandboxId`.
  */
-export async function provisionGuestSandboxWithOptions(options?: {
-  ipAddress?: string | null;
-}): Promise<GuestSandboxResult> {
+export async function provisionGuestSandboxWithOptions(): Promise<GuestSandboxResult> {
   const supabase = await createServerSupabaseClient();
 
   // --- Inspect existing session ---
@@ -308,36 +321,53 @@ export async function provisionGuestSandboxWithOptions(options?: {
     }
   }
 
-  // --- Rate-limit check (new anonymous session path only) ---
+  // --- Global session quota check (new session path only) ---
+  // Atomically checks active-session cap (60) and hourly creation rate (20/h).
+  // If acquired, the slot must be released if a later step fails (shouldReleaseSessionQuota tracks this).
 
-  if (options?.ipAddress) {
-    let allowed: boolean;
-    try {
-      allowed = await consumeGuestEntryRateLimit(options.ipAddress);
-    } catch {
-      return {
-        ok: false,
-        code: "guest-unavailable",
-        error: "guest-unavailable",
-        reason: "entry-rate-limit-check",
-      };
-    }
+  let shouldReleaseSessionQuota = false;
+  const adminSupabase = createAdminSupabaseClient();
+  const { data: quotaResult, error: quotaError } = await adminSupabase.rpc(
+    "acquire_guest_session_service",
+    {},
+  );
 
-    if (!allowed) {
-      return {
-        ok: false,
-        code: "too-many-guest-sessions",
-        error: "too-many-guest-sessions",
-        reason: "entry-rate-limit-exceeded",
-      };
-    }
+  if (quotaError) {
+    return {
+      ok: false,
+      code: "guest-unavailable",
+      error: "guest-unavailable",
+      reason: "session-quota-check",
+    };
   }
+
+  const quota = quotaResult as { ok: boolean; reason?: string } | null;
+  if (!quota?.ok) {
+    if (quota?.reason === "cap_creation") {
+      return {
+        ok: false,
+        code: "too-many-new-sessions",
+        error: "too-many-new-sessions",
+        reason: "creation-rate-cap",
+      };
+    }
+    return {
+      ok: false,
+      code: "too-many-active-sessions",
+      error: "too-many-active-sessions",
+      reason: "active-session-cap",
+    };
+  }
+  shouldReleaseSessionQuota = true;
 
   // --- Create anonymous Auth user if not already available ---
 
   if (!guestUserId) {
     const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
     if (authError || !authData.user) {
+      if (shouldReleaseSessionQuota) {
+        await releaseGuestSessionSlot();
+      }
       return {
         ok: false,
         code: "guest-auth-unavailable",
@@ -352,6 +382,9 @@ export async function provisionGuestSandboxWithOptions(options?: {
   }
 
   if (!guestUserId) {
+    if (shouldReleaseSessionQuota) {
+      await releaseGuestSessionSlot();
+    }
     return {
       ok: false,
       code: "guest-auth-unavailable",
@@ -373,8 +406,10 @@ export async function provisionGuestSandboxWithOptions(options?: {
 
   if (sandboxError) {
     if (shouldSignOutOnFailure) {
-      // We created the anonymous user moments ago; undo it to avoid an orphan.
       await supabase.auth.signOut();
+    }
+    if (shouldReleaseSessionQuota) {
+      await releaseGuestSessionSlot();
     }
     return {
       ok: false,
@@ -395,10 +430,14 @@ export async function provisionGuestSandboxWithOptions(options?: {
   });
 
   if (cloneError || typeof classId !== "string" || !classId) {
-    // Mark the sandbox as discarded so it is excluded from future active queries.
     await supabase.from("guest_sandboxes").update({ status: "discarded" }).eq("id", sandboxId);
     if (shouldSignOutOnFailure) {
       await supabase.auth.signOut();
+    }
+    // discard_guest_sandbox RPC will decrement active_sessions; but since we
+    // set status='discarded' directly (not via RPC), release the slot manually.
+    if (shouldReleaseSessionQuota) {
+      await releaseGuestSessionSlot();
     }
     return {
       ok: false,
@@ -537,9 +576,42 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
     };
   }
 
+  // --- Acquire global session quota slot BEFORE discarding the old sandbox ---
+  // Checking caps first ensures the guest still has a working demo if the
+  // system is at capacity — we never destroy the existing sandbox speculatively.
+  // During the brief window between acquire and discard, active_sessions is
+  // over-counted by 1; with a 60-session cap this is acceptable.
+
+  const adminSupabase = createAdminSupabaseClient();
+  const { data: quotaResult, error: quotaError } = await adminSupabase.rpc(
+    "acquire_guest_session_service",
+    {},
+  );
+  if (quotaError) {
+    return {
+      ok: false,
+      code: "guest-unavailable",
+      error: "guest-unavailable",
+      reason: "session-quota-check",
+    };
+  }
+  const quota = quotaResult as { ok: boolean; reason?: string } | null;
+  if (!quota?.ok) {
+    return {
+      ok: false,
+      code: quota?.reason === "cap_creation" ? "too-many-new-sessions" : "too-many-active-sessions",
+      error: quota?.reason === "cap_creation" ? "too-many-new-sessions" : "too-many-active-sessions",
+      reason: quota?.reason === "cap_creation" ? "creation-rate-cap" : "active-session-cap",
+    };
+  }
+
+  // --- Discard existing sandbox now that the new slot is secured ---
+
   if (existingSandbox?.id) {
     const discarded = await discardGuestSandbox(existingSandbox.id);
     if (!discarded.ok) {
+      // New slot was acquired but old sandbox could not be discarded — release it.
+      await releaseGuestSessionSlot();
       return {
         ok: false,
         code: "guest-sandbox-provision-failed",
@@ -561,6 +633,7 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
   });
 
   if (sandboxError) {
+    await releaseGuestSessionSlot();
     return {
       ok: false,
       code: "guest-sandbox-provision-failed",
@@ -577,8 +650,11 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
   });
 
   if (cloneError || typeof classId !== "string" || !classId) {
-    // Mark as discarded to keep the active-sandbox query clean.
     await supabase.from("guest_sandboxes").update({ status: "discarded" }).eq("id", sandboxId);
+    // The slot was acquired above but we set status='discarded' directly (not via
+    // discard_guest_sandbox RPC), so the cleanup worker will skip the decrement.
+    // Release the slot manually to prevent leaking active_sessions.
+    await releaseGuestSessionSlot();
     return {
       ok: false,
       code: "guest-sandbox-provision-failed",

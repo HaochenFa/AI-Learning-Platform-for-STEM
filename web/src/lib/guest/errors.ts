@@ -3,6 +3,8 @@ import { getGuestSessionExpiredMessage } from "@/lib/guest/session-expiry";
 export type GuestProvisionFailureCode =
   | "guest-unavailable"
   | "too-many-guest-sessions"
+  | "too-many-active-sessions"
+  | "too-many-new-sessions"
   | "guest-auth-unavailable"
   | "guest-session-conflict"
   | "guest-sandbox-provision-failed"
@@ -11,6 +13,8 @@ export type GuestProvisionFailureCode =
 export type GuestEntryErrorQuery =
   | "guest-unavailable"
   | "too-many-guest-sessions"
+  | "too-many-active-sessions"
+  | "too-many-new-sessions"
   | "guest-session-check-failed";
 
 export type GuestLandingFeedback = {
@@ -20,14 +24,14 @@ export type GuestLandingFeedback = {
 };
 
 export function toGuestEntryErrorQuery(code: GuestProvisionFailureCode): GuestEntryErrorQuery {
-  if (code === "too-many-guest-sessions") {
+  if (
+    code === "too-many-guest-sessions" ||
+    code === "too-many-active-sessions" ||
+    code === "too-many-new-sessions" ||
+    code === "guest-session-check-failed"
+  ) {
     return code;
   }
-
-  if (code === "guest-session-check-failed") {
-    return code;
-  }
-
   return "guest-unavailable";
 }
 
@@ -44,6 +48,20 @@ export function getGuestLandingFeedback(input: {
   }
 
   switch (input.error) {
+    case "too-many-active-sessions":
+      return {
+        variant: "warning",
+        title: "Guest demo is at capacity",
+        message:
+          "The guest demo has reached the active session limit. Please try again in a few minutes.",
+      };
+    case "too-many-new-sessions":
+      return {
+        variant: "warning",
+        title: "Too many new sessions",
+        message:
+          "Too many demo sessions have been started this hour. Please try again shortly.",
+      };
     case "too-many-guest-sessions":
       return {
         variant: "warning",

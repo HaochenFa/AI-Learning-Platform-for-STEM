@@ -28,6 +28,7 @@ from app.classes import ClassDomainError, create_class, join_class
 from app.config import Settings, get_settings
 from app.flashcards import generate_flashcards
 from app.guest_rate_limit import (
+    GuestConcurrencyTimeoutError,
     acquire_guest_ai_slot,
     check_guest_ai_access,
     increment_guest_ai_usage,
@@ -460,21 +461,20 @@ async def _enforce_guest_ai_guards(
         )
 
     try:
-        acquired = await acquire_guest_ai_slot(settings, sandbox_id)
+        await acquire_guest_ai_slot(settings, sandbox_id)
+    except GuestConcurrencyTimeoutError:
+        return None, _error_response(
+            request,
+            status_code=503,
+            message="Guest AI requests are busy. Please try again in a moment.",
+            code="guest_concurrent_limit",
+        )
     except RuntimeError:
         return None, _error_response(
             request,
             status_code=502,
             message="Guest AI quota enforcement is unavailable right now.",
             code="guest_rate_limit_unavailable",
-        )
-
-    if not acquired:
-        return None, _error_response(
-            request,
-            status_code=429,
-            message=f"Guest concurrent {feature} limit reached.",
-            code="guest_concurrent_limit",
         )
 
     return sandbox_id, None

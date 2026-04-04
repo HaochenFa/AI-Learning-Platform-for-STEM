@@ -520,24 +520,14 @@ export async function signOut() {
  * Provisions a new guest (anonymous) session and returns the redirect URL for
  * the guest's sandboxed class.
  *
- * This action is called from the `/guest/enter` route handler after the
- * homepage guest-entry form submits. It returns a result object rather than
- * redirecting so the route can translate structured failures into stable
- * landing-page feedback.
+ * Called from the `/guest/enter` route handler after the homepage guest-entry
+ * form submits. Returns a result object rather than redirecting so the route
+ * can translate structured failures into stable landing-page feedback.
  *
- * Rate-limit hits are logged at `warn` level; other failures at `error` level,
- * because rate limiting is an expected operational event rather than an
- * application fault.
- *
- * @param input.ipAddress   Caller's IP address, forwarded from the request
- *                          headers to enforce per-IP session rate limits.
- * @returns                 `{ ok: true, redirectTo }` on success, or
- *                          `{ ok: false, code, error }` with a structured
- *                          failure code on any error.
+ * @returns  `{ ok: true, redirectTo }` on success, or
+ *           `{ ok: false, code, error }` with a structured failure code.
  */
-export async function startGuestSession(input?: {
-  ipAddress?: string | null;
-}): Promise<{
+export async function startGuestSession(): Promise<{
   ok: boolean;
   redirectTo?: string;
   code?: GuestProvisionFailureCode;
@@ -551,9 +541,7 @@ export async function startGuestSession(input?: {
     };
   }
 
-  const result = await provisionGuestSandboxWithOptions({
-    ipAddress: input?.ipAddress ?? null,
-  });
+  const result = await provisionGuestSandboxWithOptions();
   if (!result.ok) {
     const env =
       process.env.VERCEL_ENV ??
@@ -564,12 +552,14 @@ export async function startGuestSession(input?: {
       reason: result.reason ?? "unspecified",
       message: result.error,
       env,
-      hasIpAddress: Boolean(input?.ipAddress),
     };
 
-    // Rate-limit hits are expected operational events; use warn rather than error.
-    if (result.code === "too-many-guest-sessions") {
-      console.warn("Guest session start blocked by rate limit", payload);
+    if (
+      result.code === "too-many-guest-sessions" ||
+      result.code === "too-many-active-sessions" ||
+      result.code === "too-many-new-sessions"
+    ) {
+      console.warn("Guest session start blocked by session quota", payload);
     } else {
       console.error("Guest session start failed", payload);
     }

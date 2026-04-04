@@ -96,7 +96,7 @@ async function resolveBatchSize(req: Request) {
 
 async function listCleanupCandidates(supabase: SupabaseClient, batchSize: number) {
   const expiryCutoff = new Date().toISOString();
-  const inactivityCutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const inactivityCutoff = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("guest_sandboxes")
     .select("id,user_id,status,active_ai_requests,created_at,expires_at,last_seen_at")
@@ -140,6 +140,18 @@ async function cleanupSandbox(supabase: SupabaseClient, candidate: CleanupCandid
   });
   if (quotaReleaseError) {
     throw new Error(`quota release failed: ${quotaReleaseError.message}`);
+  }
+
+  // Decrement active_sessions only for still-active sandboxes (expired by TTL/inactivity
+  // but never passed through expireGuestSandbox or discard_guest_sandbox).
+  // - 'discarded': already decremented by discard_guest_sandbox() RPC
+  // - 'expired':   already decremented inline by expireGuestSandbox() in sandbox.ts
+  // - 'active':    timed out without going through the frontend — decrement here
+  if (candidate.status === "active") {
+    const { error: sessionSlotError } = await supabase.rpc("release_guest_session_slot_service");
+    if (sessionSlotError) {
+      throw new Error(`session slot release failed: ${sessionSlotError.message}`);
+    }
   }
 
   const { error: userDeleteError } = await supabase.auth.admin.deleteUser(candidate.user_id);
