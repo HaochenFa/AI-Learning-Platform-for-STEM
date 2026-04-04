@@ -582,6 +582,33 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
     }
   }
 
+  // --- Re-acquire global session quota slot for the replacement sandbox ---
+  // discard_guest_sandbox decremented active_sessions; we must re-increment
+  // so the replacement counts correctly against the global cap.
+
+  const adminSupabase = createAdminSupabaseClient();
+  const { data: quotaResult, error: quotaError } = await adminSupabase.rpc(
+    "acquire_guest_session_service",
+    {},
+  );
+  if (quotaError) {
+    return {
+      ok: false,
+      code: "guest-unavailable",
+      error: "guest-unavailable",
+      reason: "session-quota-check",
+    };
+  }
+  const quota = quotaResult as { ok: boolean; reason?: string } | null;
+  if (!quota?.ok) {
+    return {
+      ok: false,
+      code: quota?.reason === "cap_creation" ? "too-many-new-sessions" : "too-many-active-sessions",
+      error: quota?.reason === "cap_creation" ? "too-many-new-sessions" : "too-many-active-sessions",
+      reason: quota?.reason === "cap_creation" ? "creation-rate-cap" : "active-session-cap",
+    };
+  }
+
   // --- Insert fresh sandbox row ---
 
   const sandboxId = crypto.randomUUID();

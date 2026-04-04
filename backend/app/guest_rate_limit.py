@@ -158,7 +158,7 @@ async def acquire_guest_ai_slot(settings: Settings, sandbox_id: str) -> bool:
     """
     semaphore = _get_ai_semaphore(settings.guest_max_concurrent_ai_requests)
     try:
-        await asyncio.wait_for(asyncio.shield(semaphore.acquire()), timeout=60.0)
+        await asyncio.wait_for(semaphore.acquire(), timeout=60.0)
     except asyncio.TimeoutError as exc:
         raise GuestConcurrencyTimeoutError() from exc
 

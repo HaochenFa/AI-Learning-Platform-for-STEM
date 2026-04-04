@@ -40,6 +40,87 @@ insert into public.guest_session_quota (scope)
 values ('global')
 on conflict (scope) do nothing;
 
+-- Replace functions that hold a rowtype dependency on guest_ai_quota_state
+-- BEFORE dropping it, otherwise Postgres refuses to drop the table.
+-- These definitions are repeated below in their logical sequence (sections 5/6);
+-- CREATE OR REPLACE is idempotent so the second run is a no-op.
+
+create or replace function public.acquire_guest_ai_slot_service(
+  p_sandbox_id uuid,
+  p_limit      integer default 20
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_acquired boolean := false;
+begin
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'Service role is required.' using errcode = '42501';
+  end if;
+
+  update public.guest_sandboxes
+     set active_ai_requests = active_ai_requests + 1,
+         last_seen_at       = now(),
+         updated_at         = now()
+   where id     = p_sandbox_id
+     and status = 'active'
+  returning true into v_acquired;
+
+  if not coalesce(v_acquired, false) then
+    return false;
+  end if;
+
+  update public.guest_session_quota
+     set active_requests = active_requests + 1,
+         updated_at      = now()
+   where scope = 'global';
+
+  return true;
+end;
+$$;
+
+create or replace function public.release_guest_ai_slot_service(
+  p_sandbox_id uuid
+)
+returns public.guest_sandboxes
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_row      public.guest_sandboxes;
+  v_released integer := 0;
+begin
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'Service role is required.' using errcode = '42501';
+  end if;
+
+  update public.guest_sandboxes
+     set active_ai_requests = greatest(active_ai_requests - 1, 0),
+         last_seen_at       = now(),
+         updated_at         = now()
+   where id                 = p_sandbox_id
+     and active_ai_requests > 0
+  returning * into v_row;
+
+  if v_row.id is null then
+    return null;
+  end if;
+
+  v_released := 1;
+
+  update public.guest_session_quota
+     set active_requests = greatest(active_requests - v_released, 0),
+         updated_at      = now()
+   where scope = 'global';
+
+  return v_row;
+end;
+$$;
+
 drop table if exists public.guest_ai_quota_state;
 
 -- ─── 3. acquire_guest_session_service ────────────────────────────────────────
