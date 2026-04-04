@@ -1,5 +1,7 @@
 # Deployment Guide
 
+Last updated: 2026-04-05
+
 This runbook describes the hosted deployment topology for the current project. The platform is not just a single Vercel app with a database. It is a coordinated deployment across a frontend, a separate Python backend, and a Supabase project with Edge Functions and background jobs.
 
 ## Deployment Topology
@@ -78,20 +80,25 @@ Create one project per hosted environment, typically:
 
 ### Recommended Email Templates
 
-The platform uses a branded confirmation email. Apply the full HTML from `supabase/templates/confirmation.html` in the Supabase Dashboard under **Auth → Email Templates → Confirm signup**. Do not use the default Supabase template — the branded one wires the confirmation button to the app's SSR callback route.
+The platform uses branded confirmation and recovery emails. Apply the checked-in HTML to the matching hosted Supabase templates:
+
+- `supabase/templates/confirmation.html` -> **Auth -> Email Templates -> Confirm signup**
+- `supabase/templates/recovery.html` -> **Auth -> Email Templates -> Reset password**
+
+Do not use the default Supabase templates — both branded templates wire their primary CTA to the app's SSR callback route.
 
 The URL patterns embedded in the templates are:
 
 - Confirm signup:
 
 ```text
-{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email
+{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login&email={{ .Email }}
 ```
 
 - Recovery:
 
 ```text
-{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery
+{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&email={{ .Email }}
 ```
 
 Set **Email OTP Expiration** to `300` seconds in the Supabase dashboard to match the 5-minute link lifetime the app communicates to users. Keep the local `auth.email.otp_expiry` in `supabase/config.toml` aligned to the same value.
@@ -137,6 +144,8 @@ npx supabase db push
   - class intelligence snapshots
   - teaching brief snapshots
   - guest mode schema, seed data, enforcement, and cleanup alignment
+  - guest quota cleanup fixes in `0022_fix_guest_quota_state_cleanup.sql`
+  - the global guest session quota redesign in `0023_guest_quota_redesign.sql`, which retires the older per-IP entry limit table in favor of `guest_session_quota`
 
 Apply the full active migration set before attempting hosted smoke tests.
 
@@ -189,6 +198,7 @@ npx supabase secrets set MATERIAL_WORKER_TOKEN="<strong-random-token>"
 ### Required For `guest-sandbox-cleanup`
 
 - `GUEST_SANDBOX_CLEANUP_TOKEN`
+- `GUEST_SANDBOX_CLEANUP_BATCH` if you want to tune the default cleanup batch size
 
 ### Important Secret Placement Notes
 
@@ -243,12 +253,14 @@ The backend exports `app` from `backend/index.py` and can run on any ASGI-capabl
 | `MATERIAL_WORKER_TOKEN` | token used when the backend triggers `material-worker` |
 | `MATERIAL_WORKER_BATCH` | default material worker batch size |
 | `MATERIAL_WORKER_FUNCTION_URL` | optional explicit function URL |
-| `GUEST_MAX_CONCURRENT_AI_REQUESTS` | global guest AI concurrency |
+| `GUEST_MAX_CONCURRENT_AI_REQUESTS` | backend-side guest AI concurrency gate |
 | `GUEST_CHAT_LIMIT` | per-sandbox guest chat limit |
 | `GUEST_QUIZ_LIMIT` | per-sandbox guest quiz generation limit |
 | `GUEST_FLASHCARDS_LIMIT` | per-sandbox guest flashcard generation limit |
 | `GUEST_BLUEPRINT_LIMIT` | per-sandbox guest blueprint regeneration limit |
 | `GUEST_EMBEDDING_LIMIT` | per-sandbox guest embedding limit |
+
+The backend env vars above control guest AI usage and concurrency only. Guest session creation caps are enforced in Supabase by `acquire_guest_session_service` / `guest_session_quota`, not by the Python service.
 
 ### Validation
 
@@ -330,6 +342,13 @@ Guest mode is a deployment feature, not just a UI flag.
 - backend guest quota env vars configured
 - `guest-sandbox-cleanup` function deployed and tokenized
 
+### Current Lifecycle And Quota Model
+
+- guest session creation is enforced through the Supabase `guest_session_quota` table and RPCs, not the retired per-IP rate-limit table
+- current defaults are 60 active guest sessions globally and 20 new guest sessions per hour
+- guest sandboxes expire after 32 hours max or 8 hours of inactivity
+- backend guest env vars still govern per-sandbox AI usage and in-flight AI concurrency
+
 ### Cleanup Flow
 
 ```mermaid
@@ -399,6 +418,7 @@ Check:
 - Supabase Anonymous Auth setting
 - guest migrations and seed data
 - backend guest quota and access configuration
+- current `guest_session_quota` state and whether the system has hit the active-session or hourly-creation cap
 
 ### Material Never Leaves `processing`
 

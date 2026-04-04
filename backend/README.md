@@ -1,5 +1,7 @@
 # STEM Python Backend
 
+Last updated: 2026-04-05
+
 This package contains the FastAPI backend that acts as the sole AI orchestration and service workflow layer for the STEM Learning Platform. The web app depends on this service for AI generation, chat workspace behavior, analytics, teaching briefs, and several class-level workflows.
 
 ## Responsibilities
@@ -123,6 +125,8 @@ Guest AI requests are not just a frontend concern. The backend enforces:
 - guest concurrent AI slot limits
 - guest-specific `sandbox_id` requirements where applicable
 
+Guest session creation caps are not owned by the Python service. Those are enforced in Supabase by the `guest_session_quota` model and the `acquire_guest_session_service` / `release_guest_session_slot_service` RPCs, which replaced the older per-IP entry rate limit.
+
 Current guest guardrail env vars:
 
 - `GUEST_MAX_CONCURRENT_AI_REQUESTS`
@@ -184,6 +188,8 @@ pip install -r backend/requirements.txt
 ```bash
 uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload
 ```
+
+`backend/.env.example` is a checklist, not an automatically loaded config file. Export the variables you need into your shell or use your own env loader before running the command above.
 
 ## Important Environment Variables
 

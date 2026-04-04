@@ -1,5 +1,7 @@
 # DESIGN
 
+Last updated: 2026-04-05
+
 This document describes the current product and technical design of the STEM Learning Platform with GenAI. It focuses on implemented behavior in the repository today and separates durable architecture from optional future-facing ideas.
 
 ## Product Goals
@@ -131,6 +133,8 @@ Guest mode is a first-class product surface rather than a separate mock experien
 - The platform creates a sandbox row and clones canonical demo content into normal product tables under a new `sandbox_id`.
 - Guests can switch between teacher and student perspectives, reset the sandbox, or start real signup from a clean state.
 - Expiry, cleanup, and AI quotas are enforced both in app flows and backend guardrails.
+- Session creation is governed by the Supabase-side `guest_session_quota` model, which currently caps the system at 60 active guest sessions and 20 new guest sessions per hour.
+- Active guest sandboxes expire after 32 hours max or 8 hours of inactivity; cleanup removes storage, class rows, and the anonymous auth user.
 
 ```mermaid
 sequenceDiagram

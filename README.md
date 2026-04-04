@@ -1,5 +1,7 @@
 # STEM Learning Platform with GenAI
 
+Last updated: 2026-04-05
+
 Production-ready STEM learning platform where teachers transform class materials into a structured Course Blueprint that powers grounded student learning experiences. The platform combines a role-specific web app, a Python AI orchestration backend, and Supabase-managed data, storage, and background jobs.
 
 ## What The Platform Does Today
@@ -33,6 +35,7 @@ Production-ready STEM learning platform where teachers transform class materials
 2. Authenticate through Supabase Anonymous Auth.
 3. Receive a cloned sandbox classroom seeded with demo materials, blueprint data, activities, analytics, and chat history.
 4. Switch between teacher and student perspectives, reset the sandbox, or create a permanent account from a clean state.
+5. Stay within the current guest quota model: sandboxes expire after 32 hours max or 8 hours of inactivity, with global caps on active and newly created guest sessions.
 
 ## Feature Highlights
 
@@ -133,7 +136,7 @@ pip install -r backend/requirements.txt
 ### Configure Environment
 
 1. Copy `web/.env.example` to `web/.env.local`.
-2. If you run the Python backend separately, copy `backend/.env.example` to a local env file for that service.
+2. If you run the Python backend separately, use `backend/.env.example` as a checklist and export those variables into your shell or an env loader of your choice. The `uvicorn ...` command below does not auto-load `.env` files in this repo.
 3. Fill in:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
@@ -192,6 +195,7 @@ E2E coverage currently includes teacher navigation, student navigation, class ac
 - `web/` is deployed as the Next.js frontend.
 - `backend/` is deployed as a separate FastAPI service.
 - `supabase/` migrations and Edge Functions must be applied to the target Supabase project.
+- Hosted Supabase auth should apply both `supabase/templates/confirmation.html` and `supabase/templates/recovery.html` so confirmation and password-reset links match the app's `/auth/confirm` flow.
 - Material processing runs through Supabase queueing and the `material-worker` Edge Function.
 - Guest sandbox cleanup runs through the `guest-sandbox-cleanup` Edge Function.
 

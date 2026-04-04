@@ -1,5 +1,7 @@
 # STEM Learning Platform Web App
 
+Last updated: 2026-04-05
+
 This package contains the Next.js 16 App Router frontend for the STEM Learning Platform. It owns the role-based user experience, server actions, route handlers, and product-facing orchestration around Supabase and the Python backend.
 
 ## Scope
@@ -88,7 +90,7 @@ flowchart LR
 | `src/components/ui/` | shared UI primitives |
 | `src/components/icons/` | centralized icon registry |
 | `src/components/providers/` | global providers including motion |
-| `src/components/auth/` | shared auth surface — `AuthSurface`, `HomeAuthDialog`, `AuthResendForm` |
+| `src/components/auth/` | shared public auth surface for sign-in, sign-up, and forgot-password — `AuthSurface`, `HomeAuthDialog`, `AuthResendForm` |
 | `src/lib/auth/` | auth session helpers (`session.ts`, `ui.ts`), password policy |
 | `src/lib/ai/` | frontend-to-backend adapters for AI domains |
 | `src/lib/chat/` | chat generation and workspace adapters |
@@ -202,16 +204,20 @@ uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload
 - Email verification is required before protected access.
 - `profiles.account_type` is immutable after signup.
 - Supabase email templates should use the SSR confirm callback path:
-  - `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`
-  - `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`
-- The branded confirmation email HTML lives in `supabase/templates/confirmation.html` — paste it into Supabase Dashboard → Auth → Email Templates → Confirm signup for hosted environments.
-- All auth flows (sign-in, sign-up, forgot-password) share a single `AuthSurface` component (`web/src/components/auth/AuthSurface.tsx`). It renders as a modal on `/` (triggered by `?auth=…` params) or as a standalone page at `/login`, `/register`, and `/forgot-password`. Do not add auth form markup outside this component.
+  - `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login&email={{ .Email }}`
+  - `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&email={{ .Email }}`
+- The branded confirmation email HTML lives in `supabase/templates/confirmation.html` and should be pasted into Supabase Dashboard -> Auth -> Email Templates -> Confirm signup for hosted environments.
+- The branded recovery email HTML lives in `supabase/templates/recovery.html` and should be pasted into Supabase Dashboard -> Auth -> Email Templates -> Reset password for hosted environments.
+- The shared `AuthSurface` component (`web/src/components/auth/AuthSurface.tsx`) handles sign-in, sign-up, and forgot-password. It renders as a modal on `/` (triggered by `?auth=...` params) or as a standalone page at `/login`, `/register`, and `/forgot-password`.
+- `/reset-password` is a dedicated recovery-completion page reached only after `/auth/confirm?type=recovery` verifies the reset link and establishes the recovery session.
 - After sign-up, the form collapses to a resend-only view — both states are URL-driven via search params, not local React state.
 
 ## Guest Mode Notes
 
 - The web app gates guest access with `NEXT_PUBLIC_GUEST_MODE_ENABLED`.
 - Guests authenticate through Supabase Anonymous Auth and are restricted to their sandbox class.
+- Guest sandboxes currently expire after 32 hours max or 8 hours of inactivity.
+- Guest session creation caps are enforced in Supabase through `guest_session_quota` (60 active sessions globally, 20 new sessions per hour by default); the web app is responsible for surfacing the resulting guest entry states and redirects.
 - Middleware enforces:
   - protected route auth
   - email verification for permanent users

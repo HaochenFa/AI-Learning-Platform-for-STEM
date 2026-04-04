@@ -1,14 +1,19 @@
 # Supabase Setup
 
+Last updated: 2026-04-05
+
 This directory contains the schema migrations, local Supabase configuration, and Edge Functions that support the STEM Learning Platform. Supabase is not just the database layer for this project. It also provides auth, storage, queue-backed background processing, guest sandbox lifecycle data, and Edge Function runtime support.
 
 ## Email Template Workflow
 
 - the confirmation email source of truth lives at `supabase/templates/confirmation.html`
-- local Supabase uses that template through `auth.email.template.confirmation` in `supabase/config.toml`
-- hosted Supabase still needs the same HTML pasted into Auth → Email Templates → Confirm signup
+- the recovery email source of truth lives at `supabase/templates/recovery.html`
+- local Supabase uses both templates through `auth.email.template.confirmation` and `auth.email.template.recovery` in `supabase/config.toml`
+- hosted Supabase still needs the same HTML pasted into Auth -> Email Templates -> Confirm signup and Auth -> Email Templates -> Reset password
 - the confirmation button is intentionally wired to the app SSR route:
-  `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login`
+  `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/login&email={{ .Email }}`
+- the recovery button is intentionally wired to the same callback route:
+  `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&email={{ .Email }}`
 - the template depends on publicly served brand assets under `web/public/email/`
 - after changing the local template config, restart local Supabase so the auth service reloads it
 - confirmation and recovery email links are expected to expire after 5 minutes; keep local `auth.email.otp_expiry` and the hosted project's Email OTP Expiration dashboard setting aligned at `300`
@@ -22,6 +27,7 @@ This directory contains the schema migrations, local Supabase configuration, and
 | `functions/material-worker/` | material processing worker |
 | `functions/guest-sandbox-cleanup/` | guest sandbox cleanup worker |
 | `templates/confirmation.html` | branded confirmation email template — paste into Supabase Dashboard → Auth → Email Templates |
+| `templates/recovery.html` | branded reset-password email template — paste into Supabase Dashboard → Auth → Email Templates |
 | `config.toml` | local Supabase configuration |
 
 ## Supabase Responsibilities In This Project
@@ -76,10 +82,12 @@ The migration history reflects several major architectural shifts.
 - `0015_guest_mode_schema.sql`
 - `0016_guest_seed_data.sql`
 - `0017_guest_mode_enforcement.sql`
-- `0018_guest_entry_rate_limit.sql`
+- `0018_guest_entry_rate_limit.sql` (legacy per-IP entry limiting, later retired)
 - `0019_guest_mode_alignment_fixes.sql`
 - `0020_fix_guest_clone_profile_bootstrap.sql`
 - `0021_fix_guest_seed_insight_scores.sql`
+- `0022_fix_guest_quota_state_cleanup.sql`
+- `0023_guest_quota_redesign.sql`
 
 ## Data And Background Job Topology
 
@@ -141,7 +149,19 @@ The hosted project should support the capabilities used by the migrations:
 - guest mode depends on Supabase Anonymous Auth
 - anonymous users still get real auth identities
 - guest sandboxes store ownership and lifecycle state in `guest_sandboxes`
+- session creation is now governed by `guest_session_quota`, not the retired `guest_entry_rate_limits` table
+- current defaults are 60 active guest sessions globally and 20 new guest sessions per hour
+- active sandboxes expire after 32 hours max or 8 hours of inactivity
 - cleanup removes guest class data and anonymous auth users
+
+## Current Guest Quota Model
+
+The current guest quota model lives in `0023_guest_quota_redesign.sql`.
+
+- `guest_session_quota` is the global control table for active guest sessions, hourly creation count, and in-flight AI requests
+- `acquire_guest_session_service` is called before sandbox creation and enforces the current active-session and hourly-creation caps
+- `release_guest_session_slot_service` is called when a session slot needs to be returned because provisioning failed or a sandbox timed out before frontend cleanup ran
+- `release_guest_sandbox_quota` and `guest-sandbox-cleanup` keep the AI and session counters aligned when expired or discarded sandboxes are deleted
 
 ## Storage Notes
 
@@ -185,6 +205,7 @@ sequenceDiagram
 
 - find expired or discarded guest sandboxes
 - remove guest material storage paths
+- release any remaining guest quota counters before row deletion
 - delete sandbox-scoped class data
 - delete anonymous auth users
 - remove `guest_sandboxes` rows
@@ -197,6 +218,7 @@ Set these in Supabase for the functions that need them:
 
 - `MATERIAL_WORKER_TOKEN`
 - `GUEST_SANDBOX_CLEANUP_TOKEN`
+- `GUEST_SANDBOX_CLEANUP_BATCH` if you need to tune the cleanup batch size
 - provider API keys and model env vars for worker execution
 
 ### Vault Secrets

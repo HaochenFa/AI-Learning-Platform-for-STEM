@@ -1,5 +1,7 @@
 # UIUX
 
+Last updated: 2026-04-05
+
 This document is the interface and frontend implementation deep dive for the STEM Learning Platform with GenAI. It complements `DESIGN.md`: `DESIGN.md` explains the broad product experience and system context, while this document focuses on UI language, navigation patterns, frontend implementation choices, and how the design system is expressed in code.
 
 ## 1. Purpose
@@ -88,7 +90,7 @@ flowchart TD
 
 Public auth uses a **home-first hybrid** pattern. The primary unauthenticated entry point opens sign-in, sign-up, and forgot-password inside a modal launched directly from `/` via `?auth=…` query params. Dedicated page routes (`/login`, `/register`, `/forgot-password`) remain as compact fallbacks for deep links, validation round-trips, and non-JS access.
 
-Both presentations share a single `AuthSurface` component — auth markup is never duplicated across pages. Modal state is URL-driven and server-rendered, so the confirmation and resend flows survive full page reloads without any client-side state management.
+Both presentations share a single `AuthSurface` component — auth markup is never duplicated across pages. Modal state is URL-driven and server-rendered, so the confirmation and resend flows survive full page reloads without any client-side state management. Password reset completion is intentionally separate: after `/auth/confirm?type=recovery` verifies the link, the user lands on `/reset-password` to choose a new password inside a dedicated recovery surface.
 
 After a sign-up email is sent, the form collapses into a resend-only surface. The two states (registration form vs. resend button) are mutually exclusive and driven by URL search params — this keeps confirmation recovery available in-place without a separate route. Invalid or expired confirmation links redirect back to the resend-ready sign-up state; invalid recovery links redirect to the resend-ready forgot-password state.
 
@@ -101,7 +103,10 @@ flowchart TD
     AuthPage --> |shared| AS
 
     AS --> |"sign-up or forgot-password:\nemail sent"| Resend["Resend-only view\n(form collapses, URL-driven)"]
-    AS --> |"sign-in or confirmed"| Dashboard[Teacher or Student Dashboard]
+    AS --> |"email link"| Callback["/auth/confirm"]
+    Callback --> |"type=email"| Login["/login?confirmed=1"]
+    Callback --> |"type=recovery"| Reset["/reset-password?recovery=1"]
+    Login --> Dashboard[Teacher or Student Dashboard]
 
     Resend --> |"link expired → back to resend-ready"| AS
 ```

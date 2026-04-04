@@ -1,5 +1,7 @@
 # ARCHITECTURE
 
+Last updated: 2026-04-05
+
 This document is the technical deep dive for the STEM Learning Platform with GenAI. It complements `DESIGN.md`: `DESIGN.md` explains the broad product and system story, while this document goes deeper on runtime structure, subsystem boundaries, request flows, background jobs, and implementation tradeoffs.
 
 ## 1. Reading Guide
@@ -153,7 +155,8 @@ The web app uses Next.js 16 App Router with server actions as the main write pat
 
 | Path | Responsibility |
 | --- | --- |
-| `web/src/app/classes/actions.ts` | class-level server actions including materials and blueprint flows |
+| `web/src/app/classes/actions.ts` | class-level server actions including class creation, joins, and materials flows |
+| `web/src/app/classes/[classId]/blueprint/actions.ts` | blueprint generation, draft lifecycle, approval, and publish flows |
 | `web/src/lib/actions/insights.ts` | teacher class intelligence action boundary |
 | `web/src/lib/actions/teaching-brief.ts` | adaptive teaching brief action boundary |
 | `web/src/app/components/Sidebar.tsx` | role-aware persistent navigation shell |
@@ -163,12 +166,13 @@ The web app uses Next.js 16 App Router with server actions as the main write pat
 
 ### Auth Surface Architecture
 
-The entire public auth flow — sign-in, sign-up, and forgot-password — is handled by a single shared component: `web/src/components/auth/AuthSurface.tsx`. It renders in two presentations:
+The public auth entry flow — sign-in, sign-up, and forgot-password — is handled by a single shared component: `web/src/components/auth/AuthSurface.tsx`. It renders in two presentations, while password recovery completion intentionally lives on a dedicated page:
 
 - **Modal** on the home page `/`, triggered by `?auth=sign-in`, `?auth=sign-up`, or `?auth=forgot-password` query params. `HomeAuthDialog` wraps it.
 - **Page** at the dedicated routes `/login`, `/register`, and `/forgot-password`, all sharing `AuthShell.tsx` as their outer wrapper.
+- **Recovery completion** at `/reset-password`, reached only after `/auth/confirm?type=recovery` verifies the reset link and establishes the recovery session cookie.
 
-Auth state (pending email, resend timer, confirmation flow) is fully URL-driven — no separate client state. The sign-up form collapses to a resend-only surface after the confirmation email is sent; the two states are mutually exclusive and server-rendered via search params. Recovery and confirmation link failures redirect users to resend-ready states rather than dead-end error pages.
+Auth state (pending email, resend timer, confirmation flow) is fully URL-driven — no separate client state. The sign-up form collapses to a resend-only surface after the confirmation email is sent; the two states are mutually exclusive and server-rendered via search params. Confirmation and recovery link failures redirect users to resend-ready states rather than dead-end error pages.
 
 Auth URL and redirect helpers live in `web/src/lib/auth/ui.ts`; the server-side auth context helper is `web/src/lib/auth/session.ts`.
 
@@ -181,8 +185,10 @@ flowchart LR
     AuthPage --> |shared| AS
 
     AS --> |email sent| Resend[Resend-only view\nURL-driven state]
-    AS --> |confirmed| Callback["/auth/confirm"]
-    Callback --> Dashboard[Teacher or Student Dashboard]
+    AS --> |email link| Callback["/auth/confirm"]
+    Callback --> |type=email| Login["/login?confirmed=1"]
+    Callback --> |type=recovery| Reset["/reset-password?recovery=1"]
+    Login --> Dashboard[Teacher or Student Dashboard]
 ```
 
 ### Middleware role
