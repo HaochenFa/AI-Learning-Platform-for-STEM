@@ -87,6 +87,12 @@ async function expireGuestSandbox(
     })
     .eq("id", sandboxId)
     .eq("status", "active");
+
+  // Decrement the global active-session counter so the returning user's new
+  // session slot can be acquired without double-counting the expired row.
+  // The cleanup worker would also do this, but only after cron runs — without
+  // this call the returning user inflates active_sessions until cleanup runs.
+  await releaseGuestSessionSlot();
 }
 
 /**
@@ -621,6 +627,7 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
   });
 
   if (sandboxError) {
+    await releaseGuestSessionSlot();
     return {
       ok: false,
       code: "guest-sandbox-provision-failed",
@@ -637,8 +644,11 @@ export async function resetGuestSandbox(userId: string): Promise<GuestSandboxRes
   });
 
   if (cloneError || typeof classId !== "string" || !classId) {
-    // Mark as discarded to keep the active-sandbox query clean.
     await supabase.from("guest_sandboxes").update({ status: "discarded" }).eq("id", sandboxId);
+    // The slot was acquired above but we set status='discarded' directly (not via
+    // discard_guest_sandbox RPC), so the cleanup worker will skip the decrement.
+    // Release the slot manually to prevent leaking active_sessions.
+    await releaseGuestSessionSlot();
     return {
       ok: false,
       code: "guest-sandbox-provision-failed",

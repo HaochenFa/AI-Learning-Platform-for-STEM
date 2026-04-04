@@ -180,8 +180,10 @@ $$;
 grant execute on function public.acquire_guest_session_service(integer, integer, integer) to service_role;
 
 -- ─── 4. release_guest_session_slot_service ───────────────────────────────────
---   Decrements active_sessions by 1 (floor 0).
+--   Decrements active_sessions AND creation_count by 1 (floor 0 for both).
 --   Called from sandbox.ts in failure path when provision fails after quota was acquired.
+--   Also decrements creation_count so aborted provisioning does not permanently
+--   burn one of the 20/hour creation tokens.
 
 create or replace function public.release_guest_session_slot_service()
 returns void
@@ -196,6 +198,7 @@ begin
 
   update public.guest_session_quota
   set active_sessions = greatest(active_sessions - 1, 0),
+      creation_count  = greatest(creation_count  - 1, 0),
       updated_at      = now()
   where scope = 'global';
 end;
