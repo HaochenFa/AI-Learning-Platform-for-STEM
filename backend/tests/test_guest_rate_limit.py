@@ -82,6 +82,24 @@ class GuestRateLimitFunctionTests(unittest.TestCase):
             (False, "Guest blueprint limit reached."),
         )
 
+    def test_acquire_guest_ai_slot_is_coroutine(self) -> None:
+        """acquire_guest_ai_slot must be an async function (coroutine)."""
+        import asyncio
+        import inspect
+        from app.guest_rate_limit import acquire_guest_ai_slot
+        self.assertTrue(inspect.iscoroutinefunction(acquire_guest_ai_slot))
+
+    def test_release_guest_ai_slot_is_coroutine(self) -> None:
+        """release_guest_ai_slot must be an async function (coroutine)."""
+        import inspect
+        from app.guest_rate_limit import release_guest_ai_slot
+        self.assertTrue(inspect.iscoroutinefunction(release_guest_ai_slot))
+
+    def test_guest_concurrency_timeout_error_is_importable(self) -> None:
+        """GuestConcurrencyTimeoutError must be exported from guest_rate_limit."""
+        from app.guest_rate_limit import GuestConcurrencyTimeoutError
+        self.assertTrue(issubclass(GuestConcurrencyTimeoutError, Exception))
+
     def test_embedding_uses_guest_quota_limit(self) -> None:
         self.assertEqual(
             check_guest_ai_access(

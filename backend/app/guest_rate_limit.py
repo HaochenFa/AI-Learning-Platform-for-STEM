@@ -1,10 +1,44 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from typing import Any
 
 import httpx
 
 from app.config import Settings
+
+logger = logging.getLogger(__name__)
+
+class GuestConcurrencyTimeoutError(Exception):
+    """Raised when a guest AI slot cannot be acquired within the queue timeout.
+
+    The asyncio.Semaphore holds up to GUEST_MAX_CONCURRENT_AI_REQUESTS concurrent
+    AI requests across all active guest sessions. When all slots are occupied, new
+    requests wait up to 60 seconds. If no slot opens in time, this exception is
+    raised and the caller should return HTTP 503.
+    """
+
+
+# Module-level semaphore singleton. Created lazily on first acquire() call so
+# it is bound to the running event loop. Re-created if the limit changes
+# (e.g., between test runs with different settings).
+_ai_semaphore: asyncio.Semaphore | None = None
+_ai_semaphore_limit: int = 0
+
+
+def _get_ai_semaphore(limit: int) -> asyncio.Semaphore:
+    """Return (creating if necessary) the module-level AI concurrency semaphore.
+
+    The semaphore is a singleton for the process lifetime. If ``limit`` changes
+    (e.g. different settings passed between tests), the semaphore is recreated.
+    """
+    global _ai_semaphore, _ai_semaphore_limit
+    if _ai_semaphore is None or _ai_semaphore_limit != limit:
+        _ai_semaphore = asyncio.Semaphore(limit)
+        _ai_semaphore_limit = limit
+    return _ai_semaphore
+
 
 # Dispatch table: maps each AI feature name to its usage-tracking column in the
 # ``guest_sandboxes`` table.  Adding a new feature requires only a new entry
@@ -101,59 +135,77 @@ def check_guest_ai_access(
 
 
 async def acquire_guest_ai_slot(settings: Settings, sandbox_id: str) -> bool:
-    """Atomically reserve a concurrent AI request slot for a guest sandbox.
+    """Wait for a guest AI concurrency slot, then register it in the DB.
 
-    Calls the ``acquire_guest_ai_slot_service`` Postgres function via
-    Supabase RPC.  Using an RPC (rather than a SELECT + UPDATE pair) is
-    critical here: it ensures the check-and-increment is a single atomic
-    operation in the database, preventing race conditions where two simultaneous
-    requests both read a count below the limit and both proceed.
+    The ``asyncio.Semaphore`` is the primary gate. When all slots are occupied,
+    the coroutine suspends in the event loop and resumes when a slot is freed —
+    no polling.  After 60 seconds without a free slot,
+    ``GuestConcurrencyTimeoutError`` is raised.
+
+    The DB counter update is monitoring-only: it tracks in-flight requests for
+    orphan cleanup. Errors are logged and swallowed so a DB hiccup never blocks
+    an AI request that already acquired the semaphore.
 
     Args:
-        settings: Application settings with concurrency limit and Supabase
-            credentials.
-        sandbox_id: UUID of the guest sandbox row to lock a slot against.
+        settings: Application settings (provides concurrency limit).
+        sandbox_id: UUID of the guest sandbox row to increment.
 
     Returns:
-        ``True`` if a slot was successfully acquired, ``False`` if the
-        sandbox is already at the concurrency limit.
+        ``True`` always (the function either returns or raises).
 
     Raises:
-        RuntimeError: On Supabase RPC failure or network error.
+        GuestConcurrencyTimeoutError: When no slot opens within 60 seconds.
     """
-    payload = await _service_rpc(
-        settings,
-        "acquire_guest_ai_slot_service",
-        {
-            "p_sandbox_id": sandbox_id,
-            "p_limit": settings.guest_max_concurrent_ai_requests,
-        },
-        "Failed to acquire guest concurrency slot.",
-    )
-    return payload is True
+    semaphore = _get_ai_semaphore(settings.guest_max_concurrent_ai_requests)
+    try:
+        await asyncio.wait_for(asyncio.shield(semaphore.acquire()), timeout=60.0)
+    except asyncio.TimeoutError as exc:
+        raise GuestConcurrencyTimeoutError() from exc
+
+    # DB counter: monitoring only — errors must not propagate.
+    try:
+        await _service_rpc(
+            settings,
+            "acquire_guest_ai_slot_service",
+            {"p_sandbox_id": sandbox_id, "p_limit": settings.guest_max_concurrent_ai_requests},
+            "Failed to acquire guest concurrency slot.",
+        )
+    except Exception:
+        logger.warning(
+            "guest_rate_limit: DB slot counter increment failed (semaphore held)",
+            exc_info=True,
+        )
+
+    return True
 
 
 async def release_guest_ai_slot(settings: Settings, sandbox_id: str) -> None:
-    """Release a previously acquired concurrent AI request slot.
+    """Release a guest AI concurrency slot.
 
-    Should be called in a ``finally`` block so that a slot is always freed,
-    even if the AI request itself raises an exception.
+    Releases the ``asyncio.Semaphore`` first (unblocking any waiting coroutines
+    immediately), then updates the DB counter.  Always call in a ``finally``
+    block and only if ``acquire_guest_ai_slot`` returned successfully.
 
     Args:
-        settings: Application settings with Supabase credentials.
+        settings: Application settings (provides Supabase credentials).
         sandbox_id: UUID of the guest sandbox row to decrement.
-
-    Raises:
-        RuntimeError: On Supabase RPC failure or network error.
     """
-    await _service_rpc(
-        settings,
-        "release_guest_ai_slot_service",
-        {
-            "p_sandbox_id": sandbox_id,
-        },
-        "Failed to release guest concurrency slot.",
-    )
+    semaphore = _get_ai_semaphore(settings.guest_max_concurrent_ai_requests)
+    semaphore.release()
+
+    # DB counter: monitoring only — errors must not propagate.
+    try:
+        await _service_rpc(
+            settings,
+            "release_guest_ai_slot_service",
+            {"p_sandbox_id": sandbox_id},
+            "Failed to release guest concurrency slot.",
+        )
+    except Exception:
+        logger.warning(
+            "guest_rate_limit: DB slot counter decrement failed",
+            exc_info=True,
+        )
 
 
 async def increment_guest_ai_usage(settings: Settings, sandbox_id: str, feature: str) -> None:
