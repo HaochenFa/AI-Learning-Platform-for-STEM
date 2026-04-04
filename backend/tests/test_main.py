@@ -187,8 +187,8 @@ class MainTests(unittest.TestCase):
 class GuestQuotaDefaultTests(unittest.TestCase):
     def test_guest_quota_defaults_match_approved_spec(self) -> None:
         settings = make_settings()
-        self.assertEqual(settings.guest_max_concurrent_ai_requests, 10)
-        self.assertEqual(settings.guest_embedding_limit, 5)
+        self.assertEqual(settings.guest_max_concurrent_ai_requests, 20)
+        self.assertEqual(settings.guest_embedding_limit, 15)
 
 
 class EnvelopeGuardTests(unittest.TestCase):

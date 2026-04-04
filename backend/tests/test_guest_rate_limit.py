@@ -30,6 +30,7 @@ class GuestRateLimitFunctionTests(unittest.TestCase):
         self.settings = make_settings()
 
     def test_per_feature_limits_match_guest_mode_spec(self) -> None:
+        # chat: limit 50 (unchanged)
         self.assertEqual(
             check_guest_ai_access(self.settings, _guest_sandbox_row(chat_messages_used=49), "chat"),
             (True, None),
@@ -39,15 +40,17 @@ class GuestRateLimitFunctionTests(unittest.TestCase):
             (False, "Guest chat limit reached."),
         )
 
+        # quiz: limit 10 (was 5)
         self.assertEqual(
-            check_guest_ai_access(self.settings, _guest_sandbox_row(quiz_generations_used=4), "quiz"),
+            check_guest_ai_access(self.settings, _guest_sandbox_row(quiz_generations_used=9), "quiz"),
             (True, None),
         )
         self.assertEqual(
-            check_guest_ai_access(self.settings, _guest_sandbox_row(quiz_generations_used=5), "quiz"),
+            check_guest_ai_access(self.settings, _guest_sandbox_row(quiz_generations_used=10), "quiz"),
             (False, "Guest quiz limit reached."),
         )
 
+        # flashcards: limit 10 (unchanged)
         self.assertEqual(
             check_guest_ai_access(
                 self.settings,
@@ -65,10 +68,11 @@ class GuestRateLimitFunctionTests(unittest.TestCase):
             (False, "Guest flashcards limit reached."),
         )
 
+        # blueprint: limit 5 (was 3)
         self.assertEqual(
             check_guest_ai_access(
                 self.settings,
-                _guest_sandbox_row(blueprint_regenerations_used=2),
+                _guest_sandbox_row(blueprint_regenerations_used=4),
                 "blueprint",
             ),
             (True, None),
@@ -76,7 +80,7 @@ class GuestRateLimitFunctionTests(unittest.TestCase):
         self.assertEqual(
             check_guest_ai_access(
                 self.settings,
-                _guest_sandbox_row(blueprint_regenerations_used=3),
+                _guest_sandbox_row(blueprint_regenerations_used=5),
                 "blueprint",
             ),
             (False, "Guest blueprint limit reached."),
@@ -101,10 +105,11 @@ class GuestRateLimitFunctionTests(unittest.TestCase):
         self.assertTrue(issubclass(GuestConcurrencyTimeoutError, Exception))
 
     def test_embedding_uses_guest_quota_limit(self) -> None:
+        # embedding: limit 15 (was 5)
         self.assertEqual(
             check_guest_ai_access(
                 self.settings,
-                _guest_sandbox_row(embedding_operations_used=4),
+                _guest_sandbox_row(embedding_operations_used=14),
                 "embedding",
             ),
             (True, None),
@@ -112,7 +117,7 @@ class GuestRateLimitFunctionTests(unittest.TestCase):
         self.assertEqual(
             check_guest_ai_access(
                 self.settings,
-                _guest_sandbox_row(embedding_operations_used=5),
+                _guest_sandbox_row(embedding_operations_used=15),
                 "embedding",
             ),
             (False, "Guest embedding limit reached."),
@@ -262,6 +267,8 @@ class GuestRateLimitRouteTests(unittest.TestCase):
         self.assertEqual(response.json()["error"]["code"], "guest_rate_limit")
 
     def test_guest_chat_rejects_when_concurrency_limit_is_exhausted(self) -> None:
+        from app.guest_rate_limit import GuestConcurrencyTimeoutError
+
         with (
             patch("app.main.get_settings", return_value=self.settings),
             patch("app.main._resolve_actor_user", return_value=(self._guest_actor(), None)),
@@ -270,7 +277,7 @@ class GuestRateLimitRouteTests(unittest.TestCase):
                 return_value=(_guest_sandbox_row(), False),
             ),
             patch("app.main.check_guest_ai_access", return_value=(True, None)),
-            patch("app.main.acquire_guest_ai_slot", new=AsyncMock(return_value=False)),
+            patch("app.main.acquire_guest_ai_slot", new=AsyncMock(side_effect=GuestConcurrencyTimeoutError())),
         ):
             response = self.client.post(
                 "/v1/chat/generate",
@@ -278,7 +285,7 @@ class GuestRateLimitRouteTests(unittest.TestCase):
                 json=self._chat_payload(),
             )
 
-        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["error"]["code"], "guest_concurrent_limit")
 
     def test_guest_embeddings_reject_when_guard_backend_is_unavailable(self) -> None:
