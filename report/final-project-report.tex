@@ -1,0 +1,1020 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{float}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!60!black,
+  pdftitle={Final Project Report - STEM Learning Platform with GenAI},
+  pdfauthor={Project Team}
+}
+
+\graphicspath{
+  {../docs/mermaid-png/root/}
+  {../docs/mermaid-png/web/}
+  {../docs/mermaid-png/backend/}
+  {../docs/mermaid-png/supabase/}
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.65em}
+\renewcommand{\arraystretch}{1.2}
+
+\newcommand{\ProjectTitle}{STEM Learning Platform with GenAI}
+\newcommand{\ReportTitle}{Final Project Report}
+\newcommand{\CourseCode}{COMP3122}
+\newcommand{\PreparedBy}{Project Team}
+\newcommand{\ReportDate}{April 2026}
+
+\begin{document}
+\pagenumbering{gobble}
+
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+{\Large \CourseCode \par}
+\vspace{1.2cm}
+{\Huge \bfseries \ReportTitle \par}
+\vspace{0.8cm}
+{\LARGE \ProjectTitle \par}
+\vspace{1.5cm}
+\begin{tabular}{>{\bfseries}p{4cm}p{8cm}}
+Prepared by & \PreparedBy \\
+Date & \ReportDate \\
+Repo snapshot & 2026-04-05 \\
+\end{tabular}
+\vfill
+{\large
+This report documents the current implemented state of the repository, including the
+web application, Python backend, Supabase schema and Edge Functions, testing strategy,
+deployment topology, and role-based user workflows.
+\par}
+\end{titlepage}
+
+\clearpage
+\pagenumbering{arabic}
+\tableofcontents
+\newpage
+
+\section{Executive Summary}
+
+This project delivers a production-oriented STEM learning platform that integrates
+Generative AI into classroom workflows rather than treating AI as a detached chatbot.
+Its main idea is to let instructors upload teaching materials, convert those materials
+into a structured \emph{Course Blueprint}, and use that blueprint as the source of truth
+for downstream student learning activities such as grounded chat, quizzes, flashcards,
+assignment review, and class-level insights.
+
+The implemented system is split into three cooperating runtime surfaces:
+\begin{itemize}
+  \item a \textbf{Next.js 16} web application for role-aware user experience, route handling,
+  and server actions;
+  \item a \textbf{Python FastAPI} backend for AI orchestration, class workflows, analytics,
+  and chat memory management; and
+  \item a \textbf{Supabase} project for authentication, PostgreSQL persistence, row-level
+  security, storage, queue-backed material processing, and guest sandbox lifecycle support.
+\end{itemize}
+
+From a product perspective, the platform supports:
+\begin{itemize}
+  \item \textbf{instructors / graders} who create classes, upload materials, generate and
+  publish blueprints, create assignments, review submissions, and inspect analytics;
+  \item \textbf{students} who join classes with join codes, use the published blueprint,
+  complete assignments, and learn through grounded AI chat; and
+  \item \textbf{guest users} who can explore the product through a realistic sandboxed demo
+  flow backed by Supabase Anonymous Auth and sandbox-cloned data.
+\end{itemize}
+
+The repository also demonstrates a meaningful software engineering process. The current
+snapshot contains 401 commits, 92 merge commits, 23 active database migrations, a multi-layer
+test strategy, and a documented deployment topology across web, backend, and Supabase services.
+The result is not a toy prototype, but a coordinated educational platform with clear subsystem
+boundaries and operational considerations.
+
+\section{Project Background and Motivation}
+
+\subsection{Course and problem context}
+
+The supplied project overview and background materials position the project in the context of
+\emph{Education 4.0}, AI-empowered personalized learning, and the practical pain points faced by
+teachers. The brief explicitly asks teams to avoid building ``just another AI Q\&A app'' and
+instead create a platform with meaningful educational value, differentiated features, and a
+well-considered software engineering process.
+
+The background deck highlights several recurring teaching needs:
+\begin{itemize}
+  \item reducing instructor workload in lesson preparation and grading;
+  \item generating learning activities such as quizzes and guided exercises;
+  \item using AI to support more personalized and interactive learning;
+  \item grounding AI output in trustworthy course content rather than generic internet-style chat.
+\end{itemize}
+
+These needs strongly influenced the design of this system. Rather than exposing a general-purpose
+chatbot, the platform is built around a teacher-controlled workflow where uploaded course materials
+are curated into a blueprint before AI-generated learning activities are released to students.
+
+\subsection{Project goals}
+
+Based on the repository documentation and implementation, the core goals of the project are:
+\begin{itemize}
+  \item transform raw teaching materials into structured, reusable course knowledge;
+  \item keep instructors in editorial control of AI outputs;
+  \item provide students with guided, class-specific learning experiences;
+  \item support realistic classroom operations such as assignment creation, review, and feedback;
+  \item demonstrate a robust engineering process including testing, deployment, and iteration.
+\end{itemize}
+
+\subsection{What makes this project distinctive}
+
+Several aspects make this project more substantial than a basic GenAI demo:
+\begin{itemize}
+  \item the \textbf{Course Blueprint lifecycle} introduces an approval and publishing checkpoint;
+  \item \textbf{all AI generation routes through a dedicated Python service}, not ad hoc frontend calls;
+  \item \textbf{material processing is asynchronous and queue-backed}, which is closer to production reality;
+  \item \textbf{teacher intelligence features} extend beyond content generation into analytics and adaptive briefs;
+  \item \textbf{guest mode} is implemented as a true sandboxed experience rather than a fake slideshow demo.
+\end{itemize}
+
+\section{System Overview and Implemented Features}
+
+\subsection{High-level system picture}
+
+Figure~\ref{fig:system-overview} shows the top-level structure of the current platform.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{README-diagram-01.png}
+  \caption{Current high-level platform architecture.}
+  \label{fig:system-overview}
+\end{figure}
+
+At a high level, teacher, student, and guest users all enter through the web application.
+The web layer handles UI rendering and user flow orchestration, while the backend is responsible
+for AI-heavy logic and the Supabase layer provides persistence, storage, security, and async jobs.
+
+\subsection{Primary user groups}
+
+\begin{table}[H]
+\centering
+\caption{Primary user groups in the current release}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3cm}X}
+\toprule
+Role & Implemented responsibilities \\
+\midrule
+Instructor / Grader & Create classes, upload materials, generate and curate blueprints, create assignments, review student work, monitor chat activity, inspect class insights, use the adaptive teaching brief, and preview the student experience. \\
+Student & Join classes using a join code, access the published blueprint, use always-on AI chat, complete chat/quiz/flashcards assignments, and track progress from the student dashboard. \\
+Guest & Enter a sandbox demo, explore both teacher and student views through role switching, and safely evaluate the product without touching real user data. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Feature set}
+
+\begin{table}[H]
+\centering
+\caption{Major implemented product features}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.3cm}X}
+\toprule
+Feature area & Current implementation \\
+\midrule
+Authentication & Email/password sign-in for permanent accounts, email verification, password reset, and guest access via Supabase Anonymous Auth. \\
+Class management & Teacher class creation, student join-by-code, role-aware dashboards, and class-scoped navigation. \\
+Materials workflow & PDF, DOCX, and PPTX upload; asynchronous extraction/chunking/embedding; preview, download, and delete actions. \\
+Blueprint workflow & Draft, overview, and published blueprint lifecycle with teacher editing and publish control. \\
+Learning activities & Chat assignments, quiz assignments, flashcard assignments, plus open-practice class chat. \\
+Teacher review & Assignment review screens for chat, quiz, and flashcards, including feedback-saving flows. \\
+Analytics & Class intelligence dashboard with summaries, charts, student drill-downs, and intervention suggestions. \\
+Teaching support & Adaptive teaching brief widget summarizing what needs attention and recommended next actions. \\
+Visual explanation & Generative canvas support for charts and diagram-style responses in chat and analytics contexts. \\
+Guest mode & Sandbox provisioning, role switching, reset flow, quota management, expiry, and cleanup. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Blueprint-centered value flow}
+
+The most important end-to-end educational flow is shown in Figure~\ref{fig:value-flow}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{README-diagram-02.png}
+  \caption{Blueprint-centered value flow from teacher materials to student learning and review.}
+  \label{fig:value-flow}
+\end{figure}
+
+This flow is central to the platform's pedagogy:
+\begin{enumerate}
+  \item the instructor uploads materials;
+  \item the system processes and embeds those materials;
+  \item the AI generates a structured blueprint;
+  \item the instructor edits and approves the blueprint;
+  \item the published blueprint becomes the basis for activities;
+  \item students learn through grounded interactions;
+  \item instructors review outputs and analyze class performance.
+\end{enumerate}
+
+\section{System Design}
+
+\subsection{Technology stack}
+
+\begin{table}[H]
+\centering
+\caption{Core implementation stack}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.5cm}X}
+\toprule
+Layer & Technology \\
+\midrule
+Frontend & Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, shared UI primitives, Motion for React, Lucide icons \\
+Backend & Python FastAPI, httpx, structured Pydantic schemas, provider adapters \\
+Database and auth & Supabase PostgreSQL, Supabase Auth, Row Level Security \\
+Storage and async processing & Supabase Storage, pgmq queue, pg\_cron, Supabase Edge Functions \\
+Testing & Vitest, React Testing Library, Python unittest, Playwright \\
+Deployment model & Separate web and backend deployments plus hosted Supabase \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Architectural decomposition}
+
+The current repository is intentionally partitioned into four main top-level areas:
+\begin{itemize}
+  \item \texttt{web/}: user-facing routes, UI components, middleware, and server actions;
+  \item \texttt{backend/}: AI orchestration, chat workspace logic, class workflows, analytics;
+  \item \texttt{supabase/}: SQL migrations, local config, and Edge Functions;
+  \item \texttt{tests/}: Playwright end-to-end coverage running against a deployed target URL.
+\end{itemize}
+
+This separation matters because different responsibilities are intentionally placed in the layer
+best suited for them. The web app owns rendering and navigation; the Python backend owns AI and
+workflow-heavy service logic; Supabase owns security, persistence, storage, and background jobs.
+
+\subsection{Web application design}
+
+The web application is not just a collection of pages. It implements a role-aware interface model
+with separate teacher and student dashboards, a persistent class shell, and route-level auth
+protection.
+
+Important web-layer characteristics include:
+\begin{itemize}
+  \item role-specific dashboards at \texttt{/teacher/dashboard} and \texttt{/student/dashboard};
+  \item unified auth via a shared \texttt{AuthSurface} used in modal and dedicated-page forms;
+  \item middleware-enforced redirects for unauthenticated, unverified, and expired guest sessions;
+  \item server actions for class creation, join-by-code, materials, assignments, and settings;
+  \item a shared design system with centralized icons, tokens, and motion presets.
+\end{itemize}
+
+On the teacher side, the class overview acts as a control hub for materials, assignments,
+teaching brief, and monitoring. On the student side, the class workspace is organized around
+focus widgets for AI chat, assignments, and the published blueprint. A teacher can also preview
+the student experience without changing accounts.
+
+\subsection{Python backend design}
+
+The backend is the sole AI orchestration boundary in the current implementation. This is an
+important design choice because it avoids scattering prompt construction, provider credentials,
+and response normalization across the frontend.
+
+The backend currently provides endpoints and domain logic for:
+\begin{itemize}
+  \item blueprint generation;
+  \item quiz generation;
+  \item flashcard generation;
+  \item grounded chat;
+  \item chat workspace sessions and message persistence;
+  \item visual canvas generation;
+  \item class create and class join;
+  \item materials dispatch;
+  \item analytics, teaching brief, and natural-language data queries.
+\end{itemize}
+
+All normal backend responses follow a consistent envelope:
+\begin{center}
+\texttt{\{ ok, data, error, meta \}}
+\end{center}
+
+This design improves consistency at the integration boundary. The frontend adapters can handle
+success and failure cases uniformly, while the backend retains freedom to evolve internal provider
+logic and prompt design.
+
+\subsection{AI orchestration design}
+
+The repository currently supports OpenRouter, OpenAI, and Gemini as pluggable providers.
+Provider choice is environment-driven, and the backend can fall back across providers when needed.
+
+This design has several advantages:
+\begin{itemize}
+  \item the web app remains provider-agnostic;
+  \item deployment environments can switch provider preference through configuration;
+  \item provider failures can be isolated inside the backend;
+  \item request deadlines are enforced centrally rather than inconsistently per route.
+\end{itemize}
+
+The current AI domains are broader than content generation alone. In addition to blueprint, quiz,
+and flashcard generation, the system also supports analytics narratives, teaching brief synthesis,
+chat memory handling, and visual canvas specifications.
+
+\subsection{Chat workspace and memory design}
+
+One of the most technically interesting parts of the system is the chat workspace. It is not
+implemented as a purely stateless prompt-response loop. Instead, the backend includes a dedicated
+chat workspace subsystem with participant listing, session creation and archive, paginated message
+history, and context compaction for long-running conversations.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{ARCHITECTURE-diagram-08.png}
+  \caption{Chat workspace flow with grounded context retrieval and persisted assistant responses.}
+  \label{fig:chat-workspace}
+\end{figure}
+
+This design is significant for two reasons. First, it better reflects real classroom use, where
+students may return to a conversation over time rather than ask only one question. Second, it
+forces the system to deal with long-context management, not just one-shot prompt construction.
+
+\subsection{Material processing pipeline}
+
+Material ingestion is intentionally asynchronous. Uploading a file creates a material record and
+stores the file, but extraction, chunking, and embedding happen through a queue-backed worker path
+instead of blocking the user's request.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{DEPLOYMENT-diagram-02.png}
+  \caption{Asynchronous material-processing pipeline.}
+  \label{fig:material-pipeline}
+\end{figure}
+
+This was a good architectural decision for a course project because it addresses a real system
+concern: extraction and embedding are too slow and failure-prone to treat as a trivial synchronous
+request. The queue-backed design allows better retry behavior, clearer UI states (\texttt{processing},
+\texttt{ready}, \texttt{failed}), and a cleaner separation between user interaction and background work.
+
+\subsection{Analytics and adaptive teaching support}
+
+The platform includes teacher-facing intelligence features, which meaningfully extend it beyond
+content generation.
+
+The class intelligence dashboard includes:
+\begin{itemize}
+  \item summary cards for student count, average score, completion rate, and risk indicators;
+  \item topic-level performance charts;
+  \item Bloom-level breakdown visualization;
+  \item student engagement views and student overview tables;
+  \item AI-generated narrative interpretation and intervention suggestions;
+  \item natural-language data query support for generating chart specifications.
+\end{itemize}
+
+The adaptive teaching brief is a complementary feature. Rather than exposing a large dashboard
+all the time, it provides a concise memo-style summary directly on the class overview page, with
+recommended next steps, likely misconceptions, and follow-up activity suggestions.
+
+\subsection{Security and access-control design}
+
+Security is handled across all three runtime surfaces:
+\begin{itemize}
+  \item \textbf{web layer}: route protection, email verification enforcement, guest route confinement;
+  \item \textbf{backend layer}: service authentication, user bearer-token verification, guest AI guardrails;
+  \item \textbf{Supabase layer}: row-level security, teacher/enrollment policies, and sandbox-aware isolation.
+\end{itemize}
+
+The current implementation documents several security-conscious choices:
+\begin{itemize}
+  \item permanent users are limited to teacher or student account types;
+  \item \texttt{profiles.account\_type} is immutable after signup;
+  \item guest sessions are scoped by \texttt{sandbox\_id};
+  \item cursor inputs to PostgREST are validated before interpolation;
+  \item service-to-service auth between web and backend uses a shared backend API key.
+\end{itemize}
+
+\subsection{Guest sandbox design}
+
+Guest mode is one of the strongest differentiators in the project. Instead of presenting a static
+marketing demo, the system provisions a real anonymous session and clones a seeded classroom into
+a sandboxed data space. Guests can switch between teacher and student views, reset the demo, and
+observe realistic product behavior without accessing real user data.
+
+The current quota model enforces:
+\begin{itemize}
+  \item a global cap on active guest sessions;
+  \item a per-hour cap on newly created guest sessions;
+  \item backend limits on guest AI usage and concurrent in-flight AI requests;
+  \item expiry after 32 hours maximum or 8 hours of inactivity.
+\end{itemize}
+
+This is a thoughtful design because it balances demo accessibility with safety, resource control,
+and cleanup reliability.
+
+\section{Software Development Process}
+
+\subsection{Requirements and scope shaping}
+
+The initial project brief encouraged teams to investigate stakeholder needs, review existing
+platforms, and avoid shallow AI-first implementations. The current repository reflects that
+direction. The system is not scoped as a universal learning platform, but as a structured STEM
+classroom assistant centered on teacher materials, editorial control, and student-facing learning
+activities.
+
+A practical strength of the project is its restraint. The team did not attempt to implement every
+possible educational feature. Instead, it converged on a coherent workflow:
+\begin{itemize}
+  \item content ingestion;
+  \item blueprint generation and publishing;
+  \item student chat and assignments;
+  \item review and analytics;
+  \item guest evaluation flow.
+\end{itemize}
+
+This focused scope likely helped the team build a more integrated product instead of a fragmented
+set of unrelated AI experiments.
+
+\subsection{Design process}
+
+The design process visible in the repository appears iterative and documentation-driven.
+The project contains:
+\begin{itemize}
+  \item top-level design, architecture, UI/UX, and deployment documents;
+  \item internal reference notes under \texttt{.codex/};
+  \item Mermaid diagrams exported to PNG for communication and reporting;
+  \item commit history showing multiple phases of refinement rather than one-shot implementation.
+\end{itemize}
+
+The UI/UX work also appears to have been treated as a first-class concern. The repository contains
+significant evidence of design-token work, navigation restructuring, auth UX redesign, teacher/student
+flow differentiation, and consistency hardening. This is valuable because educational software quality
+depends not only on AI correctness, but also on clarity, trust, and ease of use.
+
+\subsection{Implementation phases observed in git history}
+
+The commit history provides a useful implementation timeline. Table~\ref{tab:timeline} summarizes
+the major development phases visible from the repository.
+
+\begin{table}[H]
+\centering
+\caption{Major development phases observed from git history}
+\label{tab:timeline}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{2.8cm}X}
+\toprule
+Period & Main progression visible in the repository \\
+\midrule
+2026-02-03 to 2026-02-05 & Repository setup, initial schema and RLS, core class flows, materials pipeline, AI adapters, blueprint generation, and first UI scaffolding. \\
+2026-02-06 to 2026-02-10 & Vertical slices for AI chat, quiz generation, flashcards, auth hardening, and always-on class chat workspace. \\
+2026-02-22 to 2026-03-02 & Material worker stabilization, queue-backed processing, dashboard and class-shell UX improvements, theme/token refactoring, and stronger unit-test coverage. \\
+2026-03-15 to 2026-03-24 & Teacher class intelligence dashboard, generative canvas, teaching brief backend and widget, content review improvements, and more polished materials preview behavior. \\
+2026-03-26 to 2026-03-28 & Guest mode foundation and hardening, E2E expansion, shared auth redesign, email template work, OTP-based password change flow, and documentation refresh. \\
+2026-04-04 to 2026-04-05 & Guest quota redesign, concurrency improvements, final bug fixing, environment sync, and diagram/documentation alignment with runtime reality. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+This sequence suggests a healthy development pattern:
+\begin{enumerate}
+  \item build the skeleton;
+  \item deliver core vertical slices;
+  \item strengthen architecture and UX;
+  \item add analytics and guest mode;
+  \item harden the system and documentation near submission.
+\end{enumerate}
+
+\subsection{Collaboration workflow}
+
+The collaboration model that is directly observable from the repository is based on GitHub-style
+branching, pull requests, review, and merge integration.
+
+Evidence visible in the current snapshot includes:
+\begin{itemize}
+  \item 401 commits in total;
+  \item 92 merge commits;
+  \item repeated feature-branch merge patterns such as guest mode, UI improvements, analytics,
+  teaching brief, and auth flows;
+  \item regular documentation updates that track design decisions, rollout notes, and lessons learned.
+\end{itemize}
+
+This indicates an iterative workflow rather than a single large code dump. The team appears to
+have used:
+\begin{itemize}
+  \item feature branches for major workstreams;
+  \item pull requests to integrate features and fixes;
+  \item tests and documentation updates alongside implementation changes;
+  \item structured plans and handoff notes for ongoing work.
+\end{itemize}
+
+At the same time, one accuracy caveat is important: the visible git author history is concentrated
+under a small number of identities, especially one primary contributor identity. For that reason,
+this report documents the \emph{repository-observable collaboration process} rather than making
+unsupported claims about each team member's exact offline contribution split. If the course requires
+a per-member effort table, that should be appended using the team's own meeting notes or task records.
+
+\subsection{Use of GenAI during development}
+
+This project is itself a GenAI platform, but the repository also suggests that GenAI-assisted
+development was part of the engineering workflow. The documentation explicitly discusses Codex- and
+agent-assisted workflows, planning notes, and iterative bug fixing. From a software engineering
+perspective, this is useful to reflect on because GenAI appears to have been used as:
+\begin{itemize}
+  \item a coding accelerator for scaffolding and incremental implementation;
+  \item a design aid for exploring architecture and UI alternatives;
+  \item a debugging assistant for reproducing and fixing workflow bugs;
+  \item a documentation aid for maintaining architecture and usage guides.
+\end{itemize}
+
+However, the repository also shows good evidence of human judgment:
+\begin{itemize}
+  \item repeated refactors and bug-fix passes after initial implementations;
+  \item hardening around access control, redirect behavior, and quota logic;
+  \item correction of real production-style issues such as signed URL previewing, timeout handling,
+  guest cleanup, and environment misconfiguration;
+  \item a sustained effort to align documentation with the actual runtime state.
+\end{itemize}
+
+This combination is exactly the kind of responsible GenAI-assisted development that a modern course
+project should demonstrate: AI helps with speed, but humans still own design quality, correctness,
+and final judgment.
+
+\section{Testing, Quality Assurance, and Deployment}
+
+\subsection{Testing strategy}
+
+The repository implements a layered testing strategy rather than relying on only one test type.
+
+\begin{table}[H]
+\centering
+\caption{Current testing layers in the repository}
+\begin{tabularx}{\textwidth}{>{\bfseries}p{3.3cm}X>{\raggedleft\arraybackslash}p{2.2cm}}
+\toprule
+Layer & What it covers & Evidence in repo \\
+\midrule
+Web unit and integration tests & Server actions, auth flows, route guards, material actions, blueprint logic, chat flows, guest helpers, UI primitives, validation helpers & 60 test files under \texttt{web/src} \\
+Backend unit tests & Providers, schemas, class flows, blueprint generation, quiz, flashcards, materials, analytics, chat workspace, guest rate limiting & 17 Python test files under \texttt{backend/tests} \\
+End-to-end tests & Teacher navigation, student navigation, login, join class, settings, sign-out, and guest entry against a deployed environment & 9 Playwright specs under \texttt{tests/e2e} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Representative quality signals include:
+\begin{itemize}
+  \item guest middleware tests and guest sandbox tests;
+  \item blueprint action tests;
+  \item materials extraction and retrieval tests;
+  \item chat generation, compaction, and workspace tests;
+  \item analytics and teaching brief action tests;
+  \item Playwright flows for both teacher and student navigation.
+\end{itemize}
+
+\subsection{Why the testing approach is appropriate}
+
+This testing distribution is appropriate for the architecture:
+\begin{itemize}
+  \item unit tests catch domain logic regressions close to the code;
+  \item web integration tests validate server actions and route behavior;
+  \item backend tests verify AI-related orchestration and guardrails without needing full browser runs;
+  \item Playwright tests confirm that the deployed user flows still work end to end.
+\end{itemize}
+
+For a project involving multiple services and stateful workflows, this layered approach is far more
+credible than relying on only manual demonstration.
+
+\subsection{Deployment topology}
+
+The deployed system consists of a frontend deployment, a separate backend deployment, and a hosted
+Supabase project. Figure~\ref{fig:deployment-topology} captures this structure.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{DEPLOYMENT-diagram-01.png}
+  \caption{Hosted deployment topology across frontend, backend, and Supabase services.}
+  \label{fig:deployment-topology}
+\end{figure}
+
+This split has practical benefits:
+\begin{itemize}
+  \item frontend issues can be distinguished from backend issues;
+  \item AI orchestration can evolve independently from the UI deployment;
+  \item Supabase-specific operational tasks such as migrations and Edge Function secrets remain explicit;
+  \item the team can test preview or staging environments in a more controlled way.
+\end{itemize}
+
+\subsection{Deployment process}
+
+The documented deployment workflow includes:
+\begin{enumerate}
+  \item configuring one Supabase project per environment;
+  \item applying the active migration set;
+  \item deploying the \texttt{material-worker} and \texttt{guest-sandbox-cleanup} Edge Functions;
+  \item configuring Edge Function secrets and Vault-backed values;
+  \item deploying the Python backend;
+  \item deploying the web application;
+  \item running post-deploy smoke tests for auth, teacher flows, student flows, insights, and guest mode.
+\end{enumerate}
+
+Operationally, this is a mature approach for a course project because it recognizes that deployment
+is not just ``push frontend to Vercel''; the data plane and async workers also have to be correct.
+
+\subsection{Database evolution}
+
+The current migration history shows 23 active migrations, which is another sign that the project
+evolved iteratively rather than remaining static after an initial schema dump.
+
+Major migration themes include:
+\begin{itemize}
+  \item initial schema and RLS foundation;
+  \item quiz integrity and auth hardening;
+  \item canonical blueprint snapshots;
+  \item always-on class chat and compaction;
+  \item queue-backed material processing;
+  \item class insights and teaching brief snapshots;
+  \item guest mode schema, seed data, cleanup, and quota redesign.
+\end{itemize}
+
+This migration history is important because it mirrors the product's evolution in a traceable,
+reviewable form.
+
+\section{Lessons Learned and Reflection}
+
+\subsection{Technical lessons}
+
+The repository's maintained documentation highlights several concrete lessons that are worth
+reflecting on.
+
+\begin{itemize}
+  \item \textbf{A clean architecture boundary matters.} Routing all AI through the Python backend
+  keeps provider-specific complexity out of the UI and gives the system a stable application-facing
+  contract.
+
+  \item \textbf{Async processing is necessary for realistic content pipelines.} Material extraction
+  and embedding do not belong in a naive synchronous upload request if the goal is a reliable system.
+
+  \item \textbf{Guest mode is harder than it looks.} A believable demo mode requires session
+  quotas, expiry, cleanup, sandbox isolation, and backend-side ownership checks. A demo that looks
+  simple in the UI can still be architecturally complex.
+
+  \item \textbf{Deployment secrets must live in the right place.} The project explicitly notes that
+  Supabase Edge Functions cannot rely on Vercel secrets or Supabase Vault alone; function-level
+  secrets must be configured in Supabase Edge Function Secrets.
+
+  \item \textbf{Subtle browser and CSS issues can become product bugs.} Examples in the repository
+  include iframe preview limitations caused by storage response headers and dialog-centering issues
+  caused by Tailwind v4's use of the standalone CSS \texttt{translate} property.
+\end{itemize}
+
+\subsection{Process lessons}
+
+From a software engineering process perspective, several lessons stand out:
+\begin{itemize}
+  \item keeping design, architecture, deployment, and UI docs current reduces confusion late in the project;
+  \item documentation is especially valuable when a project spans frontend, backend, and database layers;
+  \item a branch-and-merge workflow helps isolate major features such as guest mode and auth redesign;
+  \item testing should expand together with complexity, not after the system is already unstable.
+\end{itemize}
+
+\subsection{What the project did well}
+
+In its current form, the project demonstrates several strengths:
+\begin{itemize}
+  \item a coherent product concept instead of a scattered list of AI features;
+  \item strong teacher-centered workflow design;
+  \item real effort on UI quality and navigation clarity;
+  \item a credible multi-service architecture;
+  \item meaningful testing and deployment documentation.
+\end{itemize}
+
+\subsection{What could still be improved}
+
+A professional reflection should also note realistic limitations:
+\begin{itemize}
+  \item the production UI currently has teacher/student roles but no dedicated admin console;
+  \item the operational surface is sophisticated, so monitoring and observability could still grow further;
+  \item the visible git author concentration suggests that a clearer contribution matrix may still be needed for academic assessment;
+  \item broader activity types beyond chat, quiz, and flashcards remain future-facing rather than fully shipped.
+\end{itemize}
+
+\section{User Manual}
+
+\subsection{Administrator / System Maintainer}
+
+\textbf{Important accuracy note:} the current release does \emph{not} expose a dedicated in-app
+administrator dashboard. The repository does contain administrative capabilities at the database
+and deployment level (for example, \texttt{admin\_users} in SQL policies and Supabase admin APIs),
+but operational administration is performed through deployment tooling, Supabase configuration, and
+project infrastructure rather than through end-user screens. For that reason, this subsection
+documents the administrator workflow that actually exists in the current system.
+
+\subsubsection*{A. Initial platform setup}
+
+\begin{enumerate}
+  \item Create and configure the target Supabase project.
+  \item Enable email/password auth and email confirmation.
+  \item Enable Anonymous Auth if guest mode is required.
+  \item Set the Site URL and redirect URLs for local and hosted environments.
+  \item Apply the active database migrations in \texttt{supabase/migrations}.
+  \item Deploy the two required Edge Functions:
+  \begin{itemize}
+    \item \texttt{material-worker}
+    \item \texttt{guest-sandbox-cleanup}
+  \end{itemize}
+  \item Configure required secrets for the backend and both Edge Functions.
+  \item Deploy the web app and Python backend.
+\end{enumerate}
+
+\subsubsection*{B. Key administrator responsibilities}
+
+\begin{itemize}
+  \item Maintain environment variables for the web app, backend, and Edge Functions.
+  \item Apply the branded confirmation and recovery email templates in Supabase.
+  \item Ensure \texttt{PYTHON\_BACKEND\_URL} and backend API-key alignment across services.
+  \item Monitor guest-mode capacity and cleanup health.
+  \item Run post-deploy smoke tests after releases.
+  \item Investigate common failure modes such as:
+  \begin{itemize}
+    \item guest entry failures;
+    \item materials stuck in \texttt{processing};
+    \item auth links redirecting to the wrong domain;
+    \item web UI loading while AI features fail due to backend or provider issues.
+  \end{itemize}
+\end{itemize}
+
+\subsubsection*{C. Common admin commands}
+
+From the current repository documentation:
+
+\begin{itemize}
+  \item Install dependencies:
+  \begin{center}
+  \texttt{pnpm install} \\
+  \texttt{pip install -r backend/requirements.txt}
+  \end{center}
+  \item Run locally:
+  \begin{center}
+  \texttt{pnpm dev} \\
+  \texttt{uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload}
+  \end{center}
+  \item Apply migrations:
+  \begin{center}
+  \texttt{npx supabase db push}
+  \end{center}
+\end{itemize}
+
+\subsection{Instructor / Grader Manual}
+
+\subsubsection*{A. Create an account and sign in}
+
+\begin{enumerate}
+  \item Open the landing page.
+  \item Choose \textbf{Create an account}.
+  \item Select the \textbf{teacher} account type.
+  \item Enter email and password.
+  \item Verify the email using the confirmation link.
+  \item Sign in and open the \textbf{Teacher Dashboard}.
+\end{enumerate}
+
+\subsubsection*{B. Create and manage a class}
+
+\begin{enumerate}
+  \item From the Teacher Dashboard, click \textbf{Create class}.
+  \item Fill in class title and optional metadata such as subject and level.
+  \item Submit the form.
+  \item The system creates the class and generates a join code.
+  \item Share the join code with students so they can enroll from the student side.
+\end{enumerate}
+
+\subsubsection*{C. Upload teaching materials}
+
+\begin{enumerate}
+  \item Open the target class.
+  \item Use the materials upload form to upload PDF, DOCX, or PPTX files.
+  \item Wait for the system to process the material.
+  \item Monitor status as \texttt{processing}, \texttt{ready}, or \texttt{failed}.
+  \item When the material is ready, use the actions menu to preview, download, or delete it.
+\end{enumerate}
+
+\subsubsection*{D. Generate and publish the Course Blueprint}
+
+\begin{enumerate}
+  \item Open the class blueprint page.
+  \item Trigger blueprint generation after materials are ready.
+  \item Review the generated summary, topics, and objectives.
+  \item Edit the blueprint draft where needed.
+  \item Approve the draft and move it into overview.
+  \item Publish the blueprint when it is ready for student use.
+\end{enumerate}
+
+\subsubsection*{E. Create learning activities}
+
+The current release supports three main activity types:
+\begin{itemize}
+  \item chat assignments;
+  \item quizzes;
+  \item flashcards.
+\end{itemize}
+
+To create an activity:
+\begin{enumerate}
+  \item Ensure a published blueprint exists.
+  \item Open the relevant activity creation route from the class page.
+  \item Generate or configure the activity.
+  \item Review and edit the content where applicable.
+  \item Publish or assign it to the class.
+\end{enumerate}
+
+\subsubsection*{F. Review submissions}
+
+\begin{enumerate}
+  \item Open an assignment's review page.
+  \item View student recipients, completion states, and submitted content.
+  \item For chat assignments, inspect transcript and reflection content.
+  \item For quiz assignments, inspect scores and answers.
+  \item For flashcards, inspect review statistics and score summaries.
+  \item Save teacher feedback for the selected submission.
+\end{enumerate}
+
+\subsubsection*{G. Monitor class progress and teaching support}
+
+\begin{enumerate}
+  \item Open the class overview to see the adaptive teaching brief.
+  \item Refresh the brief when more activity data becomes available.
+  \item Open \textbf{Insights} for the class intelligence dashboard.
+  \item Review charts, student summaries, AI narrative, and intervention suggestions.
+  \item Use the natural-language data query panel for custom chart-oriented questions.
+\end{enumerate}
+
+\subsubsection*{H. Preview the student experience}
+
+\begin{enumerate}
+  \item Open the class page as a teacher.
+  \item Activate student preview mode using the student-view route state.
+  \item Inspect how published blueprint, AI chat, and assignment widgets appear to students.
+  \item Exit preview mode to return to the teacher control surface.
+\end{enumerate}
+
+\subsection{Student Manual}
+
+\subsubsection*{A. Create an account and sign in}
+
+\begin{enumerate}
+  \item Open the landing page.
+  \item Choose \textbf{Create an account}.
+  \item Select the \textbf{student} account type.
+  \item Enter email and password.
+  \item Verify the email using the confirmation link.
+  \item Sign in and open the \textbf{Student Dashboard}.
+\end{enumerate}
+
+\subsubsection*{B. Join a class}
+
+\begin{enumerate}
+  \item From the Student Dashboard or sidebar, open \textbf{Join class}.
+  \item Enter the join code provided by the instructor.
+  \item Submit the form.
+  \item After joining successfully, open the class workspace.
+\end{enumerate}
+
+\subsubsection*{C. Use the student dashboard}
+
+The student dashboard organizes assignments into categories such as:
+\begin{itemize}
+  \item due now;
+  \item upcoming;
+  \item completed.
+\end{itemize}
+
+Students can use the dashboard to quickly identify overdue or active work and jump directly into
+the relevant class or assignment.
+
+\subsubsection*{D. Navigate the class workspace}
+
+Within a class, students can access:
+\begin{itemize}
+  \item AI chat;
+  \item chat assignments;
+  \item quizzes;
+  \item flashcards;
+  \item the published blueprint.
+\end{itemize}
+
+The workspace is intentionally more focused and less administratively dense than the teacher view.
+
+\subsubsection*{E. Use AI chat}
+
+\begin{enumerate}
+  \item Open the class page and select the AI chat widget or direct chat view.
+  \item Ask questions related to the class materials and published blueprint.
+  \item Review the grounded AI response.
+  \item Continue the conversation as needed.
+\end{enumerate}
+
+If chat is not yet available, the likely reason is that the instructor has not published the
+blueprint yet.
+
+\subsubsection*{F. Complete assignments}
+
+\begin{enumerate}
+  \item Open the assigned activity from the dashboard or class workspace.
+  \item For chat assignments, complete the conversation and submit the required reflection.
+  \item For quizzes, answer the questions and submit the attempt.
+  \item For flashcards, complete the review session and submit progress.
+  \item Revisit the assignment later to see updated status such as submitted or reviewed.
+\end{enumerate}
+
+\subsubsection*{G. Use the published blueprint}
+
+\begin{enumerate}
+  \item Open the blueprint widget or blueprint page inside the class.
+  \item Review topics and learning objectives.
+  \item Use the blueprint as a study guide before attempting quizzes or asking AI chat questions.
+\end{enumerate}
+
+\subsubsection*{H. Manage account settings}
+
+\begin{enumerate}
+  \item Open \textbf{Settings}.
+  \item Update display name if needed.
+  \item Use the two-step password change flow with verification code if required.
+  \item Open \textbf{Help} for role-specific FAQ and suggested next steps.
+\end{enumerate}
+
+\subsection{Supplementary Guest Demo Flow}
+
+Although the course report specifically asks for admin, instructor, and student manuals, the guest
+workflow is worth documenting because it is a significant implemented feature.
+
+\begin{enumerate}
+  \item From the landing page, choose \textbf{Continue as guest} when guest mode is enabled.
+  \item The system provisions an anonymous authenticated session and clones sandbox data.
+  \item Explore the classroom in teacher view or switch to student view.
+  \item Reset the sandbox if a fresh walkthrough is needed.
+  \item Create a permanent account from a clean state if you want to move into normal usage.
+\end{enumerate}
+
+\section{Conclusion}
+
+The current repository demonstrates a serious course project with a clear educational purpose,
+a layered architecture, meaningful GenAI integration, and a credible software engineering process.
+Its strongest design choice is the decision to center the product on a teacher-curated Course
+Blueprint rather than on generic AI chat alone. That decision gives the entire system coherence:
+materials, activities, student chat, review, and analytics all connect back to the same core object.
+
+Equally important, the project goes beyond feature implementation and addresses the concerns that
+often separate prototypes from robust systems: asynchronous processing, security boundaries,
+role-aware access control, test coverage, deployment topology, and realistic demo-mode isolation.
+For a final project, this makes the platform not only functional, but also defensible from a
+software engineering perspective.
+
+\appendix
+
+\section{Repository Evidence Used for This Report}
+
+This report was prepared against the current repository state using the following main sources:
+
+\begin{itemize}
+  \item top-level documents:
+  \begin{itemize}
+    \item \texttt{README.md}
+    \item \texttt{ARCHITECTURE.md}
+    \item \texttt{DESIGN.md}
+    \item \texttt{UIUX.md}
+    \item \texttt{DEPLOYMENT.md}
+  \end{itemize}
+  \item subsystem documentation:
+  \begin{itemize}
+    \item \texttt{web/README.md}
+    \item \texttt{backend/README.md}
+    \item \texttt{supabase/README.md}
+  \end{itemize}
+  \item course materials:
+  \begin{itemize}
+    \item \texttt{project\_overivew.pdf}
+    \item \texttt{project\_background.pdf}
+  \end{itemize}
+  \item implementation evidence:
+  \begin{itemize}
+    \item key web routes and server actions
+    \item backend service modules
+    \item Supabase Edge Functions
+    \item migration history
+    \item git commit history and merge history
+    \item test suites and E2E specs
+  \end{itemize}
+\end{itemize}
+
+\section{Current Accuracy Caveat About the ``Admin'' Role}
+
+The course deliverable asks for an admin user manual, but the current repository does not expose a
+dedicated end-user admin console. Permanent in-app roles are teacher and student, while guest mode
+is a sandboxed anonymous access path. Administrative responsibilities in the current release exist
+mainly at the infrastructure and deployment layer. This report therefore documents the administrator
+workflow that is actually implemented today, rather than inventing an unsupported UI role.
+
+\end{document}
