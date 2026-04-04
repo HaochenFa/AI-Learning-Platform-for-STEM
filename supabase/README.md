@@ -177,13 +177,17 @@ Material processing is asynchronous and queue-backed.
 ```mermaid
 sequenceDiagram
     participant Web as Next.js App
+    participant PY as Python Backend
     participant DB as Postgres
     participant Queue as pgmq
     participant Cron as pg_cron
     participant Worker as material-worker
 
-    Web->>DB: Insert material + processing job
+    Web->>DB: Insert material row
+    Web->>PY: Request /v1/materials/dispatch
+    PY->>DB: Call enqueue_material_job RPC
     DB->>Queue: Enqueue work item
+    Note over PY,Worker: Backend can wake the worker immediately
     Cron->>Worker: Dispatch worker run
     Worker->>DB: Claim job
     Worker->>Worker: Extract, chunk, embed

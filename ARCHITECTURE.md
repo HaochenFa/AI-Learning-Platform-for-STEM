@@ -351,14 +351,18 @@ Material processing is intentionally asynchronous.
 sequenceDiagram
     participant Teacher
     participant Web as Web App
+    participant PY as Python Backend
     participant DB as Postgres
     participant Queue as pgmq
     participant Cron as pg_cron dispatch
     participant Worker as material-worker
 
     Teacher->>Web: Upload material
-    Web->>DB: Store material row and job metadata
+    Web->>DB: Store material row
+    Web->>PY: Request /v1/materials/dispatch
+    PY->>DB: Call enqueue_material_job RPC
     DB->>Queue: Enqueue job
+    Note over PY,Worker: Backend can trigger an immediate worker run
     Cron->>Worker: Trigger processing run
     Worker->>DB: Claim job
     Worker->>Worker: Extract text, chunk, embed
@@ -378,17 +382,23 @@ Guest mode is implemented as a real sandboxed experience, not a presentation-onl
 ```mermaid
 stateDiagram-v2
     [*] --> LandingCTA
-    LandingCTA --> AnonymousAuth
+    LandingCTA --> SessionQuotaCheck
+    SessionQuotaCheck --> AnonymousAuth: slot acquired
+    SessionQuotaCheck --> GuestEntryBlocked: cap reached
+    GuestEntryBlocked --> LandingCTA
     AnonymousAuth --> SandboxProvisioning
     SandboxProvisioning --> ActiveSandbox
+    SandboxProvisioning --> ReleaseSessionSlot: provisioning failed
+    ReleaseSessionSlot --> LandingCTA
     ActiveSandbox --> RoleSwitch
     RoleSwitch --> ActiveSandbox
     ActiveSandbox --> ResetSandbox
-    ResetSandbox --> SandboxProvisioning
+    ResetSandbox --> SessionQuotaCheck
     ActiveSandbox --> Expired
     ActiveSandbox --> Discarded
     Expired --> Cleanup
     Discarded --> Cleanup
+    Cleanup --> [*]
 ```
 
 ### Key implementation decisions

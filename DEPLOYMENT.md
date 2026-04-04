@@ -361,6 +361,8 @@ sequenceDiagram
     Sandbox->>App: Session expires or is discarded
     App->>SB: Mark sandbox expired or discarded
     Cleanup->>SB: Find cleanup candidates
+    Cleanup->>SB: Release guest AI quota
+    Cleanup->>SB: Release guest session slot when needed
     Cleanup->>SB: Remove guest storage files
     Cleanup->>SB: Delete sandbox class rows
     Cleanup->>SB: Delete anonymous auth user

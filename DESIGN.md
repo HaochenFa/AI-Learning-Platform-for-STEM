@@ -146,13 +146,21 @@ sequenceDiagram
     participant Cleanup as guest-sandbox-cleanup
 
     User->>Web: Continue as guest
-    Web->>SB: signInAnonymously()
-    Web->>DB: create guest_sandbox + clone seed data
-    User->>Web: Use sandbox classroom
-    Web->>PY: Guest AI request with sandbox_id
-    PY->>DB: Verify ownership + quotas
-    DB-->>PY: Allow or rate limit
+    Web->>DB: acquire_guest_session_service()
+    alt session slot available
+        DB-->>Web: allow provisioning
+        Web->>SB: signInAnonymously()
+        Web->>DB: create guest_sandbox + clone seed data
+        User->>Web: Use sandbox classroom
+        Web->>PY: Guest AI request with sandbox_id
+        PY->>DB: Verify ownership + quotas
+        DB-->>PY: Allow or rate limit
+    else session cap reached
+        DB-->>Web: too-many-active-sessions / too-many-new-sessions
+        Web-->>User: Show guest entry failure
+    end
     Note over Cleanup,DB: On expiry or cleanup run
+    Cleanup->>DB: Release quota counters when needed
     Cleanup->>DB: Delete sandbox class data
     Cleanup->>SB: Delete anonymous user
 ```
