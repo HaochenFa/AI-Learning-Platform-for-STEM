@@ -748,14 +748,14 @@ system control.
 
 \subsection{Requirements and scope shaping}
 
-The initial project brief encouraged teams to investigate stakeholder needs, review existing
-platforms, and avoid shallow AI-first implementations. The current repository reflects that
-direction. The system is not scoped as a universal learning platform, but as a structured STEM
-classroom assistant centered on teacher materials, editorial control, and student-facing learning
-activities.
+The initial project brief pushed the team toward a stakeholder-aware educational system rather than
+toward a shallow AI showcase. The resulting product scope is therefore not a universal learning
+platform or a generic study chatbot. It is a structured STEM classroom assistant built around
+teacher materials, teacher editorial control, and student-facing learning workflows grounded in the
+same class knowledge.
 
-A practical strength of the project is its restraint. The team did not attempt to implement every
-possible educational feature. Instead, it converged on a coherent workflow:
+A practical strength of the delivery was scope discipline. The team did not try to implement every
+possible education feature. Instead, it converged on one coherent classroom operating loop:
 \begin{itemize}
   \item content ingestion;
   \item blueprint generation and publishing;
@@ -764,13 +764,13 @@ possible educational feature. Instead, it converged on a coherent workflow:
   \item guest evaluation flow.
 \end{itemize}
 
-This focused scope likely helped the team build a more integrated product instead of a fragmented
-set of unrelated AI experiments.
+That restraint is important because it concentrated engineering effort on one integrated product
+system instead of spreading effort across unrelated AI experiments.
 
 \subsection{Design process}
 
-The design process visible in the repository appears iterative and documentation-driven.
-The project contains:
+The design process was iterative, documentation-backed, and architecture-aware. The project
+maintained:
 \begin{itemize}
   \item top-level design, architecture, UI/UX, and deployment documents;
   \item internal reference notes under \texttt{.codex/};
@@ -778,15 +778,16 @@ The project contains:
   \item commit history showing multiple phases of refinement rather than one-shot implementation.
 \end{itemize}
 
-The UI/UX work also appears to have been treated as a first-class concern. The repository contains
-significant evidence of design-token work, navigation restructuring, auth UX redesign, teacher/student
-flow differentiation, and consistency hardening. This is valuable because educational software quality
-depends not only on AI correctness, but also on clarity, trust, and ease of use.
+UI and UX were also treated as a first-class engineering workstream rather than as late cosmetic
+polish. The development record shows repeated investment in design tokens, navigation restructuring,
+shared auth-surface redesign, teacher-versus-student flow separation, and consistency hardening.
+That matters in an educational product because quality depends not only on AI correctness, but also
+on clarity, trust, and ease of use in everyday classroom operation.
 
 \subsection{Implementation phases observed in git history}
 
-The commit history provides a useful implementation timeline. Table~\ref{tab:timeline} summarizes
-the major development phases visible from the repository.
+The git history shows staged delivery rather than a single end-loaded implementation push.
+Table~\ref{tab:timeline} summarizes the major development phases visible across the repository.
 
 \begin{table}[H]
 \centering
@@ -796,33 +797,28 @@ the major development phases visible from the repository.
 \toprule
 Period & Main progression visible in the repository \\
 \midrule
-2026-02-03 to 2026-02-05 & Repository setup, initial schema and RLS, core class flows, materials pipeline, AI adapters, blueprint generation, and first UI scaffolding. \\
-2026-02-06 to 2026-02-10 & Vertical slices for AI chat, quiz generation, flashcards, auth hardening, and always-on class chat workspace. \\
-2026-02-22 to 2026-03-02 & Material worker stabilization, queue-backed processing, dashboard and class-shell UX improvements, theme/token refactoring, and stronger unit-test coverage. \\
-2026-03-15 to 2026-03-24 & Teacher class intelligence dashboard, generative canvas, teaching brief backend and widget, content review improvements, and more polished materials preview behavior. \\
-2026-03-26 to 2026-03-28 & Guest mode foundation and hardening, E2E expansion, shared auth redesign, email template work, OTP-based password change flow, and documentation refresh. \\
-2026-04-04 to 2026-04-05 & Guest quota redesign, concurrency improvements, final bug fixing, environment sync, and diagram/documentation alignment with runtime reality. \\
+2026-02-03 to 2026-02-05 & Repository foundation, baseline schema and RLS, initial class flows, materials ingestion, provider adapters, blueprint generation, and first UI scaffolding. \\
+2026-02-06 to 2026-02-10 & End-to-end vertical slices for grounded chat, quiz generation, flashcards, auth hardening, and always-on class chat workspace. \\
+2026-02-22 to 2026-03-02 & Material-worker stabilization, queue-backed processing, live material readiness feedback, class-shell UX improvements, design-token refactoring, and stronger web test coverage. \\
+2026-03-10 to 2026-03-15 & Python-backend migration and hardening, canonical backend envelope enforcement, service-auth tightening, materials file management, class intelligence delivery, and architecture/documentation alignment. \\
+2026-03-18 to 2026-03-29 & Generative canvas, adaptive teaching brief, review-surface improvements, guest mode rollout, E2E expansion, shared auth redesign, branded email flows, and OTP-based password change. \\
+2026-03-30 to 2026-04-05 & Inline code documentation, analytics fixes, guest quota redesign, concurrency hardening, environment/document refresh, diagram alignment, and final report refinement. \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-This sequence suggests a healthy development pattern:
-\begin{enumerate}
-  \item build the skeleton;
-  \item deliver core vertical slices;
-  \item strengthen architecture and UX;
-  \item add analytics and guest mode;
-  \item harden the system and documentation near submission.
-\end{enumerate}
+The overall delivery pattern is clear: establish the domain model, build the main classroom slices,
+consolidate the backend and runtime boundaries, expand teacher-support and guest-demo capabilities,
+and then harden the system, documentation, and submission artifacts near the end of the project.
 
 \subsection{Collaboration workflow}
 
-The collaboration model combined a strong primary engineering lead with structured review,
-testing, documentation, and feedback support across the rest of Group \#\GroupNumber. Haochen Fa
-served as the major developer and solution architect, leading the overall technical direction,
-system architecture, cross-service integration, deployment alignment, and most feature delivery.
-Other team members contributed through code review, feature and edge-case testing, product
-feedback, documentation work, and selected implementation tasks.
+The collaboration model combined clear primary technical leadership with meaningful supporting
+contributions across the rest of Group \#\GroupNumber. Haochen Fa served as the primary engineer
+and solution architect, leading the overall technical direction, system architecture, cross-service
+integration, deployment alignment, and most feature delivery. Other team members contributed through
+code review, feature validation, edge-case testing, product feedback, documentation work, and
+selected implementation tasks.
 
 GitHub was the formal engineering workspace for the project. The team used GitHub Issues and pull
 requests to track implementation work, review changes, and communicate technical decisions, while
@@ -830,30 +826,32 @@ WhatsApp was used for broader day-to-day discussion, rapid coordination, and des
 main development repository is \PrimaryRepoUrl, and the organization repository prepared for
 review and submission is \SubmissionRepoUrl.
 
-The current repository history is consistent with this operating model. It shows 403 commits,
-92 merge commits, tagged release checkpoints, and repeated PR-based merges for guest mode,
-auth redesign, UI/UX improvements, analytics, documentation refreshes, and final hardening.
-This reflects a disciplined iterative workflow with clear integration checkpoints rather than
-a single large delivery at the end.
+The engineering record reinforces this workflow. The project history now spans more than 400
+commits, including 92 merge commits, nine tagged release checkpoints from \texttt{v1.0.0} through
+\texttt{v1.4.0}, and repeated PR-based integrations through at least PR \#102. Those merges cover
+major workstreams such as guest mode, auth redesign, UI/UX improvements, analytics, documentation
+refreshes, email flows, and final runtime hardening. This is the profile of a staged collaborative
+build with regular integration checkpoints, not a single large delivery at the end.
 
 \subsection{Use of GenAI during development}
 
-GenAI-assisted development was used deliberately as part of the delivery strategy for this project.
-Codex and Claude Code were used to accelerate scaffolding, refactoring, debugging, documentation
-maintenance, test-support work, and repetitive implementation tasks across the multi-service stack.
+GenAI-assisted development was used deliberately as part of the delivery strategy rather than as a
+substitute for engineering ownership. Codex and Claude Code were used to accelerate scaffolding,
+refactoring, debugging, documentation maintenance, test-support work, and repetitive implementation
+tasks across the web, backend, and Supabase surfaces. The pull-request workflow also incorporated
+GitHub Copilot review as an additional automated review layer.
 
-This workflow was effective because the AI tooling was guided by an experienced senior developer
-who could provide clear, verbose, and constraint-aware instructions, set the right architectural
-context, and quickly evaluate whether generated output matched the intended code logic, product
-behavior, and UI/UX direction. Prompt engineering was therefore not a superficial convenience;
-it was part of the engineering discipline that kept the generated work aligned with the system's
-actual requirements.
+These tools were effective because they operated under disciplined human direction. Clear
+constraints, architectural context, repo-specific instructions, and fast technical validation turned
+them into productive accelerators. Without that experienced human harness, the same tools would not
+have produced work at the same level of alignment, efficiency, or reliability.
 
-In practice, AI output was always paired with human validation. Generated or suggested changes
-were reviewed against feature behavior, code structure, testing needs, Git and GitHub workflow
-hygiene, dependency/tooling correctness, and the operational requirements of the web, backend,
-and Supabase layers. This made AI a force multiplier for rapid development without giving up
-ownership of correctness, maintainability, or product quality.
+Generated suggestions were therefore always paired with human review. Outputs were checked against
+feature behavior, code structure, testing obligations, Git and GitHub workflow hygiene,
+dependency-tooling correctness, and the runtime requirements of the Next.js web app, the FastAPI
+backend, and the Supabase layer. In that sense, prompt engineering and AI-tool orchestration became
+part of the team's engineering process, while responsibility for correctness, maintainability, and
+product quality remained fully human.
 
 \section{Testing, Quality Assurance, and Deployment}
 
