@@ -4,6 +4,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
+\usepackage[none]{hyphenat}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{tabularx}
@@ -34,6 +35,8 @@
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{0.65em}
 \renewcommand{\arraystretch}{1.2}
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
 
 \newcommand{\ProjectTitle}{STEM Learning Platform with GenAI}
 \newcommand{\ReportTitle}{Final Project Report}
@@ -105,6 +108,7 @@ deployment topology, and role-based user workflows.
 \pagenumbering{arabic}
 \tableofcontents
 \newpage
+\raggedright
 
 \section{Executive Summary}
 
