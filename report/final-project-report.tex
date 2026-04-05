@@ -518,7 +518,8 @@ Deployment model & Separate web and backend deployments plus hosted Supabase \\
 
 \subsection{Architectural decomposition}
 
-The current repository is intentionally partitioned into four main top-level areas:
+The platform is deliberately partitioned into four top-level areas that map cleanly to runtime
+responsibility:
 \begin{itemize}
   \item \texttt{web/}: user-facing routes, UI components, middleware, and server actions;
   \item \texttt{backend/}: AI orchestration, chat workspace logic, class workflows, analytics;
@@ -526,44 +527,51 @@ The current repository is intentionally partitioned into four main top-level are
   \item \texttt{tests/}: Playwright end-to-end coverage running against a deployed target URL.
 \end{itemize}
 
-This separation matters because different responsibilities are intentionally placed in the layer
-best suited for them. The web app owns rendering and navigation; the Python backend owns AI and
-workflow-heavy service logic; Supabase owns security, persistence, storage, and background jobs.
+This separation is important because each layer owns the work it is best positioned to execute. The
+web application owns rendering, navigation, and server-action orchestration. The Python backend
+owns AI routing, chat-workspace behavior, analytics, and workflow-heavy service logic. Supabase
+owns authentication, PostgreSQL persistence, row-level security, storage, and queue-backed
+background operations. The result is a clearer product boundary between interface concerns,
+orchestration concerns, and stateful platform concerns.
 
 \subsection{Web application design}
 
-The web application is not just a collection of pages. It implements a role-aware interface model
-with separate teacher and student dashboards, a persistent class shell, and route-level auth
-protection.
+The web application delivers the platform's role-aware operating surface. It separates teacher and
+student experience from the first navigation step, keeps users inside a persistent class shell once
+they enter a classroom, and uses server actions plus middleware to make state transitions feel
+consistent across the product.
 
 Important web-layer characteristics include:
 \begin{itemize}
   \item role-specific dashboards at \texttt{/teacher/dashboard} and \texttt{/student/dashboard};
-  \item a home-first auth model via a shared \texttt{AuthSurface} used in the landing-page modal and dedicated routes such as \texttt{/login}, \texttt{/register}, and \texttt{/forgot-password};
+  \item a home-first auth model via a shared \texttt{AuthSurface} used in the landing-page modal
+  and dedicated routes such as \texttt{/login}, \texttt{/register}, and \texttt{/forgot-password};
   \item middleware-enforced redirects for unauthenticated, unverified, and expired guest sessions;
   \item server actions for class creation, join-by-code, materials, assignments, and settings;
   \item a shared design system with centralized icons, tokens, and motion presets.
 \end{itemize}
 
-On the teacher side, the class overview acts as a control hub for materials, assignments,
-teaching brief, and monitoring. On the student side, the class workspace is organized around
-focus widgets for AI chat, assignments, and the published blueprint. A teacher can also preview
-the student experience without changing accounts.
+On the teacher side, the class overview acts as the operational control hub for materials,
+assignments, teaching brief, and class monitoring. On the student side, the class workspace is
+organized around focused learning surfaces for chat, assignments, and the published blueprint
+rather than teacher-oriented management tools. A teacher can also preview the student experience
+from within the same classroom context, which is a strong product-control detail because it lets an
+instructor inspect the student-facing flow without changing accounts or leaving the class shell.
 
-The auth surface is more substantial than a basic login form. The current implementation supports a
-landing-page modal flow triggered by \texttt{?auth=...}, fallback dedicated pages, server-side email
-confirmation and password-recovery callbacks through \texttt{/auth/confirm}, a dedicated
-\texttt{/reset-password} completion page, and URL-driven resend states for sign-up and forgot-password
-recovery. This improves consistency because the same auth component and redirect model are reused
-across both public entry points and email-link return flows.
+The authentication surface is also more disciplined than a standalone login form. The platform uses
+the same shared auth presenter for landing-page modal entry and fallback dedicated routes, supports
+server-side email confirmation and password-recovery callbacks through \texttt{/auth/confirm}, and
+completes recovery through a dedicated \texttt{/reset-password} flow. Reusing the same auth
+component and redirect model across public entry points and email-link return paths reduces UI drift
+and keeps authentication behavior easier to maintain.
 
 \subsection{Python backend design}
 
-The backend is the sole AI orchestration boundary in the current implementation. This is an
-important design choice because it avoids scattering prompt construction, provider credentials,
-and response normalization across the frontend.
+The Python backend serves as the platform's AI and workflow control plane. That is a significant
+architectural choice because it keeps prompt construction, provider routing, response normalization,
+and service-to-service validation out of the web layer and behind a dedicated FastAPI boundary.
 
-The backend currently provides endpoints and domain logic for:
+The backend provides endpoints and domain logic for:
 \begin{itemize}
   \item blueprint generation;
   \item quiz generation;
@@ -581,14 +589,16 @@ All normal backend responses follow a consistent envelope:
 \texttt{\{ ok, data, error, meta \}}
 \end{center}
 
-This design improves consistency at the integration boundary. The frontend adapters can handle
-success and failure cases uniformly, while the backend retains freedom to evolve internal provider
-logic and prompt design.
+That contract gives the web adapters a uniform integration surface for success, failure, and
+request metadata, while allowing the backend to evolve internal provider logic, prompt structure,
+and workflow composition without forcing parallel changes across many frontend call sites.
 
 \subsection{AI orchestration design}
 
-The repository currently supports three pluggable providers: OpenRouter, OpenAI, and Gemini.
-Provider choice is environment-driven, and the backend can fall back across providers when needed.
+AI orchestration is environment-driven and intentionally centralized in the backend. The platform
+supports three pluggable providers --- OpenRouter, OpenAI, and Gemini --- and the provider layer
+resolves an ordered attempt list from the configured default plus the providers that are actually
+usable in the current environment.
 
 This design has several advantages:
 \begin{itemize}
@@ -598,16 +608,24 @@ This design has several advantages:
   \item request deadlines are enforced centrally rather than inconsistently per route.
 \end{itemize}
 
-The current AI domains are broader than content generation alone. In addition to blueprint, quiz,
-and flashcard generation, the system also supports analytics narratives, teaching brief synthesis,
-chat memory handling, and visual canvas specifications.
+The orchestration layer is also more robust than a simple ``try another API key'' fallback. It
+applies a single wall-clock deadline across provider attempts, recomputes the remaining budget
+before each call, and uses the same ordered fallback approach for both generation and embeddings.
+Operationally, that means a deployment can prefer one provider by configuration, degrade to another
+when necessary, and still preserve a stable frontend contract.
+
+The AI surface is broader than content generation alone. In addition to blueprint, quiz, and
+flashcard generation, the backend also supports grounded chat, analytics narratives, teaching brief
+synthesis, embeddings, and visual canvas specifications. This gives the platform a unified AI layer
+for both student learning workflows and teacher decision-support workflows.
 
 \subsection{Chat workspace and memory design}
 
-One of the most technically interesting parts of the system is the chat workspace. It is not
-implemented as a purely stateless prompt-response loop. Instead, the backend includes a dedicated
-chat workspace subsystem with participant listing, session creation and archive, paginated message
-history, and context compaction for long-running conversations.
+The chat workspace is one of the platform's most technically mature subsystems because it is designed
+as a long-lived classroom conversation system rather than a disposable prompt-response loop. The
+backend supports participant listing for teacher monitoring, session creation, rename and archive
+operations, paginated message history, and persisted assistant responses so a class conversation can
+continue over time instead of resetting on every visit.
 
 \begin{figure}[H]
   \centering
@@ -616,15 +634,19 @@ history, and context compaction for long-running conversations.
   \label{fig:chat-workspace}
 \end{figure}
 
-This design is significant for two reasons. First, it better reflects real classroom use, where
-students may return to a conversation over time rather than ask only one question. Second, it
-forces the system to deal with long-context management, not just one-shot prompt construction.
+The grounding path is equally important. Workspace chat is constrained by published blueprint context
+and retrieved material chunks rather than a generic free-form prompt, which keeps class chat tied to
+approved course knowledge. For longer conversations, the system uses summary-based compaction and
+context-window management instead of replaying the full transcript indefinitely. That combination of
+persistence, grounding, and compaction makes the chat surface much closer to a real classroom tool
+than to a one-shot chatbot widget.
 
 \subsection{Material processing pipeline}
 
-Material ingestion is intentionally asynchronous. Uploading a file creates a material record and
-stores the file, but extraction, chunking, and embedding happen through a queue-backed worker path
-instead of blocking the user's request.
+Material ingestion is implemented as a real asynchronous processing pipeline. Uploading a file creates
+the material record and stores the source asset immediately, but AI-readiness is produced through a
+separate dispatch-and-worker path rather than by blocking the teacher's request until extraction and
+embedding complete.
 
 \begin{figure}[H]
   \centering
@@ -633,15 +655,23 @@ instead of blocking the user's request.
   \label{fig:material-pipeline}
 \end{figure}
 
-This was a good architectural decision for a course project because it addresses a real system
-concern: extraction and embedding are too slow and failure-prone to treat as a trivial synchronous
-request. The queue-backed design allows better retry behavior, clearer UI states (\texttt{processing},
-\texttt{ready}, \texttt{failed}), and a cleaner separation between user interaction and background work.
+The implemented flow is more substantial than a background task checkbox. The web layer persists the
+material, the Python backend calls an \texttt{enqueue\_material\_job} RPC, PostgreSQL writes the job
+into a \texttt{pgmq}-backed queue, and the Supabase \texttt{material-worker} Edge Function extracts
+text, chunks content, generates embeddings, and writes retrieval-ready records plus status updates.
+The worker can be awakened immediately after dispatch or picked up through cron-backed execution,
+which gives the system both responsiveness and resilience.
+
+This design matters because material processing is exactly the kind of workload that becomes fragile
+when treated as a synchronous request. Queue-backed execution improves retry behavior, makes
+\texttt{processing}, \texttt{ready}, and \texttt{failed} states explicit in the product, and turns raw
+classroom files into indexed instructional context rather than opaque attachments.
 
 \subsection{Analytics and adaptive teaching support}
 
-The platform includes teacher-facing intelligence features, which meaningfully extend it beyond
-content generation.
+Teacher-facing intelligence is a meaningful part of the platform design, not a thin reporting add-on.
+The analytics layer turns persisted submissions, activity outcomes, and chat-derived signals into a
+decision-support surface for instructors.
 
 The class intelligence dashboard includes:
 \begin{itemize}
@@ -653,20 +683,23 @@ The class intelligence dashboard includes:
   \item natural-language data query support for generating chart specifications.
 \end{itemize}
 
-The adaptive teaching brief is a complementary feature. Rather than exposing a large dashboard
-all the time, it provides a concise memo-style summary directly on the class overview page, with
-recommended next steps, likely misconceptions, and follow-up activity suggestions.
+These features are backed by persisted insight snapshots and caching logic so the teacher is not
+looking at a completely re-generated story on every reload. The adaptive teaching brief complements
+the larger dashboard by delivering a memo-style summary directly on the class overview page, with
+recommended next steps, likely misconceptions, students to watch, and follow-up activity guidance.
+Together, the dashboard and brief show that the product is designed to help teachers interpret class
+evidence, not only generate student content.
 
 \subsection{Security and access-control design}
 
-Security is handled across all three runtime surfaces:
+Security is layered across all three runtime surfaces rather than delegated to any single framework:
 \begin{itemize}
-  \item \textbf{web layer}: route protection, email verification enforcement, guest route confinement;
-  \item \textbf{backend layer}: service authentication, user bearer-token verification, guest AI guardrails;
-  \item \textbf{Supabase layer}: row-level security, teacher/enrollment policies, and sandbox-aware isolation.
+  \item \textbf{web layer}: route protection, email verification enforcement, and guest route confinement;
+  \item \textbf{backend layer}: service authentication, user bearer-token verification, and guest AI guardrails;
+  \item \textbf{Supabase layer}: row-level security, teacher/enrollment policies, sandbox-aware isolation, and cleanup-capable SQL services.
 \end{itemize}
 
-The current implementation documents several security-conscious choices:
+Several implementation details show that this hardening model is intentional rather than cosmetic:
 \begin{itemize}
   \item permanent users are limited to teacher or student account types;
   \item \texttt{profiles.account\_type} is immutable after signup;
@@ -677,31 +710,39 @@ The current implementation documents several security-conscious choices:
   \item service-to-service auth between web and backend uses a shared backend API key.
 \end{itemize}
 
+The combined effect is important. Route guards shape who can enter a workflow, backend verification
+checks who is calling sensitive service endpoints, and RLS plus sandbox-aware policies determine what
+data each actor can actually read or mutate. This is the right design for a platform that mixes real
+classroom data, AI workflows, and anonymous guest sandboxes in the same hosted system.
+
 \subsection{Guest sandbox design}
 
-Guest mode is one of the strongest differentiators in the project. Instead of presenting a static
-marketing demo, the system provisions a real anonymous session and clones a seeded classroom into
-a sandboxed data space. Guests can switch between teacher and student views, reset the demo, and
-observe realistic product behavior without accessing real user data.
+Guest mode is one of the product's strongest differentiators because it is implemented as a real
+interactive sandbox rather than as a scripted tour. The platform creates an anonymous Supabase auth
+session, provisions a \texttt{guest\_sandboxes} record, and clones seeded classroom content into normal
+application tables under a sandbox-specific \texttt{sandbox\_id}. Guests can then switch between teacher
+and student views, reset the demo, and experience realistic product behavior without touching real
+user data.
 
-The current quota and lifecycle model combines Supabase-side and backend-side guardrails:
+The quota and lifecycle model combines Supabase-side and backend-side guardrails:
 \begin{itemize}
   \item a Supabase-managed \texttt{guest\_session\_quota} control table with RPCs that gate
   sandbox creation and quota release;
-  \item current default caps of 60 active guest sandboxes globally and 20 newly created
+  \item default admission caps of 60 active guest sandboxes globally and 20 newly created
   sandboxes per hour;
-  \item backend limits on guest AI feature usage plus an \texttt{asyncio.Semaphore}-based
-  concurrency gate for in-flight guest AI requests;
+  \item backend per-feature guest AI limits plus an \texttt{asyncio.Semaphore}-based
+  concurrency gate, with a default ceiling of 20 in-flight guest AI requests;
   \item expiry after 32 hours maximum or 8 hours of inactivity.
 \end{itemize}
 
-Cleanup is also part of the hardening story, not an afterthought. The
-\texttt{guest-sandbox-cleanup} path and related SQL cleanup functions release remaining quota counters,
-delete sandbox-scoped class data, and remove anonymous auth users so that demo sessions do not leak
-storage, quota state, or stale identities over time.
+Cleanup is part of the design, not an afterthought. The
+\texttt{guest-sandbox-cleanup} Edge Function and related SQL cleanup paths release quota counters,
+delete guest storage objects and sandbox-scoped class data, and remove anonymous auth users so that
+demo sessions do not leak storage, quota state, or stale identities over time.
 
-This is a thoughtful design because it balances demo accessibility with safety, resource control,
-and cleanup reliability.
+This design gives the platform a much stronger demonstration surface than a read-only walkthrough
+would provide, while still keeping safety, resource control, and lifecycle hygiene under explicit
+system control.
 
 \section{Software Development Process}
 
