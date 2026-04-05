@@ -1107,366 +1107,340 @@ has already been achieved.
 \newpage
 \section{User and Operations Manual}
 
+\noindent This section is written as a practical operating guide rather than a feature inventory. Each role
+starts with a quick path to first success, then moves into compact reference material for the tasks
+that are used most often during deployment, teaching, and study.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{2.3cm}X>{\raggedright\arraybackslash}p{3.2cm}}
+\toprule
+Role & Start here & Primary outcome & Main surfaces \\
+\midrule
+Administrator & Supabase project setup plus hosted web/backend environments & Healthy deployment, aligned configuration, and first-line operational support & Supabase Dashboard, SQL Editor, Edge Functions, web deployment, backend deployment \\
+Instructor & Landing-page auth modal or \texttt{/register} & Publish a blueprint-grounded class and assign the first learning activity & Teacher Dashboard, class workspace, Blueprint Studio, review pages, Insights \\
+Student & Landing-page auth modal or \texttt{/register} & Join a class, study the published blueprint, and complete assigned work & Student Dashboard, \texttt{/join}, class workspace, Settings, Help \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[
+    width=0.58\textwidth,
+    keepaspectratio
+  ]{UIUX-diagram-02.png}
+  \caption{Role-aware navigation from public entry to dashboards and the shared class workspace shell.}
+\end{figure}
+
 \subsection{Administrator Manual (Deployment and Operations)}
 
-The administrator role in this platform is centered on environment setup, Supabase project
-administration, release deployment, and operational data management. In practice, administrators
-use the deployment pipeline, Supabase Dashboard, SQL editor, environment configuration, and health
-checks to operate the system across the web app, Python backend, Edge Functions, and hosted
-Supabase project.
+\noindent The administrator role owns deployment alignment across four surfaces: the Next.js web
+application, the standalone Python backend, Supabase itself, and the two required Edge Functions.
+The practical goal is simple: keep those surfaces configured with matching URLs, matching service
+keys, and a working post-deploy smoke test.
 
-\subsubsection*{A. Initial platform setup}
+\subsubsection*{Quick Start}
 
-\begin{enumerate}
-  \item Create and configure the target Supabase project.
-  \item Enable email/password auth and email confirmation.
-  \item Enable Anonymous Auth if guest mode is required.
-  \item Set the Site URL and redirect URLs for local and hosted environments.
-  \item Apply the active database migrations in \texttt{supabase/migrations}.
-  \item Deploy the two required Edge Functions:
-  \begin{itemize}
-    \item \texttt{material-worker}
-    \item \texttt{guest-sandbox-cleanup}
-  \end{itemize}
-  \item Configure required secrets for the backend and both Edge Functions.
-  \item Deploy the web app and Python backend.
-  \item Verify the live environment and smoke-test the deployed product.
-\end{enumerate}
+\begin{table}[H]
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{1.1cm}>{\raggedright\arraybackslash}p{5.9cm}X}
+\toprule
+Step & Do this & Done when \\
+\midrule
+1 & Create the target Supabase project and enable email/password auth, email confirmation, and Anonymous Auth if guest mode is required. & Auth settings and redirect URLs match the intended environment. \\
+2 & Apply database migrations from \texttt{supabase/migrations}. & Core tables, RLS, guest-mode schema, and support RPCs exist. \\
+3 & Deploy \texttt{material-worker} and \texttt{guest-sandbox-cleanup}. & Both functions appear in Supabase and have their required secrets. \\
+4 & Configure web and backend environment variables, especially \texttt{PYTHON\_BACKEND\_URL} and \texttt{PYTHON\_BACKEND\_API\_KEY}. & Web requests can authenticate to the backend successfully. \\
+5 & Deploy the web app and the Python backend as separate hosted services. & The live site loads and \texttt{/healthz} responds from the backend. \\
+6 & Run a smoke test: sign in, open a dashboard, upload one material, and confirm AI-backed surfaces can respond. & The release is operational end to end, not just visually deployed. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-\subsubsection*{B. Core operational responsibilities}
+\subsubsection*{Essential configuration}
 
-\begin{itemize}
-  \item Maintain environment variables for the web app, backend, and Edge Functions.
-  \item Apply the branded confirmation and recovery email templates in Supabase.
-  \item Ensure \texttt{PYTHON\_BACKEND\_URL} and backend API-key alignment across services.
-  \item Monitor guest-mode capacity and cleanup health.
-  \item Run post-deploy smoke tests after releases.
-  \item Investigate common failure modes such as:
-  \begin{itemize}
-    \item guest entry failures;
-    \item materials stuck in \texttt{processing};
-    \item auth links redirecting to the wrong domain;
-    \item web UI loading while AI features fail due to backend or provider issues.
-  \end{itemize}
-\end{itemize}
+\begin{table}[H]
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{5.5cm}X}
+\toprule
+Surface & Essential variables & Why they matter \\
+\midrule
+Web app & Supabase URL/key, site URL, admin secret, backend URL/key & Enables auth redirects, admin server actions, and authenticated calls to the backend. \\
+Backend & Shared backend key, one AI provider, Supabase service key, worker token & Allows the backend to serve AI routes, talk to Supabase, and dispatch material jobs. \\
+Material worker & Supabase service key, embedding provider secret, worker token & Required for queue-backed chunking, embedding, and material status updates. \\
+Guest cleanup function & Supabase service key, cleanup token & Required to expire guest sandboxes, release quota, and remove demo artifacts safely. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-\subsubsection*{C. Common operating commands}
-
-\textbf{Local development and verification}
+\textbf{Minimal web example (\texttt{web/.env.local})}
 
 \begin{verbatim}
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+SUPABASE_SECRET_KEY=<service-role-key>
+PYTHON_BACKEND_URL=http://localhost:8001
+PYTHON_BACKEND_API_KEY=<shared-backend-key>
+NEXT_PUBLIC_GUEST_MODE_ENABLED=false
+\end{verbatim}
+
+\textbf{Minimal backend shell or env-loader example}
+
+\begin{verbatim}
+PYTHON_BACKEND_API_KEY=<same-shared-backend-key>
+AI_PROVIDER_DEFAULT=openrouter
+OPENROUTER_API_KEY=<provider-key>
+OPENROUTER_MODEL=<chat-model>
+OPENROUTER_EMBEDDING_MODEL=<embedding-model>
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+MATERIAL_WORKER_TOKEN=<edge-function-token>
+\end{verbatim}
+
+\textbf{Edge Function notes}
+\begin{itemize}
+  \item Keep Edge Function secrets in Supabase Edge Function Secrets, not in Vercel-only configuration.
+  \item Apply the branded confirmation and recovery templates in Supabase Auth before stakeholder demos.
+  \item When guest mode is enabled, treat Anonymous Auth, guest seed data, and cleanup automation as one deployment feature.
+\end{itemize}
+
+\subsubsection*{Core commands}
+
+\begin{verbatim}
+# Local setup and verification
 pnpm install
 pip install -r backend/requirements.txt
 pnpm dev
-uvicorn app.main:app --app-dir backend --host 0.0.0.0 \
-  --port 8001 --reload
+uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload
 pnpm test
 python3 -m unittest discover -s backend/tests -p 'test_*.py'
-\end{verbatim}
 
-\textbf{Supabase deployment and schema operations}
-
-\begin{verbatim}
+# Supabase deploy and function updates
 npx supabase db push
 npx supabase functions deploy material-worker
 npx supabase functions deploy guest-sandbox-cleanup
-\end{verbatim}
 
-\textbf{Frontend deployment}
-
-\begin{verbatim}
+# Frontend deploy and backend health
 cd web
 npx --yes vercel --yes --prod
-\end{verbatim}
-
-\textbf{Backend health verification}
-
-\begin{verbatim}
 curl https://<backend-domain>/healthz
 \end{verbatim}
 
-\subsubsection*{D. Useful Supabase Dashboard and SQL operations}
+\subsubsection*{Frequent support reference}
 
-The Supabase Dashboard is the main administrative control surface for account support, data
-inspection, and operational maintenance. Authentication issues can be handled in
-\textbf{Authentication -> Users}, storage artifacts can be reviewed in \textbf{Storage}, and
-targeted data operations can be executed through the \textbf{SQL Editor}. The following queries
-are directly aligned with the current schema.
+\begingroup
+\small
+\setlength\LTleft{0pt}
+\setlength\LTright{0pt}
+\begin{longtable}{@{}>{\bfseries\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{5.1cm}>{\raggedright\arraybackslash}p{6.0cm}@{}}
+\toprule
+Task & Query or action & Use this when \\
+\midrule
+\endfirsthead
+\toprule
+Task & Query or action & Use this when \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\bottomrule
+\endlastfoot
+Review accounts & Join \texttt{auth.users} with \texttt{public.profiles}. & You need to confirm email state, display name, or whether a user is teacher or student. \\
+Register admin & Insert the user's UUID into \texttt{public.admin\_users}. & A new operator needs platform-admin capability without changing the normal profile role model. \\
+Review classes & Query \texttt{public.classes} for title, subject, join code, archived state. & You need to verify class creation, join-code sharing, or archive status. \\
+Inspect materials & Join the materials table with the processing-job table. & A teacher reports a material stuck in \texttt{processing} or \texttt{failed}. \\
+Inspect guest sandboxes & Query \texttt{public.guest\_sandboxes} for role, status, expiry, and last activity. & Guest-mode cleanup or quota behaviour looks wrong. \\
+Manual guest cleanup & Run the guest cleanup RPC from the SQL Editor. & Cleanup is lagging and you need a manual pass from the SQL Editor. \\
+\end{longtable}
+\endgroup
 
-\textbf{Inspect user accounts, confirmation state, and profile roles}
+\noindent In practice, the two SQL views worth saving in the Supabase editor are the
+\texttt{auth.users + public.profiles} join for account support and the
+\texttt{materials + material\_processing\_jobs} join for stuck uploads.
 
-\begin{verbatim}
-select
-  u.id,
-  u.email,
-  u.email_confirmed_at,
-  p.display_name,
-  p.account_type
-from auth.users u
-left join public.profiles p on p.id = u.id
-order by u.created_at desc;
-\end{verbatim}
+\subsubsection*{Troubleshooting}
 
-\textbf{Register a platform administrator}
-
-\begin{verbatim}
-insert into public.admin_users (user_id)
-values ('<user-uuid>'::uuid)
-on conflict (user_id) do nothing;
-\end{verbatim}
-
-\textbf{Update a user's display name}
-
-\begin{verbatim}
-update public.profiles
-set display_name = '<new-display-name>'
-where id = '<user-uuid>'::uuid;
-\end{verbatim}
-
-\textbf{Review classes and join codes}
-
-\begin{verbatim}
-select id, title, subject, level, join_code, archived, created_at
-from public.classes
-order by created_at desc;
-\end{verbatim}
-
-\textbf{Inspect material-processing state and latest job status}
-
-\begin{verbatim}
-select
-  m.id,
-  c.title as class_title,
-  m.title as material_title,
-  m.status,
-  j.stage,
-  j.attempts,
-  j.last_error,
-  m.created_at
-from public.materials m
-join public.classes c on c.id = m.class_id
-left join public.material_processing_jobs j on j.material_id = m.id
-order by m.created_at desc;
-\end{verbatim}
-
-\textbf{Review guest sandboxes and manually mark a sandbox for cleanup}
-
-\begin{verbatim}
-select id, user_id, class_id,
-       status, guest_role, expires_at, last_seen_at
-from public.guest_sandboxes
-order by created_at desc;
-
-update public.guest_sandboxes
-set status = 'expired', expires_at = now()
-where id = '<sandbox-uuid>'::uuid;
-\end{verbatim}
-
-\textbf{Run a manual cleanup pass from the SQL editor when required}
-
-\begin{verbatim}
-select public.cleanup_expired_guest_sandboxes(50);
-\end{verbatim}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{4.7cm}X}
+\toprule
+Symptom & First checks & Likely recovery action \\
+\midrule
+Guest entry fails & Guest-mode web flag, Anonymous Auth, guest seed data, cleanup function deployment & Re-enable Anonymous Auth, confirm guest schema/seed state, and verify cleanup-tokenized deployment. \\
+Material stays in \texttt{processing} & \texttt{material-worker} deployment, worker token, job \texttt{attempts} and \texttt{last\_error}, embedding provider secrets & Redeploy the worker, fix missing secrets, then re-run the teacher upload path. \\
+Auth links use the wrong domain & \texttt{NEXT\_PUBLIC\_SITE\_URL}, Supabase Site URL, redirect URL list & Align local, preview, and production URLs so confirmation and recovery callbacks return to the right environment. \\
+Web UI loads but AI actions fail & Backend \texttt{/healthz}, \texttt{PYTHON\_BACKEND\_URL}, shared backend API key, provider keys & Restore backend reachability first, then verify provider and Supabase service credentials. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \subsection{Instructor Manual}
 
-\subsubsection*{A. Create an account and sign in}
+\noindent The instructor workflow is anchored by the blueprint lifecycle: draft, review, approve,
+publish. Students only receive grounded AI chat and blueprint-powered activities after the class
+blueprint has been published, so the fastest way to productive use is to move one class cleanly
+through that pipeline.
 
-Public auth can start either from the landing-page modal flow or from the dedicated fallback routes
-\texttt{/login}, \texttt{/register}, and \texttt{/forgot-password}. Confirmation and password-recovery
-emails return through the same server-side callback route before the user is redirected back into the
-appropriate auth surface.
-
-\begin{enumerate}
-  \item Open the deployed application.
-  \item Choose \textbf{Create an account}.
-  \item Select the \textbf{teacher} account type.
-  \item Enter email and password.
-  \item Verify the email using the confirmation link.
-  \item Sign in and open the \textbf{Teacher Dashboard}.
-\end{enumerate}
-
-\subsubsection*{B. Create and manage a class}
+\subsubsection*{Quick Start}
 
 \begin{enumerate}
-  \item From the Teacher Dashboard, click \textbf{Create class}.
-  \item Fill in class title and optional metadata such as subject and level.
-  \item Submit the form.
-  \item The system creates the class and generates a join code.
-  \item Share the join code with students so they can enroll from the student side.
+  \item Register as a \textbf{teacher} from the landing page or \texttt{/register}, confirm the email,
+  and open the \textbf{Teacher Dashboard}.
+  \item Choose \textbf{Create class}, enter the class title and any optional subject or level details,
+  then save the class.
+  \item Open the class workspace and upload the first PDF, DOCX, or PPTX materials.
+  \item Wait until uploaded materials move from \texttt{processing} to \texttt{ready}.
+  \item Open \textbf{Blueprint Studio}, generate the draft, review it, approve it, and publish it.
+  \item Create the first chat assignment, quiz, or flashcards activity and assign or publish it for
+  students.
 \end{enumerate}
 
-\subsubsection*{C. Upload teaching materials}
-
-\begin{enumerate}
-  \item Open the target class.
-  \item Use the materials upload form to upload PDF, DOCX, or PPTX files.
-  \item Wait for the system to process the material.
-  \item Monitor status as \texttt{processing}, \texttt{ready}, or \texttt{failed}.
-  \item When the material is ready, use the actions menu to preview, download, or delete it.
-\end{enumerate}
-
-\subsubsection*{D. Generate and publish the Course Blueprint}
-
-\begin{enumerate}
-  \item Open the class blueprint page.
-  \item Trigger blueprint generation after materials are ready.
-  \item Review the generated summary, topics, and objectives.
-  \item Edit the blueprint draft where needed.
-  \item Approve the draft and move it into overview.
-  \item Publish the blueprint when it is ready for student use.
-\end{enumerate}
-
-\subsubsection*{E. Create learning activities}
-
-The current release supports three main activity types:
+\textbf{Before students can use AI-backed learning surfaces}
 \begin{itemize}
-  \item chat assignments;
-  \item quizzes;
-  \item flashcards.
+  \item Materials should be uploaded and marked \texttt{ready}.
+  \item The blueprint should be published, not only saved as a draft.
+  \item Student-facing activities should be published or assigned from the class workspace.
 \end{itemize}
 
-To create an activity:
-\begin{enumerate}
-  \item Ensure a published blueprint exists.
-  \item Open the relevant activity creation route from the class page.
-  \item Generate or configure the activity.
-  \item Review and edit the content where applicable.
-  \item Publish or assign it to the class.
-\end{enumerate}
+\subsubsection*{Core tasks}
 
-\subsubsection*{F. Review submissions}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{3.9cm}X}
+\toprule
+Task & Where in the UI & Practical result \\
+\midrule
+Create class & Teacher Dashboard or \textbf{My Classes} & A new class shell is created and a join code becomes available for student enrollment. \\
+Upload materials & Class workspace material area & Source files are stored, processed, and made available for preview, download, and blueprint generation. \\
+Publish blueprint & \textbf{Blueprint} page in the class workspace & The class receives a published study guide that unlocks grounded AI chat and activity generation. \\
+Create chat assignment & Class overview \texttt{New chat assignment} path & Students receive a guided conversation flow with persisted transcript and reflection review. \\
+Generate quiz & Quiz creation route from the class page & A blueprint-grounded quiz draft can be edited, published, and assigned. \\
+Generate flashcards & Flashcards creation route from the class page & A flashcard set can be refined, published, and assigned for review practice. \\
+Review submissions & Assignment review pages & Completion state, answers, transcripts, scores, and teacher feedback are visible in one place. \\
+Use Insights & \textbf{Insights} page for the class & Charts, summaries, AI narrative, and intervention suggestions support follow-up teaching action. \\
+Preview student view & Class workspace student-preview mode & The instructor can check the learner experience without switching accounts. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-\begin{enumerate}
-  \item Open an assignment's review page.
-  \item View student recipients, completion states, and submitted content.
-  \item For chat assignments, inspect transcript and reflection content.
-  \item For quiz assignments, inspect scores and answers.
-  \item For flashcards, inspect review statistics and score summaries.
-  \item Save teacher feedback for the selected submission.
-\end{enumerate}
+\noindent Recommended sequence for a new class: set up the class, upload and verify materials,
+publish the blueprint, create the first activities, then use review pages and Insights as student
+work starts to arrive.
 
-\subsubsection*{G. Monitor class progress and teaching support}
+\subsubsection*{Reference notes}
 
-\begin{enumerate}
-  \item Open the class overview to see the adaptive teaching brief.
-  \item Refresh the brief when more activity data becomes available.
-  \item Open \textbf{Insights} for the class intelligence dashboard.
-  \item Review charts, student summaries, AI narrative, and intervention suggestions.
-  \item Use the natural-language data query panel for custom chart-oriented questions.
-\end{enumerate}
-
-\subsubsection*{H. Preview the student experience}
-
-\begin{enumerate}
-  \item Open the class page as a teacher.
-  \item Activate student preview mode using the student-view route state.
-  \item Inspect how published blueprint, AI chat, and assignment widgets appear to students.
-  \item Exit preview mode to return to the teacher control surface.
-\end{enumerate}
+\begin{itemize}
+  \item Public auth uses the same shared surface as the student side. Teachers can start from the
+  home modal or the fallback routes \texttt{/login}, \texttt{/register}, and
+  \texttt{/forgot-password}.
+  \item Student preview is useful for validating that published blueprint widgets, AI chat, and
+  assignment surfaces are visible exactly as intended.
+  \item The current release centers teaching activity around three implemented activity families:
+  chat assignments, quizzes, and flashcards.
+\end{itemize}
 
 \subsection{Student Manual}
 
-\subsubsection*{A. Create an account and sign in}
+\noindent The student experience is intentionally narrower than the teacher experience. Its job is to
+help learners join the right class quickly, understand what is available now, and move between the
+published blueprint, AI chat, and assigned activities without crossing into teacher-only controls.
 
-Students use the same shared auth surface as teachers. They can start from the landing-page modal or
-from the dedicated auth pages, and email confirmation/recovery links are completed through the same
-server-side callback path before the final redirect back into the app.
-
-\begin{enumerate}
-  \item Open the deployed application.
-  \item Choose \textbf{Create an account}.
-  \item Select the \textbf{student} account type.
-  \item Enter email and password.
-  \item Verify the email using the confirmation link.
-  \item Sign in and open the \textbf{Student Dashboard}.
-\end{enumerate}
-
-\subsubsection*{B. Join a class}
+\subsubsection*{Quick Start}
 
 \begin{enumerate}
-  \item From the Student Dashboard or sidebar, open \textbf{Join class}.
-  \item Enter the join code provided by the instructor.
-  \item Submit the form.
-  \item After joining successfully, open the class workspace.
+  \item Register as a \textbf{student} from the landing page or \texttt{/register}, confirm the email,
+  and open the \textbf{Student Dashboard}.
+  \item Open \textbf{Join class} from the dashboard or sidebar and enter the join code from the
+  instructor.
+  \item Open the joined class workspace and check whether the blueprint and activities are already
+  published.
+  \item Use the published blueprint first to review topics and learning objectives.
+  \item Open AI chat or the assigned quiz, flashcards, or chat assignment and complete the required
+  work.
+  \item Revisit the dashboard, Settings, or Help pages whenever you need to track progress or manage
+  account details.
 \end{enumerate}
 
-\subsubsection*{C. Use the student dashboard}
+\subsubsection*{Dashboard and assignment states}
 
-The student dashboard organizes assignments into categories such as:
-\begin{itemize}
-  \item due now;
-  \item upcoming;
-  \item completed.
-\end{itemize}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{3.9cm}X}
+\toprule
+State or area & Where to look & What it means \\
+\midrule
+Due now & Student Dashboard & Work that needs immediate attention and should be opened first. \\
+Upcoming & Student Dashboard & Assigned work that is visible but not yet urgent. \\
+Completed & Student Dashboard & Work that has already been finished and can be revisited for review. \\
+Submitted or reviewed & Inside the assignment page & The latest attempt or reflection has been saved, and teacher review may now be visible. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-Students can use the dashboard to quickly identify overdue or active work and jump directly into
-the relevant class or assignment.
+\subsubsection*{Tools inside the class workspace}
 
-\subsubsection*{D. Navigate the class workspace}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{2.7cm}X>{\raggedright\arraybackslash}p{3.3cm}}
+\toprule
+Surface & What it is for & Important note \\
+\midrule
+Published blueprint & Study guide for topics, objectives, and approved class focus & It is the best starting point before quizzes or AI chat. \\
+AI chat & Ask grounded questions about the class content & Chat is available after the instructor publishes the blueprint. \\
+Chat assignment & Complete a guided conversation and submit the required reflection & This is different from open practice chat because it is reviewed as class work. \\
+Quiz & Answer blueprint-grounded questions and submit the attempt & Reopen the assignment later to review score and feedback state. \\
+Flashcards & Review generated cards and submit progress & Good for repetition and pre-quiz revision. \\
+Settings & Update display name and use the password-change flow & Password change uses current-password verification plus a code step. \\
+Help & Open role-specific FAQ and next-step guidance & Useful when you are not sure where a class feature is located. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-Within a class, students can access:
-\begin{itemize}
-  \item AI chat;
-  \item chat assignments;
-  \item quizzes;
-  \item flashcards;
-  \item the published blueprint.
-\end{itemize}
+\subsubsection*{If something seems missing}
 
-The workspace is intentionally more focused and less administratively dense than the teacher view.
-
-\subsubsection*{E. Use AI chat}
-
-\begin{enumerate}
-  \item Open the class page and select the AI chat widget or direct chat view.
-  \item Ask questions related to the class materials and published blueprint.
-  \item Review the grounded AI response.
-  \item Continue the conversation as needed.
-\end{enumerate}
-
-AI chat becomes available once the instructor publishes the blueprint, ensuring that responses are
-grounded in approved class content.
-
-\subsubsection*{F. Complete assignments}
-
-\begin{enumerate}
-  \item Open the assigned activity from the dashboard or class workspace.
-  \item For chat assignments, complete the conversation and submit the required reflection.
-  \item For quizzes, answer the questions and submit the attempt.
-  \item For flashcards, complete the review session and submit progress.
-  \item Revisit the assignment later to see updated status such as submitted or reviewed.
-\end{enumerate}
-
-\subsubsection*{G. Use the published blueprint}
-
-\begin{enumerate}
-  \item Open the blueprint widget or blueprint page inside the class.
-  \item Review topics and learning objectives.
-  \item Use the blueprint as a study guide before attempting quizzes or asking AI chat questions.
-\end{enumerate}
-
-\subsubsection*{H. Manage account settings}
-
-\begin{enumerate}
-  \item Open \textbf{Settings}.
-  \item Update display name if needed.
-  \item Use the two-step password change flow with verification code if required.
-  \item Open \textbf{Help} for role-specific FAQ and suggested next steps.
-\end{enumerate}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.8cm}X}
+\toprule
+Situation & First thing to check & Most likely explanation \\
+\midrule
+No class visible & Confirm you joined successfully with the correct code from \texttt{/join}. & The class has not been joined yet, or the code was entered incorrectly. \\
+AI chat is unavailable & Check whether the class blueprint is published. & AI chat is intentionally gated behind the published blueprint. \\
+No assignments appear & Re-check the dashboard and the class workspace. & The instructor may not have published or assigned the activity yet. \\
+Need to change account details & Open \textbf{Settings} or \textbf{Help}. & Profile rename and password management live outside the class workspace. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \subsection{Supplementary Guest Demo Flow}
 
-In addition to the required admin, instructor, and student manuals, the guest workflow is worth
-documenting because it is a significant implemented feature.
+Guest mode is not part of the main three-role operating model, but it is important for demos and
+evaluation. It behaves like a sandboxed temporary classroom rather than a permanent account.
 
-\begin{enumerate}
-  \item From the landing page, choose \textbf{Continue as guest} when guest mode is enabled.
-  \item The system provisions an anonymous authenticated session and clones sandbox data.
-  \item Explore the classroom in teacher view or switch to student view.
-  \item Reset the sandbox if a fresh walkthrough is needed.
-  \item Create a permanent account from a clean state if you want to move into normal usage.
-\end{enumerate}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}p{3.8cm}X}
+\toprule
+Action & Where it starts & What happens \\
+\midrule
+Enter guest mode & Landing page \textbf{Continue as guest} button when guest mode is enabled & The app creates an anonymous authenticated session and provisions a sandbox classroom. \\
+Explore both roles & Guest class workspace & The demo can switch between teacher and student perspectives without affecting real user data. \\
+Reset sandbox & Guest controls inside the sandbox flow & A fresh walkthrough can be created when the current one becomes cluttered. \\
+Create permanent account & Exit the guest-only path and use normal auth & Demo exploration stays isolated from real teacher or student accounts. \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \newpage
 \appendix
