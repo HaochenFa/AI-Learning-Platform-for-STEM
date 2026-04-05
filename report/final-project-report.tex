@@ -219,6 +219,11 @@ Guest & Enter a sandbox demo, explore both teacher and student views through rol
 \end{tabularx}
 \end{table}
 
+In addition to these primary personas, the implementation also supports a class-scoped
+\textbf{teaching assistant (TA)} authorization role. TA is not exposed as a separate permanent
+signup account type; instead, it exists as an enrollment-level role that can access the same
+teacher-oriented class workflows where the route logic permits \texttt{teacher} or \texttt{ta}.
+
 \subsection{Feature set}
 
 \begin{table}[H]
@@ -228,7 +233,7 @@ Guest & Enter a sandbox demo, explore both teacher and student views through rol
 \toprule
 Feature area & Current implementation \\
 \midrule
-Authentication & Email/password sign-in for permanent accounts, email verification, password reset, and guest access via Supabase Anonymous Auth. \\
+Authentication & Email/password sign-in for permanent accounts, a shared \texttt{AuthSurface} for sign-in/sign-up/forgot-password, landing-page modal auth via query params, fallback pages at \texttt{/login}, \texttt{/register}, and \texttt{/forgot-password}, SSR confirmation/recovery handling via \texttt{/auth/confirm}, dedicated \texttt{/reset-password} completion, and guest access via Supabase Anonymous Auth. \\
 Class management & Teacher class creation, student join-by-code, role-aware dashboards, and class-scoped navigation. \\
 Materials workflow & PDF, DOCX, and PPTX upload; asynchronous extraction/chunking/embedding; preview, download, and delete actions. \\
 Blueprint workflow & Draft, overview, and published blueprint lifecycle with teacher editing and publish control. \\
@@ -314,7 +319,7 @@ protection.
 Important web-layer characteristics include:
 \begin{itemize}
   \item role-specific dashboards at \texttt{/teacher/dashboard} and \texttt{/student/dashboard};
-  \item unified auth via a shared \texttt{AuthSurface} used in modal and dedicated-page forms;
+  \item a home-first auth model via a shared \texttt{AuthSurface} used in the landing-page modal and dedicated routes such as \texttt{/login}, \texttt{/register}, and \texttt{/forgot-password};
   \item middleware-enforced redirects for unauthenticated, unverified, and expired guest sessions;
   \item server actions for class creation, join-by-code, materials, assignments, and settings;
   \item a shared design system with centralized icons, tokens, and motion presets.
@@ -324,6 +329,13 @@ On the teacher side, the class overview acts as a control hub for materials, ass
 teaching brief, and monitoring. On the student side, the class workspace is organized around
 focus widgets for AI chat, assignments, and the published blueprint. A teacher can also preview
 the student experience without changing accounts.
+
+The auth surface is more substantial than a basic login form. The current implementation supports a
+landing-page modal flow triggered by \texttt{?auth=...}, fallback dedicated pages, server-side email
+confirmation and password-recovery callbacks through \texttt{/auth/confirm}, a dedicated
+\texttt{/reset-password} completion page, and URL-driven resend states for sign-up and forgot-password
+recovery. This improves consistency because the same auth component and redirect model are reused
+across both public entry points and email-link return flows.
 
 \subsection{Python backend design}
 
@@ -438,6 +450,8 @@ The current implementation documents several security-conscious choices:
 \begin{itemize}
   \item permanent users are limited to teacher or student account types;
   \item \texttt{profiles.account\_type} is immutable after signup;
+  \item class-scoped teacher permissions can also be granted through the enrollment-level
+  \texttt{ta} role without turning TA into a separate permanent account type;
   \item guest sessions are scoped by \texttt{sandbox\_id};
   \item cursor inputs to PostgREST are validated before interpolation;
   \item service-to-service auth between web and backend uses a shared backend API key.
@@ -450,13 +464,21 @@ marketing demo, the system provisions a real anonymous session and clones a seed
 a sandboxed data space. Guests can switch between teacher and student views, reset the demo, and
 observe realistic product behavior without accessing real user data.
 
-The current quota model enforces:
+The current quota and lifecycle model combines Supabase-side and backend-side guardrails:
 \begin{itemize}
-  \item a global cap on active guest sessions;
-  \item a per-hour cap on newly created guest sessions;
-  \item backend limits on guest AI usage and concurrent in-flight AI requests;
+  \item a Supabase-managed \texttt{guest\_session\_quota} control table with RPCs that gate
+  sandbox creation and quota release;
+  \item current default caps of 60 active guest sandboxes globally and 20 newly created
+  sandboxes per hour;
+  \item backend limits on guest AI feature usage plus an \texttt{asyncio.Semaphore}-based
+  concurrency gate for in-flight guest AI requests;
   \item expiry after 32 hours maximum or 8 hours of inactivity.
 \end{itemize}
+
+Cleanup is also part of the hardening story, not an afterthought. The
+\texttt{guest-sandbox-cleanup} path and related SQL cleanup functions release remaining quota counters,
+delete sandbox-scoped class data, and remove anonymous auth users so that demo sessions do not leak
+storage, quota state, or stale identities over time.
 
 This is a thoughtful design because it balances demo accessibility with safety, resource control,
 and cleanup reliability.
@@ -650,6 +672,9 @@ The documented deployment workflow includes:
 
 Operationally, this is a mature approach for a course project because it recognizes that deployment
 is not just ``push frontend to Vercel''; the data plane and async workers also have to be correct.
+For guest mode specifically, deployment also has to keep the Supabase quota RPCs, backend guest-limit
+environment variables, and cleanup worker aligned so that session caps, inactivity expiry, and
+concurrency guardrails behave consistently across the whole stack.
 
 \subsection{Database evolution}
 
@@ -897,6 +922,11 @@ select public.cleanup_expired_guest_sandboxes(50);
 
 \subsubsection*{A. Create an account and sign in}
 
+Public auth can start either from the landing-page modal flow or from the dedicated fallback routes
+\texttt{/login}, \texttt{/register}, and \texttt{/forgot-password}. Confirmation and password-recovery
+emails return through the same server-side callback route before the user is redirected back into the
+appropriate auth surface.
+
 \begin{enumerate}
   \item Open the deployed application.
   \item Choose \textbf{Create an account}.
@@ -988,6 +1018,10 @@ To create an activity:
 \subsection{Student Manual}
 
 \subsubsection*{A. Create an account and sign in}
+
+Students use the same shared auth surface as teachers. They can start from the landing-page modal or
+from the dedicated auth pages, and email confirmation/recovery links are completed through the same
+server-side callback path before the final redirect back into the app.
 
 \begin{enumerate}
   \item Open the deployed application.
