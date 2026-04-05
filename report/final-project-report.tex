@@ -111,39 +111,46 @@ deployment topology, and role-based user workflows.
 
 \section{Executive Summary}
 
-This project delivers a production-oriented STEM learning platform that integrates
-Generative AI into classroom workflows rather than treating AI as a detached chatbot.
-Its main idea is to let instructors upload teaching materials, convert those materials
-into a structured \emph{Course Blueprint}, and use that blueprint as the source of truth
-for downstream student learning activities such as grounded chat, quizzes, flashcards,
-assignment review, and class-level insights.
+This project delivers a production-oriented STEM learning platform that places Generative AI inside
+the real classroom operating model rather than exposing it as a detached chatbot. Its core idea is
+simple but powerful: teachers should be able to transform their own teaching materials into a
+structured \emph{Course Blueprint}, and that blueprint should govern what students study, what the
+AI can generate, and what the teacher can review afterwards.
 
-The implemented system is split into three cooperating runtime surfaces:
+That blueprint-centered loop gives the product its practical value. Teachers upload materials, the
+system processes and structures them, AI helps generate and refine the class blueprint, students
+learn through blueprint-grounded chat and activities, and the resulting student work flows back into
+review, class intelligence, and adaptive teaching support. In other words, AI is used here to
+support the full teaching cycle from preparation to intervention, not just to answer questions on
+demand.
+
+The implemented platform serves three concrete audiences. Teachers receive management and decision
+surfaces for class creation, material curation, blueprint publishing, assignment authoring,
+submission review, chat monitoring, and teaching insight interpretation. Students receive a separate
+guided workspace for join-by-code class access, published blueprint study, always-on class chat, and
+tracked assignment completion. Guests receive a sandboxed but realistic evaluation path with
+anonymous entry, role switching, reset, and data isolation, making the product demonstrable without
+touching real classroom data.
+
+Operationally, the system is implemented across three cooperating runtime surfaces: a \textbf{Next.js
+16} web application for role-aware user experience and server actions, a \textbf{Python FastAPI}
+backend for AI orchestration and workflow-heavy service logic, and a \textbf{Supabase} project for
+authentication, PostgreSQL persistence, row-level security, storage, and background-job support.
+This split gives the platform clearer operational boundaries and allows AI orchestration,
+persistence, and lifecycle concerns to be treated as first-class system responsibilities.
+
+The current repository also provides strong evidence of implementation maturity:
 \begin{itemize}
-  \item a \textbf{Next.js 16} web application for role-aware user experience, route handling,
-  and server actions;
-  \item a \textbf{Python FastAPI} backend for AI orchestration, class workflows, analytics,
-  and chat memory management; and
-  \item a \textbf{Supabase} project for authentication, PostgreSQL persistence, row-level
-  security, storage, queue-backed material processing, and guest sandbox lifecycle support.
+  \item \textbf{Live product:} the deployed system is available at \LiveProductUrl.
+  \item \textbf{Repository scale:} the current snapshot contains 411 commits, including 92 merge
+  commits, alongside 23 active database migrations.
+  \item \textbf{Quality signals:} the codebase currently includes 60 web test files, 17 backend
+  test files, 9 Playwright end-to-end specifications, and a documented deployment topology spanning
+  the web app, Python backend, and Supabase services.
 \end{itemize}
 
-From a product perspective, the platform supports:
-\begin{itemize}
-  \item \textbf{instructors} who create classes, upload materials, generate and
-  publish blueprints, create assignments, review submissions, and inspect analytics;
-  \item \textbf{students} who join classes with join codes, use the published blueprint,
-  complete assignments, and learn through grounded AI chat; and
-  \item \textbf{guest users} who can explore the product through a realistic sandboxed demo
-  flow backed by Supabase Anonymous Auth and sandbox-cloned data.
-\end{itemize}
-
-The repository also demonstrates a meaningful software engineering process. The current
-snapshot contains 403 commits, 92 merge commits, 23 active database migrations, 61 web test
-files, 20 backend test files, 10 Playwright end-to-end specifications, and a documented
-deployment topology across web, backend, and Supabase services. The live deployed product is
-available at \LiveProductUrl. The result is not a toy prototype, but a coordinated educational
-platform with clear subsystem boundaries and operational considerations.
+Taken together, the current snapshot represents a coordinated educational product with credible
+implementation depth and clear operational boundaries, not a toy prototype or a one-off AI demo.
 
 \section{Project Background and Motivation}
 
