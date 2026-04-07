@@ -53,10 +53,6 @@ vi.mock("@/lib/perf", () => ({
   startServerTimer: () => ({ end: vi.fn() }),
 }));
 
-vi.mock("@/app/classes/actions", () => ({
-  uploadMaterialMutation: vi.fn(),
-}));
-
 vi.mock("@/lib/actions/teaching-brief", () => ({
   getClassTeachingBrief: vi.fn(),
 }));

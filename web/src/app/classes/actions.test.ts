@@ -2,16 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createClass,
   joinClass,
-  uploadMaterial,
+  prepareMaterialUpload,
+  finalizeMaterialUpload,
+  triggerMaterialProcessing,
   getMaterialSignedUrl,
   deleteMaterial,
 } from "@/app/classes/actions";
 import { redirect } from "next/navigation";
 import { generateJoinCode } from "@/lib/join-code";
-import {
-  detectMaterialKind,
-  sanitizeFilename,
-} from "@/lib/materials/extract-text";
+import { sanitizeFilename } from "@/lib/materials/extract-text";
 import { requireGuestOrVerifiedUser, requireVerifiedUser } from "@/lib/auth/session";
 
 vi.mock("next/navigation", () => ({
@@ -38,7 +37,6 @@ vi.mock("@/lib/materials/extract-text", async () => {
   );
   return {
     ...actual,
-    detectMaterialKind: vi.fn(),
     sanitizeFilename: vi.fn((name: string) => name),
   };
 });
@@ -46,17 +44,31 @@ vi.mock("@/lib/materials/extract-text", async () => {
 const supabaseFromMock = vi.fn();
 const supabaseRpcMock = vi.fn();
 const supabaseStorageMock = {
-  from: vi.fn(() => ({
-    upload: vi.fn().mockResolvedValue({ error: null }),
-    remove: vi.fn().mockResolvedValue({ error: null }),
-  })),
+  from: vi.fn(),
 };
 
 const adminBucketMock = {
   upload: vi.fn().mockResolvedValue({ error: null }),
   remove: vi.fn().mockResolvedValue({ error: null }),
+  createSignedUploadUrl: vi.fn().mockResolvedValue({
+    data: {
+      signedUrl: "https://test.supabase.co/storage/v1/upload/sign/file.pdf?token=test-token",
+      token: "test-token",
+    },
+    error: null,
+  }),
   createSignedUrl: vi.fn().mockResolvedValue({
     data: { signedUrl: "https://test.supabase.co/storage/v1/sign/file.pdf" },
+    error: null,
+  }),
+  info: vi.fn().mockResolvedValue({
+    data: {
+      id: "obj-1",
+      name: "file.pdf",
+      bucketId: "materials",
+      size: 1024,
+      contentType: "application/pdf",
+    },
     error: null,
   }),
 };
@@ -68,8 +80,25 @@ const adminStorageMock = {
 const bucketMock = {
   upload: vi.fn().mockResolvedValue({ error: null }),
   remove: vi.fn().mockResolvedValue({ error: null }),
+  createSignedUploadUrl: vi.fn().mockResolvedValue({
+    data: {
+      signedUrl: "https://test.supabase.co/storage/v1/upload/sign/file.pdf?token=test-token",
+      token: "test-token",
+    },
+    error: null,
+  }),
   createSignedUrl: vi.fn().mockResolvedValue({
     data: { signedUrl: "https://test.supabase.co/storage/v1/sign/file.pdf" },
+    error: null,
+  }),
+  info: vi.fn().mockResolvedValue({
+    data: {
+      id: "obj-1",
+      name: "file.pdf",
+      bucketId: "materials",
+      size: 1024,
+      contentType: "application/pdf",
+    },
     error: null,
   }),
 };
@@ -90,6 +119,8 @@ vi.mock("@/lib/auth/session", () => ({
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: vi.fn(() => ({
     storage: adminStorageMock,
+    from: vi.fn(),
+    rpc: vi.fn(),
   })),
 }));
 
@@ -146,6 +177,54 @@ describe("class actions", () => {
     vi.clearAllMocks();
     delete process.env.PYTHON_BACKEND_URL;
     delete process.env.PYTHON_BACKEND_API_KEY;
+    supabaseStorageMock.from.mockReturnValue(bucketMock);
+    adminStorageMock.from.mockReturnValue(adminBucketMock);
+    bucketMock.upload.mockResolvedValue({ error: null });
+    bucketMock.remove.mockResolvedValue({ error: null });
+    bucketMock.createSignedUploadUrl.mockResolvedValue({
+      data: {
+        signedUrl: "https://test.supabase.co/storage/v1/upload/sign/file.pdf?token=test-token",
+        token: "test-token",
+      },
+      error: null,
+    });
+    bucketMock.createSignedUrl.mockResolvedValue({
+      data: { signedUrl: "https://test.supabase.co/storage/v1/sign/file.pdf" },
+      error: null,
+    });
+    bucketMock.info.mockResolvedValue({
+      data: {
+        id: "obj-1",
+        name: "file.pdf",
+        bucketId: "materials",
+        size: 1024,
+        contentType: "application/pdf",
+      },
+      error: null,
+    });
+    adminBucketMock.upload.mockResolvedValue({ error: null });
+    adminBucketMock.remove.mockResolvedValue({ error: null });
+    adminBucketMock.createSignedUploadUrl.mockResolvedValue({
+      data: {
+        signedUrl: "https://test.supabase.co/storage/v1/upload/sign/file.pdf?token=test-token",
+        token: "test-token",
+      },
+      error: null,
+    });
+    adminBucketMock.createSignedUrl.mockResolvedValue({
+      data: { signedUrl: "https://test.supabase.co/storage/v1/sign/file.pdf" },
+      error: null,
+    });
+    adminBucketMock.info.mockResolvedValue({
+      data: {
+        id: "obj-1",
+        name: "file.pdf",
+        bucketId: "materials",
+        size: 1024,
+        contentType: "application/pdf",
+      },
+      error: null,
+    });
     vi.mocked(requireVerifiedUser).mockResolvedValue({
       supabase: {
         from: supabaseFromMock,
@@ -370,151 +449,21 @@ describe("class actions", () => {
     await expectRedirect(() => joinClass(formData), "/join?error=Invalid%20join%20code");
   });
 
-  it("rejects upload when file is missing", async () => {
-    const formData = new FormData();
-    await expectRedirect(
-      () => uploadMaterial("class-1", formData),
-      "/classes/class-1?error=Material%20file%20is%20required",
-    );
-    expect(redirect).toHaveBeenCalled();
-  });
-
-  it("rejects upload when file type is unsupported", async () => {
-    const formData = new FormData();
-    const file = new File([Buffer.from("x")], "notes.txt", {
-      type: "text/plain",
-    });
-    formData.set("file", file);
-
-    vi.mocked(detectMaterialKind).mockReturnValue(null);
-
-    const message = "Unsupported file type. Allowed: .pdf, .docx, .pptx";
-    const encodedMessage = encodeURIComponent(message);
-
-    await expectRedirect(
-      () => uploadMaterial("class-1", formData),
-      `/classes/class-1?error=${encodedMessage}`,
-    );
-    expect(redirect).toHaveBeenCalled();
-  });
-
-  it("uploads a material and redirects with success", async () => {
-    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-    const file = new File([Buffer.from("hello")], "lecture.pdf", {
-      type: "application/pdf",
-    });
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("title", "Lecture 1");
-
-    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
-    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
-    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ ok: true, data: { enqueued: true, triggered: true } }),
-    } as Response);
-
-    supabaseFromMock.mockImplementation((table: string) => {
-      if (table === "classes") {
-        return makeBuilder({
-          data: { id: "class-1", owner_id: "u1" },
-          error: null,
-        });
-      }
-      if (table === "enrollments") {
-        return makeBuilder({ data: null, error: null });
-      }
-      if (table === "materials") {
-        return makeBuilder({ data: { id: "m1" }, error: null });
-      }
-      return makeBuilder({ data: null, error: null });
+  it("rejects prepareMaterialUpload when the file metadata is invalid", async () => {
+    const result = await prepareMaterialUpload("class-1", {
+      filename: "notes.txt",
+      mimeType: "text/plain",
+      sizeBytes: 1024,
     });
 
-    await expectRedirect(
-      () => uploadMaterial("class-1", formData),
-      "/classes/class-1?uploaded=processing",
-    );
-    expect(redirect).toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [dispatchUrl, dispatchInit] = fetchMock.mock.calls[0] ?? [];
-    expect(String(dispatchUrl)).toContain("/v1/materials/dispatch");
-    expect(dispatchInit).toEqual(
-      expect.objectContaining({
-        method: "POST",
-      }),
-    );
-    const dispatchPayload = JSON.parse(String((dispatchInit as RequestInit)?.body ?? "{}")) as {
-      class_id?: string;
-      material_id?: string;
-      trigger_worker?: boolean;
-    };
-    expect(dispatchPayload.class_id).toBe("class-1");
-    expect(typeof dispatchPayload.material_id).toBe("string");
-    expect(dispatchPayload.trigger_worker).toBe(true);
-    expect(supabaseRpcMock).not.toHaveBeenCalledWith(
-      "enqueue_material_job",
-      expect.anything(),
-    );
-  });
-
-  it("returns an upload error when python dispatch fails", async () => {
-    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-
-    const file = new File([Buffer.from("hello")], "lecture.pdf", {
-      type: "application/pdf",
-    });
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("title", "Lecture 1");
-
-    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
-    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
-    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+    expect(result).toEqual({
       ok: false,
-      status: 502,
-      json: async () => ({ ok: false, error: { message: "python down" } }),
-    } as Response);
-    supabaseFromMock.mockImplementation((table: string) => {
-      if (table === "classes") {
-        return makeBuilder({
-          data: { id: "class-1", owner_id: "u1" },
-          error: null,
-        });
-      }
-      if (table === "enrollments") {
-        return makeBuilder({ data: null, error: null });
-      }
-      if (table === "materials") {
-        return makeBuilder({ data: { id: "m1" }, error: null });
-      }
-      return makeBuilder({ data: null, error: null });
+      error: "Unsupported file type. Allowed: .pdf, .docx, .pptx",
     });
-
-    await expectRedirect(
-      () => uploadMaterial("class-1", formData),
-      `/classes/class-1?error=${encodeURIComponent("Failed to queue material processing: python down")}`,
-    );
-    expect(supabaseRpcMock).not.toHaveBeenCalledWith("enqueue_material_job", expect.anything());
   });
 
-  it("keeps uploaded material when python dispatch failure is ambiguous", async () => {
-    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-
-    const file = new File([Buffer.from("hello")], "lecture.pdf", {
-      type: "application/pdf",
-    });
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("title", "Lecture 1");
-
-    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
+  it("returns a signed upload URL for a valid file", async () => {
     vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
-    vi.spyOn(global, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 502,
-      json: async () => ({ ok: false, error: { message: "python down" } }),
-    } as Response);
-
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
@@ -525,29 +474,24 @@ describe("class actions", () => {
       if (table === "enrollments") {
         return makeBuilder({ data: null, error: null });
       }
-      if (table === "materials") {
-        return makeBuilder({ data: { id: "m1" }, error: null });
-      }
       return makeBuilder({ data: null, error: null });
     });
 
-    await expectRedirect(
-      () => uploadMaterial("class-1", formData),
-      `/classes/class-1?error=${encodeURIComponent("Failed to queue material processing: python down")}`,
-    );
+    const result = await prepareMaterialUpload("class-1", {
+      filename: "lecture.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1024,
+    });
 
-    const materialsCalls = supabaseFromMock.mock.calls.filter((call) => call[0] === "materials");
-    expect(materialsCalls).toHaveLength(1);
-    expect(supabaseStorageMock.from).toHaveBeenCalledTimes(1);
-    expect(supabaseRpcMock).not.toHaveBeenCalledWith(
-      "enqueue_material_job",
-      expect.anything(),
-    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.storagePath).toBe(`classes/class-1/${result.materialId}/lecture.pdf`);
+      expect(result.uploadToken).toBe("test-token");
+    }
+    expect(bucketMock.createSignedUploadUrl).toHaveBeenCalledTimes(1);
   });
 
-  it("queues guest uploads for processing instead of marking them ready immediately", async () => {
-    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-
+  it("uses the admin storage client for guest prepareMaterialUpload calls", async () => {
     vi.mocked(requireGuestOrVerifiedUser).mockResolvedValueOnce({
       supabase: {
         from: supabaseFromMock,
@@ -564,21 +508,7 @@ describe("class actions", () => {
       guestRole: "teacher",
       guestClassId: "class-1",
     } as never);
-
-    const file = new File([Buffer.from("hello")], "lecture.pdf", {
-      type: "application/pdf",
-    });
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("title", "Lecture 1");
-
-    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
     vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
-    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ ok: true, data: { enqueued: true, triggered: true } }),
-    } as Response);
-
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
         return makeBuilder({
@@ -589,33 +519,139 @@ describe("class actions", () => {
       if (table === "enrollments") {
         return makeBuilder({ data: null, error: null });
       }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const result = await prepareMaterialUpload("class-1", {
+      filename: "lecture.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1024,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(adminStorageMock.from).toHaveBeenCalledWith("materials");
+    expect(adminBucketMock.createSignedUploadUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it("finalizes a direct upload and enqueues processing without waking the worker", async () => {
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, data: { enqueued: true, triggered: false } }),
+    } as Response);
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({ data: { id: "class-1", owner_id: "u1" }, error: null });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
       if (table === "materials") {
         return makeBuilder({ data: { id: "m1" }, error: null });
       }
       return makeBuilder({ data: null, error: null });
     });
 
-    await expectRedirect(
-      () => uploadMaterial("class-1", formData),
-      "/classes/class-1?uploaded=processing",
-    );
+    const result = await finalizeMaterialUpload("class-1", {
+      materialId: "mat-1",
+      storagePath: "classes/class-1/mat-1/lecture.pdf",
+      title: "Lecture 1",
+      filename: "lecture.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1024,
+      triggerWorker: false,
+    });
 
-    expect(adminStorageMock.from).toHaveBeenCalledWith("materials");
-    expect(adminBucketMock.upload).toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      ok: true,
+      materialId: "m1",
+      uploadNotice: "processing",
+    });
+
+    const fetchMock = vi.mocked(global.fetch);
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    const dispatchPayload = JSON.parse(String((init as RequestInit)?.body ?? "{}")) as {
+      trigger_worker?: boolean;
+    };
+    expect(dispatchPayload.trigger_worker).toBe(false);
+    expect(bucketMock.info).toHaveBeenCalledWith("classes/class-1/mat-1/lecture.pdf");
   });
 
-  it("rolls back uploaded material when python dispatch fails before enqueue", async () => {
-    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-
-    const file = new File([Buffer.from("hello")], "lecture.pdf", {
-      type: "application/pdf",
+  it("rejects finalizeMaterialUpload when the storage object is missing", async () => {
+    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({ data: { id: "class-1", owner_id: "u1" }, error: null });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
     });
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("title", "Lecture 1");
+    bucketMock.info.mockResolvedValueOnce({ data: null, error: { message: "not found" } });
 
-    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
+    const result = await finalizeMaterialUpload("class-1", {
+      materialId: "mat-1",
+      storagePath: "classes/class-1/mat-1/lecture.pdf",
+      title: "Lecture 1",
+      filename: "lecture.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1024,
+      triggerWorker: false,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Uploaded file was not found in storage. Please upload it again.",
+    });
+  });
+
+  it("marks the material as failed when dispatch returns an ambiguous 5xx", async () => {
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      json: async () => ({ ok: false, error: { message: "python down" } }),
+    } as Response);
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({ data: { id: "class-1", owner_id: "u1" }, error: null });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({ data: { id: "m1" }, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const result = await finalizeMaterialUpload("class-1", {
+      materialId: "mat-1",
+      storagePath: "classes/class-1/mat-1/lecture.pdf",
+      title: "Lecture 1",
+      filename: "lecture.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1024,
+      triggerWorker: false,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Processing could not be started. Please delete this file and upload it again.",
+    });
+
+    const materialsCalls = supabaseFromMock.mock.calls.filter((call) => call[0] === "materials");
+    expect(materialsCalls).toHaveLength(2);
+    expect(bucketMock.remove).not.toHaveBeenCalled();
+  });
+
+  it("rolls back finalized uploads when dispatch fails deterministically", async () => {
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
     vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,
@@ -629,10 +665,7 @@ describe("class actions", () => {
 
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
-        return makeBuilder({
-          data: { id: "class-1", owner_id: "u1" },
-          error: null,
-        });
+        return makeBuilder({ data: { id: "class-1", owner_id: "u1" }, error: null });
       }
       if (table === "enrollments") {
         return makeBuilder({ data: null, error: null });
@@ -643,60 +676,44 @@ describe("class actions", () => {
       return makeBuilder({ data: null, error: null });
     });
 
-    await expectRedirect(
-      () => uploadMaterial("class-1", formData),
-      `/classes/class-1?error=${encodeURIComponent(
-        "Failed to queue material processing: invalid request",
-      )}`,
-    );
+    const result = await finalizeMaterialUpload("class-1", {
+      materialId: "mat-1",
+      storagePath: "classes/class-1/mat-1/lecture.pdf",
+      title: "Lecture 1",
+      filename: "lecture.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1024,
+      triggerWorker: false,
+    });
 
-    const materialsCalls = supabaseFromMock.mock.calls.filter((call) => call[0] === "materials");
-    expect(materialsCalls).toHaveLength(2);
-    expect(supabaseStorageMock.from).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      ok: false,
+      error: "Failed to queue material processing: invalid request",
+    });
+    expect(bucketMock.remove).toHaveBeenCalledWith(["classes/class-1/mat-1/lecture.pdf"]);
   });
 
-  it("rolls back uploaded material when python dispatch fails with deterministic transport error", async () => {
+  it("triggers the worker once per batch via the process endpoint", async () => {
     process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
-
-    const file = new File([Buffer.from("hello")], "lecture.pdf", {
-      type: "application/pdf",
-    });
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("title", "Lecture 1");
-
-    vi.mocked(detectMaterialKind).mockReturnValue("pdf");
-    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
-    const transportError = new TypeError("fetch failed") as TypeError & {
-      cause?: { code?: string };
-    };
-    transportError.cause = { code: "ENOTFOUND" };
-    vi.spyOn(global, "fetch").mockRejectedValueOnce(transportError);
-
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, data: { triggered: true } }),
+    } as Response);
     supabaseFromMock.mockImplementation((table: string) => {
       if (table === "classes") {
-        return makeBuilder({
-          data: { id: "class-1", owner_id: "u1" },
-          error: null,
-        });
+        return makeBuilder({ data: { id: "class-1", owner_id: "u1" }, error: null });
       }
       if (table === "enrollments") {
         return makeBuilder({ data: null, error: null });
       }
-      if (table === "materials") {
-        return makeBuilder({ data: { id: "m1" }, error: null });
-      }
       return makeBuilder({ data: null, error: null });
     });
 
-    await expectRedirect(
-      () => uploadMaterial("class-1", formData),
-      `/classes/class-1?error=${encodeURIComponent("Failed to queue material processing: fetch failed")}`,
-    );
+    const result = await triggerMaterialProcessing("class-1", 4);
 
-    const materialsCalls = supabaseFromMock.mock.calls.filter((call) => call[0] === "materials");
-    expect(materialsCalls).toHaveLength(2);
-    expect(supabaseStorageMock.from).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ ok: true });
+    const fetchMock = vi.mocked(global.fetch);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/v1/materials/process");
   });
 
   it("blocks class creation for student accounts", async () => {

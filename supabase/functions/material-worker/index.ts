@@ -57,6 +57,13 @@ type MaterialChunk = {
   tokenCount: number;
 };
 
+type QueueProcessResult = {
+  succeeded: number;
+  failed: number;
+  retried: number;
+  errors: string[];
+};
+
 const MATERIALS_BUCKET = "materials";
 const DEFAULT_BATCH_SIZE = Number(Deno.env.get("MATERIAL_WORKER_BATCH") ?? "3");
 const MAX_JOB_ATTEMPTS = Number(Deno.env.get("MATERIAL_JOB_MAX_ATTEMPTS") ?? "5");
@@ -119,54 +126,21 @@ Deno.serve(async (req) => {
   let retried = 0;
   const errors: string[] = [];
 
-  for (const message of messages) {
-    const payload = message.payload ?? {};
-    if (!payload.job_id || !payload.material_id || !payload.class_id) {
-      errors.push(`Invalid queue payload for message ${message.queue_message_id}.`);
-      await ackMessage(supabase, message.queue_message_id);
-      failed += 1;
+  const settledResults = await Promise.allSettled(
+    messages.map((message) => processQueueMessage(supabase, message)),
+  );
+
+  for (const result of settledResults) {
+    if (result.status === "fulfilled") {
+      succeeded += result.value.succeeded;
+      failed += result.value.failed;
+      retried += result.value.retried;
+      errors.push(...result.value.errors);
       continue;
     }
 
-    const claim = await claimJob(supabase, payload.job_id);
-    if (!claim) {
-      // Job no longer active; acknowledge message.
-      await ackMessage(supabase, message.queue_message_id);
-      continue;
-    }
-
-    try {
-      await processMaterialJob(supabase, payload.material_id, payload.class_id);
-      await supabase
-        .from("material_processing_jobs")
-        .update({ status: "done", stage: "complete", locked_at: null, last_error: null })
-        .eq("id", payload.job_id);
-      await ackMessage(supabase, message.queue_message_id);
-      succeeded += 1;
-    } catch (error) {
-      const messageText = error instanceof Error ? error.message : "Processing failed.";
-      const shouldFail = isTerminalJobError(messageText) || claim.attempts >= MAX_JOB_ATTEMPTS;
-
-      await supabase
-        .from("material_processing_jobs")
-        .update({
-          status: shouldFail ? "failed" : "retry",
-          stage: shouldFail ? "failed" : "error",
-          last_error: messageText,
-          locked_at: null,
-        })
-        .eq("id", payload.job_id);
-
-      if (shouldFail) {
-        await markMaterialFailed(supabase, payload.material_id, messageText);
-        await ackMessage(supabase, message.queue_message_id);
-        failed += 1;
-      } else {
-        retried += 1;
-      }
-
-      errors.push(messageText);
-    }
+    failed += 1;
+    errors.push(result.reason instanceof Error ? result.reason.message : "Processing failed.");
   }
 
   return json(
@@ -180,6 +154,79 @@ Deno.serve(async (req) => {
     200,
   );
 });
+
+async function processQueueMessage(
+  supabase: SupabaseClient,
+  message: QueueMessage,
+): Promise<QueueProcessResult> {
+  const payload = message.payload ?? {};
+  if (!payload.job_id || !payload.material_id || !payload.class_id) {
+    await ackMessage(supabase, message.queue_message_id);
+    return {
+      succeeded: 0,
+      failed: 1,
+      retried: 0,
+      errors: [`Invalid queue payload for message ${message.queue_message_id}.`],
+    };
+  }
+
+  const claim = await claimJob(supabase, payload.job_id);
+  if (!claim) {
+    await ackMessage(supabase, message.queue_message_id);
+    return {
+      succeeded: 0,
+      failed: 0,
+      retried: 0,
+      errors: [],
+    };
+  }
+
+  try {
+    await processMaterialJob(supabase, payload.material_id, payload.class_id);
+    await supabase
+      .from("material_processing_jobs")
+      .update({ status: "done", stage: "complete", locked_at: null, last_error: null })
+      .eq("id", payload.job_id);
+    await ackMessage(supabase, message.queue_message_id);
+    return {
+      succeeded: 1,
+      failed: 0,
+      retried: 0,
+      errors: [],
+    };
+  } catch (error) {
+    const messageText = error instanceof Error ? error.message : "Processing failed.";
+    const shouldFail = isTerminalJobError(messageText) || claim.attempts >= MAX_JOB_ATTEMPTS;
+
+    await supabase
+      .from("material_processing_jobs")
+      .update({
+        status: shouldFail ? "failed" : "retry",
+        stage: shouldFail ? "failed" : "error",
+        last_error: messageText,
+        locked_at: null,
+      })
+      .eq("id", payload.job_id);
+
+    if (shouldFail) {
+      await markMaterialFailed(supabase, payload.material_id, messageText);
+      await ackMessage(supabase, message.queue_message_id);
+      return {
+        succeeded: 0,
+        failed: 1,
+        retried: 0,
+        errors: [messageText],
+      };
+    }
+
+    return {
+      succeeded: 0,
+      failed: 0,
+      retried: 1,
+      errors: [messageText],
+    };
+  }
+}
 
 function createServiceSupabaseClient() {
   const url = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("NEXT_PUBLIC_SUPABASE_URL");

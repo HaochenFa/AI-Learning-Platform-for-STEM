@@ -17,10 +17,11 @@ export type UploadFile = {
 };
 
 type FileUploadZoneProps = {
+  files: UploadFile[];
   accept?: string;
   maxSizeMB?: number;
   maxFiles?: number;
-  onFilesChange?: (files: UploadFile[]) => void;
+  onFilesChange: (files: UploadFile[]) => void;
   disabled?: boolean;
 };
 
@@ -36,13 +37,13 @@ export function createUploadFile(file: File): UploadFile {
 }
 
 export default function FileUploadZone({
+  files,
   accept = ".pdf,.docx,.pptx",
   maxSizeMB = 10,
   maxFiles = 10,
   onFilesChange,
   disabled = false,
 }: FileUploadZoneProps) {
-  const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -84,24 +85,16 @@ export default function FileUploadZone({
         });
       }
 
-      setFiles((prev) => {
-        const updated = [...prev, ...validFiles];
-        onFilesChange?.(updated);
-        return updated;
-      });
+      onFilesChange([...files, ...validFiles]);
     },
-    [files.length, maxFiles, onFilesChange, validateFile],
+    [files, maxFiles, onFilesChange, validateFile],
   );
 
   const removeFile = useCallback(
     (id: string) => {
-      setFiles((prev) => {
-        const updated = prev.filter((f) => f.id !== id);
-        onFilesChange?.(updated);
-        return updated;
-      });
+      onFilesChange(files.filter((file) => file.id !== id));
     },
-    [onFilesChange],
+    [files, onFilesChange],
   );
 
   const handleDragOver = useCallback(
@@ -218,10 +211,7 @@ export default function FileUploadZone({
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setFiles([]);
-                onFilesChange?.([]);
-              }}
+              onClick={() => onFilesChange([])}
               className="text-xs"
             >
               Clear all

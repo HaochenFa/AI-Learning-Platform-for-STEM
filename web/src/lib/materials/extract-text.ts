@@ -48,6 +48,23 @@ const EXT_TO_KIND: Record<string, MaterialKind> = {
   ".pptx": "pptx",
 };
 
+export function detectMaterialKindFromNameAndType(
+  filename: string,
+  mimeType?: string | null,
+) {
+  if (mimeType && MIME_TO_KIND[mimeType]) {
+    return MIME_TO_KIND[mimeType];
+  }
+
+  const name = filename.toLowerCase();
+  const extension = ALLOWED_EXTENSIONS.find((ext) => name.endsWith(ext));
+  if (!extension) {
+    return null;
+  }
+
+  return EXT_TO_KIND[extension] ?? null;
+}
+
 /**
  * Detects the `MaterialKind` of a `File` from its MIME type, falling back to
  * the file extension if the MIME type is absent or unrecognised.
@@ -59,17 +76,7 @@ const EXT_TO_KIND: Record<string, MaterialKind> = {
  * @returns     A `MaterialKind` string, or `null` if the file type is not supported.
  */
 export function detectMaterialKind(file: File) {
-  if (file.type && MIME_TO_KIND[file.type]) {
-    return MIME_TO_KIND[file.type];
-  }
-
-  const name = file.name.toLowerCase();
-  const extension = ALLOWED_EXTENSIONS.find((ext) => name.endsWith(ext));
-  if (!extension) {
-    return null;
-  }
-
-  return EXT_TO_KIND[extension] ?? null;
+  return detectMaterialKindFromNameAndType(file.name, file.type);
 }
 
 /**

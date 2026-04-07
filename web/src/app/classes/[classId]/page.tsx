@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { uploadMaterialMutation } from "@/app/classes/actions";
 import MaterialUploadForm from "./MaterialUploadForm";
 import AuthHeader from "@/app/components/AuthHeader";
 import StudentClassExperience from "@/app/classes/[classId]/StudentClassExperience";
@@ -8,6 +7,7 @@ import MaterialProcessingAutoRefresh from "@/app/classes/[classId]/_components/M
 import { MaterialActionsMenu } from "@/app/classes/[classId]/_components/MaterialActionsMenu";
 import { AdaptiveTeachingBriefWidget } from "@/app/classes/[classId]/_components/AdaptiveTeachingBriefWidget";
 import TeacherChatMonitorPanel from "@/app/classes/[classId]/chat/TeacherChatMonitorPanel";
+import { LocalizedDateTimeText } from "@/components/ui/localized-date-time";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,11 +39,6 @@ type ActivityAssignmentSummary = {
   activityType: "chat" | "quiz" | "flashcards";
   status?: string;
 };
-
-function formatDueDate(value: string | null) {
-  if (!value) return "No due date";
-  return `Due ${new Date(value).toLocaleString()}`;
-}
 
 function formatAssignmentStatus(value: string | null | undefined) {
   const status = value ?? "assigned";
@@ -107,7 +102,11 @@ function AssignmentRow({
             {assignment.title}
           </p>
           <p className="text-xs text-ui-muted">
-            {formatDueDate(assignment.dueAt)}
+            {assignment.dueAt ? (
+              <LocalizedDateTimeText value={assignment.dueAt} prefix="Due " />
+            ) : (
+              "No due date"
+            )}
             {!isTeacher && assignment.status
               ? ` · ${formatAssignmentStatus(assignment.status)}`
               : null}
@@ -694,7 +693,7 @@ export default async function ClassOverviewPage({
           <Card className="rounded-3xl p-6 lg:col-span-1">
             <h2 className="text-lg font-semibold text-ui-primary">Upload materials</h2>
             <p className="mt-1.5 text-sm text-ui-muted">Supported: PDF, DOCX, PPTX.</p>
-            <MaterialUploadForm action={uploadMaterialMutation.bind(null, classRow.id)} />
+            <MaterialUploadForm classId={classRow.id} />
           </Card>
 
           <Card className="rounded-3xl p-6 lg:col-span-2">

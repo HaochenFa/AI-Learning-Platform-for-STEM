@@ -1,27 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AppIcons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { getClassInsights } from "@/lib/actions/insights";
+import {
+  formatDateTimeInTimeZone,
+  formatRelativeTimeFromNow,
+} from "@/lib/format/date";
 
 /** Props for the insights page header. */
 type InsightsHeaderProps = {
   classId: string;
   generatedAt: string;
 };
-
-function timeAgo(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
 
 /**
  * Insights page header with snapshot timestamp and manual refresh button.
@@ -38,6 +32,45 @@ export default function InsightsHeader({ classId, generatedAt }: InsightsHeaderP
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const absoluteTimestampLabel = useMemo(
+    () =>
+      formatDateTimeInTimeZone(generatedAt, "UTC", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    [generatedAt],
+  );
+  const [relativeTimestampLabel, setRelativeTimestampLabel] = useState<{
+    generatedAt: string;
+    label: string;
+  } | null>(null);
+  const timestampLabel =
+    relativeTimestampLabel?.generatedAt === generatedAt
+      ? relativeTimestampLabel.label
+      : absoluteTimestampLabel;
+
+  useEffect(() => {
+    const updateRelativeLabel = () => {
+      const nextLabel = formatRelativeTimeFromNow(generatedAt);
+      if (!nextLabel) {
+        return;
+      }
+
+      setRelativeTimestampLabel({
+        generatedAt,
+        label: nextLabel,
+      });
+    };
+
+    const timeoutId = window.setTimeout(updateRelativeLabel, 0);
+    const intervalId = window.setInterval(updateRelativeLabel, 60_000);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
+  }, [generatedAt]);
 
   const handleRefresh = () => {
     setError(null);
@@ -58,7 +91,7 @@ export default function InsightsHeader({ classId, generatedAt }: InsightsHeaderP
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Teacher Studio</p>
           <h1 className="editorial-title mt-2 text-4xl text-ui-primary">Class Intelligence</h1>
           <p className="mt-1.5 text-sm text-ui-muted">
-            Last updated {timeAgo(generatedAt)}
+            Last updated {timestampLabel}
           </p>
         </div>
         <Button

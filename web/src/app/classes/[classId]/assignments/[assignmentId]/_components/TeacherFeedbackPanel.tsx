@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LocalizedDateTimeText } from "@/components/ui/localized-date-time";
 
 type AssignmentRecipientStatus = "assigned" | "in_progress" | "submitted" | "reviewed";
 
@@ -12,19 +13,6 @@ type TeacherFeedbackPanelProps = {
   submissionLabel?: string;
 };
 
-function formatReviewedAt(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return parsed.toLocaleString();
-}
-
 export default function TeacherFeedbackPanel({
   status,
   score,
@@ -34,7 +22,6 @@ export default function TeacherFeedbackPanel({
   submissionLabel,
 }: TeacherFeedbackPanelProps) {
   const hasWrittenFeedback = comment.trim().length > 0 || highlights.length > 0;
-  const reviewedLabel = formatReviewedAt(reviewedAt);
 
   return (
     <Card className="mb-6 rounded-2xl border-accent bg-accent-soft">
@@ -51,7 +38,11 @@ export default function TeacherFeedbackPanel({
 
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-ui-subtle">
           <p>Score: {score === null ? "Not provided" : `${score}%`}</p>
-          {reviewedLabel ? <p>Reviewed: {reviewedLabel}</p> : null}
+          {reviewedAt ? (
+            <p>
+              <LocalizedDateTimeText value={reviewedAt} prefix="Reviewed: " />
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-1">

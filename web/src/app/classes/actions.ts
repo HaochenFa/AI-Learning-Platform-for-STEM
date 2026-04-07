@@ -9,7 +9,7 @@ import {
   ALLOWED_EXTENSIONS,
   ALLOWED_MIME_TYPES,
   MAX_MATERIAL_BYTES,
-  detectMaterialKind,
+  detectMaterialKindFromNameAndType,
   sanitizeFilename,
 } from "@/lib/materials/extract-text";
 import {
@@ -98,6 +98,7 @@ function isDeterministicPythonDispatchTransportError(error: unknown) {
 async function dispatchMaterialJobViaPythonBackend(input: {
   classId: string;
   materialId: string;
+  triggerWorker?: boolean;
 }) {
   const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
   if (!baseUrl) {
@@ -123,7 +124,7 @@ async function dispatchMaterialJobViaPythonBackend(input: {
       body: JSON.stringify({
         class_id: input.classId,
         material_id: input.materialId,
-        trigger_worker: true,
+        trigger_worker: input.triggerWorker ?? true,
       }),
       signal: controller.signal,
     });
@@ -166,6 +167,55 @@ async function dispatchMaterialJobViaPythonBackend(input: {
       error instanceof Error ? error.message : "Python backend material dispatch failed.",
       isDeterministicPythonDispatchTransportError(error),
     );
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function triggerMaterialWorkerViaPythonBackend(batchSize: number) {
+  const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
+  if (!baseUrl) {
+    throw new Error("PYTHON_BACKEND_URL is not configured.");
+  }
+
+  const apiKey = process.env.PYTHON_BACKEND_API_KEY?.trim();
+  const timeoutMs = resolvePythonBackendTimeoutMs();
+  let didTimeout = false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    didTimeout = true;
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/v1/materials/process`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { "x-api-key": apiKey } : {}),
+      },
+      body: JSON.stringify({
+        batch_size: Math.max(1, Math.min(25, Math.floor(batchSize))),
+      }),
+      signal: controller.signal,
+    });
+
+    const payload = (await safePythonClassJson(response)) as {
+      ok?: boolean;
+      error?: { message?: string };
+    } | null;
+
+    if (!response.ok || !payload?.ok) {
+      throw new Error(
+        payload?.error?.message ??
+          `Python backend material worker trigger failed with status ${response.status}.`,
+      );
+    }
+  } catch (error) {
+    if (didTimeout || (error instanceof Error && error.name === "AbortError")) {
+      throw new Error(`Python backend material worker trigger timed out after ${timeoutMs}ms.`);
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -347,6 +397,176 @@ async function requireTeacherAccess(
   } satisfies AccessResult;
 }
 
+type MaterialUploadAccessContext = Awaited<ReturnType<typeof requireGuestOrVerifiedUser>> & {
+  storageClient: ReturnType<typeof createAdminSupabaseClient>["storage"];
+};
+type MaterialUploadAccessFailure = { ok: false; error: string };
+type MaterialUploadAccessSuccess = { ok: true; context: MaterialUploadAccessContext };
+
+type MaterialUploadMetadata = {
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: NonNullable<ReturnType<typeof detectMaterialKindFromNameAndType>>;
+};
+
+type FinalizeMaterialUploadInput = {
+  materialId: string;
+  storagePath: string;
+  title?: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  triggerWorker?: boolean;
+};
+
+async function requireMaterialUploadAccessContext(
+  classId: string,
+): Promise<MaterialUploadAccessSuccess | MaterialUploadAccessFailure> {
+  const context = await requireGuestOrVerifiedUser({
+    accountType: "teacher",
+  });
+
+  const access = await requireTeacherAccess(classId, context.user.id, context.supabase);
+  if (!access.allowed) {
+    return { ok: false, error: access.reason };
+  }
+
+  const storageClient = context.isGuest
+    ? createAdminSupabaseClient().storage
+    : context.supabase.storage;
+
+  return {
+    ok: true,
+    context: {
+      ...context,
+      storageClient,
+    },
+  };
+}
+
+function normalizeMimeType(mimeType: string | null | undefined) {
+  return mimeType?.trim() || "application/octet-stream";
+}
+
+function getFallbackMaterialTitle(filename: string) {
+  return filename.replace(/\.[^/.]+$/, "") || "Untitled material";
+}
+
+function buildMaterialStoragePath(
+  classId: string,
+  materialId: string,
+  filename: string,
+  options: { isGuest: boolean; sandboxId: string | null },
+) {
+  const safeName = sanitizeFilename(filename);
+  if (options.isGuest && options.sandboxId) {
+    return buildGuestStoragePath(classId, options.sandboxId, materialId, safeName);
+  }
+  return `classes/${classId}/${materialId}/${safeName}`;
+}
+
+function validateMaterialUploadMetadata(input: {
+  filename: string;
+  mimeType?: string | null;
+  sizeBytes: number;
+}): { ok: true; data: MaterialUploadMetadata } | { ok: false; error: string } {
+  const filename = input.filename.trim();
+  if (!filename) {
+    return { ok: false, error: "Material filename is required." };
+  }
+
+  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
+    return { ok: false, error: "Material file is empty" };
+  }
+
+  if (input.sizeBytes > MAX_MATERIAL_BYTES) {
+    return {
+      ok: false,
+      error: `File exceeds ${Math.round(MAX_MATERIAL_BYTES / (1024 * 1024))}MB limit`,
+    };
+  }
+
+  const mimeType = normalizeMimeType(input.mimeType);
+  const kind = detectMaterialKindFromNameAndType(filename, mimeType);
+  if (!kind) {
+    return {
+      ok: false,
+      error: `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+    };
+  }
+
+  if (
+    mimeType &&
+    mimeType !== "application/octet-stream" &&
+    !ALLOWED_MIME_TYPES.includes(mimeType)
+  ) {
+    return { ok: false, error: "Unsupported MIME type" };
+  }
+
+  return {
+    ok: true,
+    data: {
+      filename,
+      mimeType,
+      sizeBytes: input.sizeBytes,
+      kind,
+    },
+  };
+}
+
+function createBaseMaterialMetadata(input: MaterialUploadMetadata) {
+  return {
+    original_name: input.filename,
+    kind: input.kind,
+    warnings: [] as string[],
+    extraction_stats: null,
+    page_count: null,
+  };
+}
+
+async function rollbackUploadedMaterial(
+  storageClient: ReturnType<typeof createAdminSupabaseClient>["storage"],
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  materialId: string,
+  storagePath: string,
+) {
+  await supabase.from("materials").delete().eq("id", materialId);
+  await storageClient.from(MATERIALS_BUCKET).remove([storagePath]);
+}
+
+async function deletePreparedMaterialRow(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  materialId: string,
+  classId: string,
+) {
+  await supabase
+    .from("materials")
+    .delete()
+    .eq("id", materialId)
+    .eq("class_id", classId)
+    .eq("status", "pending");
+}
+
+async function markMaterialDispatchFailed(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  materialId: string,
+  baseMetadata: ReturnType<typeof createBaseMaterialMetadata>,
+) {
+  await supabase
+    .from("materials")
+    .update({
+      status: "failed",
+      metadata: {
+        ...baseMetadata,
+        warnings: [
+          "Processing could not be started. Please delete this file and upload it again.",
+        ],
+      },
+    })
+    .eq("id", materialId);
+}
+
 export async function createClass(formData: FormData) {
   const title = getFormValue(formData, "title");
   const description = getFormValue(formData, "description");
@@ -426,153 +646,276 @@ export async function joinClass(formData: FormData) {
   }
 }
 
-export type UploadMaterialMutationResult =
+export type PrepareMaterialUploadResult =
   | {
       ok: true;
-      uploadNotice: "processing" | "failed" | "ready";
+      materialId: string;
+      storagePath: string;
+      signedUrl: string;
+      uploadToken: string;
     }
-  | {
-      ok: false;
-      error: string;
-    };
+  | { ok: false; error: string };
 
-async function uploadMaterialMutationInternal(
+export async function prepareMaterialUpload(
   classId: string,
-  formData: FormData,
-): Promise<UploadMaterialMutationResult> {
-  const title = getFormValue(formData, "title");
-  const file = formData.get("file");
-
-  if (!(file instanceof File)) {
-    return { ok: false, error: "Material file is required" };
+  input: {
+    filename: string;
+    mimeType?: string | null;
+    sizeBytes: number;
+  },
+): Promise<PrepareMaterialUploadResult> {
+  const validation = validateMaterialUploadMetadata(input);
+  if (!validation.ok) {
+    return validation;
   }
 
-  if (file.size === 0) {
-    return { ok: false, error: "Material file is empty" };
+  const accessResult = await requireMaterialUploadAccessContext(classId);
+  if (!accessResult.ok) {
+    return accessResult;
+  }
+  const accessContext = accessResult.context;
+
+  const materialId = crypto.randomUUID();
+  const storagePath = buildMaterialStoragePath(
+    classId,
+    materialId,
+    validation.data.filename,
+    {
+      isGuest: accessContext.isGuest,
+      sandboxId: accessContext.sandboxId,
+    },
+  );
+  const baseMetadata = createBaseMaterialMetadata(validation.data);
+
+  const { error: insertError } = await accessContext.supabase.from("materials").insert({
+    id: materialId,
+    class_id: classId,
+    uploaded_by: accessContext.user.id,
+    title: getFallbackMaterialTitle(validation.data.filename),
+    storage_path: storagePath,
+    mime_type: validation.data.mimeType || null,
+    size_bytes: validation.data.sizeBytes,
+    status: "pending",
+    extracted_text: null,
+    metadata: baseMetadata,
+  });
+
+  if (insertError) {
+    return {
+      ok: false,
+      error: insertError.message,
+    };
   }
 
-  if (file.size > MAX_MATERIAL_BYTES) {
+  const { data, error } = await accessContext.storageClient
+    .from(MATERIALS_BUCKET)
+    .createSignedUploadUrl(storagePath);
+
+  if (error || !data?.signedUrl || !data.token) {
+    await deletePreparedMaterialRow(accessContext.supabase, materialId, classId);
+    return {
+      ok: false,
+      error: error?.message ?? "Failed to prepare a direct upload URL.",
+    };
+  }
+
+  return {
+    ok: true,
+    materialId,
+    storagePath,
+    signedUrl: data.signedUrl,
+    uploadToken: data.token,
+  };
+}
+
+export type FinalizeMaterialUploadResult =
+  | {
+      ok: true;
+      materialId: string;
+      uploadNotice: "processing";
+    }
+  | { ok: false; error: string };
+
+async function finalizeMaterialUploadInternal(
+  classId: string,
+  input: FinalizeMaterialUploadInput,
+): Promise<FinalizeMaterialUploadResult> {
+  const accessResult = await requireMaterialUploadAccessContext(classId);
+  if (!accessResult.ok) {
+    return accessResult;
+  }
+  const accessContext = accessResult.context;
+
+  const validation = validateMaterialUploadMetadata({
+    filename: input.filename,
+    mimeType: input.mimeType,
+    sizeBytes: input.sizeBytes,
+  });
+  if (!validation.ok) {
+    return validation;
+  }
+
+  const expectedStoragePath = buildMaterialStoragePath(
+    classId,
+    input.materialId,
+    validation.data.filename,
+    {
+      isGuest: accessContext.isGuest,
+      sandboxId: accessContext.sandboxId,
+    },
+  );
+
+  if (expectedStoragePath !== input.storagePath) {
+    return { ok: false, error: "Upload session is invalid. Please try again." };
+  }
+
+  if (accessContext.isGuest && accessContext.sandboxId) {
+    assertGuestSafeSignedUrl(input.storagePath, accessContext.sandboxId);
+  }
+
+  const { data: objectInfo, error: objectError } = await accessContext.storageClient
+    .from(MATERIALS_BUCKET)
+    .info(input.storagePath);
+
+  if (objectError || !objectInfo) {
+    await deletePreparedMaterialRow(accessContext.supabase, input.materialId, classId);
+    return {
+      ok: false,
+      error: "Uploaded file was not found in storage. Please upload it again.",
+    };
+  }
+
+  const actualSize =
+    typeof objectInfo.size === "number" && Number.isFinite(objectInfo.size)
+      ? objectInfo.size
+      : validation.data.sizeBytes;
+
+  if (!Number.isFinite(actualSize) || actualSize <= 0) {
+    await deletePreparedMaterialRow(accessContext.supabase, input.materialId, classId);
+    return {
+      ok: false,
+      error: "Uploaded file is empty. Please upload it again.",
+    };
+  }
+
+  if (actualSize > MAX_MATERIAL_BYTES) {
+    await accessContext.storageClient.from(MATERIALS_BUCKET).remove([input.storagePath]);
+    await deletePreparedMaterialRow(accessContext.supabase, input.materialId, classId);
     return {
       ok: false,
       error: `File exceeds ${Math.round(MAX_MATERIAL_BYTES / (1024 * 1024))}MB limit`,
     };
   }
 
-  const kind = detectMaterialKind(file);
-  if (!kind) {
-    return { ok: false, error: `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}` };
+  const storedMimeType = normalizeMimeType(objectInfo.contentType ?? validation.data.mimeType);
+  const storedKind = detectMaterialKindFromNameAndType(validation.data.filename, storedMimeType);
+  if (!storedKind) {
+    await accessContext.storageClient.from(MATERIALS_BUCKET).remove([input.storagePath]);
+    await deletePreparedMaterialRow(accessContext.supabase, input.materialId, classId);
+    return {
+      ok: false,
+      error: `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+    };
   }
 
-  if (
-    file.type &&
-    file.type !== "application/octet-stream" &&
-    !ALLOWED_MIME_TYPES.includes(file.type)
-  ) {
-    return { ok: false, error: "Unsupported MIME type" };
-  }
-
-  const { supabase, user, isGuest, sandboxId } = await requireGuestOrVerifiedUser({
-    accountType: "teacher",
+  const baseMetadata = createBaseMaterialMetadata({
+    ...validation.data,
+    mimeType: storedMimeType,
+    sizeBytes: actualSize,
+    kind: storedKind,
   });
 
-  const access = await requireTeacherAccess(classId, user.id, supabase);
-  if (!access.allowed) {
-    return { ok: false, error: access.reason };
-  }
-
-  const materialId = crypto.randomUUID();
-  const safeName = sanitizeFilename(file.name);
-  const storagePath =
-    isGuest && sandboxId
-      ? buildGuestStoragePath(classId, sandboxId, materialId, safeName)
-      : `classes/${classId}/${materialId}/${safeName}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const baseMetadata = {
-    original_name: file.name,
-    kind,
-    warnings: [] as string[],
-    extraction_stats: null,
-    page_count: null,
-  };
-  const processingStatus = "processing";
-  const storageClient = isGuest ? createAdminSupabaseClient().storage : supabase.storage;
-
-  const { error: uploadError } = await storageClient
-    .from(MATERIALS_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType: file.type || "application/octet-stream",
-      upsert: false,
-    });
-
-  if (uploadError) {
-    return { ok: false, error: uploadError.message };
-  }
-
-  const { data: materialRow, error: insertError } = await supabase
+  const { data: materialRow, error: updateError } = await accessContext.supabase
     .from("materials")
-    .insert({
-      id: materialId,
-      class_id: classId,
-      uploaded_by: user.id,
-      title: title || file.name || "Untitled material",
-      storage_path: storagePath,
-      mime_type: file.type || null,
-      size_bytes: file.size,
-      status: processingStatus,
+    .update({
+      title:
+        input.title?.trim() || getFallbackMaterialTitle(validation.data.filename),
+      storage_path: input.storagePath,
+      mime_type: storedMimeType || null,
+      size_bytes: actualSize,
+      status: "processing",
       extracted_text: null,
       metadata: baseMetadata,
     })
+    .eq("id", input.materialId)
+    .eq("class_id", classId)
+    .eq("status", "pending")
     .select("id")
     .single();
 
-  if (insertError || !materialRow) {
-    await storageClient.from(MATERIALS_BUCKET).remove([storagePath]);
-    return { ok: false, error: insertError?.message ?? "Failed to save material record." };
+  if (updateError || !materialRow) {
+    return {
+      ok: false,
+      error: updateError?.message ?? "Upload session is invalid. Please upload the file again.",
+    };
   }
 
-  let jobFailed = false;
-  if (processingStatus === "processing") {
-    let jobError: { message: string } | null = null;
-    let shouldRollbackMaterialOnJobFailure = true;
-
-    try {
-      await dispatchMaterialJobViaPythonBackend({
-        classId,
-        materialId: materialRow.id,
-      });
-    } catch (error) {
-      // Only keep the material when dispatch failure is ambiguous (for
-      // example, timeout/5xx after potential enqueue). Deterministic
-      // pre-enqueue failures should roll back the upload.
-      shouldRollbackMaterialOnJobFailure = canRollbackMaterialAfterPythonDispatchFailure(error);
-      jobError = { message: error instanceof Error ? error.message : "Python dispatch failed." };
+  try {
+    await dispatchMaterialJobViaPythonBackend({
+      classId,
+      materialId: materialRow.id,
+      triggerWorker: input.triggerWorker ?? false,
+    });
+  } catch (error) {
+    if (canRollbackMaterialAfterPythonDispatchFailure(error)) {
+      await rollbackUploadedMaterial(
+        accessContext.storageClient,
+        accessContext.supabase,
+        materialRow.id,
+        input.storagePath,
+      );
+      return {
+        ok: false,
+        error: `Failed to queue material processing: ${error instanceof Error ? error.message : "Python dispatch failed."}`,
+      };
     }
 
-    if (jobError) {
-      jobFailed = true;
-      if (shouldRollbackMaterialOnJobFailure) {
-        await supabase.from("materials").delete().eq("id", materialRow.id);
-        await storageClient.from(MATERIALS_BUCKET).remove([storagePath]);
-      }
-      return { ok: false, error: `Failed to queue material processing: ${jobError.message}` };
-    }
+    await markMaterialDispatchFailed(accessContext.supabase, materialRow.id, baseMetadata);
+    return {
+      ok: false,
+      error: "Processing could not be started. Please delete this file and upload it again.",
+    };
   }
 
-  return { ok: true, uploadNotice: jobFailed ? "failed" : processingStatus };
+  return {
+    ok: true,
+    materialId: materialRow.id,
+    uploadNotice: "processing",
+  };
 }
 
-export async function uploadMaterialMutation(classId: string, formData: FormData) {
-  return uploadMaterialMutationInternal(classId, formData);
+export async function finalizeMaterialUpload(
+  classId: string,
+  input: FinalizeMaterialUploadInput,
+) {
+  return finalizeMaterialUploadInternal(classId, input);
 }
 
-export async function uploadMaterial(classId: string, formData: FormData) {
-  const result = await uploadMaterialMutationInternal(classId, formData);
-  if (!result.ok) {
-    redirectWithError(`/classes/${classId}`, result.error);
-    return;
+export type TriggerMaterialProcessingResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function triggerMaterialProcessing(
+  classId: string,
+  batchSize: number,
+): Promise<TriggerMaterialProcessingResult> {
+  const accessResult = await requireMaterialUploadAccessContext(classId);
+  if (!accessResult.ok) {
+    return accessResult;
   }
 
-  redirect(`/classes/${classId}?uploaded=${result.uploadNotice}`);
+  try {
+    await triggerMaterialWorkerViaPythonBackend(batchSize);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to trigger material processing.",
+    };
+  }
 }
 
 export type MaterialSignedUrlResult =

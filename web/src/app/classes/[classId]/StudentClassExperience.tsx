@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import AuthHeader from "@/app/components/AuthHeader";
 import ClassWorkspaceShell from "@/app/classes/[classId]/_components/ClassWorkspaceShell";
 import ClassChatWorkspace from "@/app/classes/[classId]/chat/ClassChatWorkspace";
+import { LocalizedDateTimeText } from "@/components/ui/localized-date-time";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { AppIcons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -55,11 +56,6 @@ type StudentClassExperienceProps = {
   isPreviewMode?: boolean;
 };
 
-function formatDueDate(value: string | null) {
-  if (!value) return "No due date";
-  return `Due ${new Date(value).toLocaleString()}`;
-}
-
 function formatAssignmentStatus(value: string | null | undefined) {
   const status = value ?? "assigned";
   if (status === "in_progress") return "In progress";
@@ -102,7 +98,13 @@ function AssignmentRow({
         <p className="truncate text-sm font-semibold text-ui-primary transition-colors duration-200 group-hover:text-accent">
           {assignment.title}
         </p>
-        <p className="text-xs text-ui-muted">{formatDueDate(assignment.dueAt)}</p>
+        <p className="text-xs text-ui-muted">
+          {assignment.dueAt ? (
+            <LocalizedDateTimeText value={assignment.dueAt} prefix="Due " />
+          ) : (
+            "No due date"
+          )}
+        </p>
       </div>
       <span
         className={cn(

@@ -13,6 +13,7 @@ import { generateCanvasAction } from "@/app/classes/[classId]/chat/actions";
 import { GenerativeCanvas } from "@/components/canvas";
 import type { CanvasSpec, ClassChatMessage, ClassChatMessagesPageInfo, ClassChatSession } from "@/lib/chat/types";
 import { MAX_CHAT_MESSAGE_CHARS } from "@/lib/chat/validation";
+import { formatDateTime as formatUtcDateTime, formatTimeOnly } from "@/lib/format/date";
 
 type ClassChatWorkspaceProps = {
   classId: string;
@@ -29,24 +30,20 @@ type CanvasEntry = {
 const CLIENT_COMPACTION_HINT_TURNS = 24;
 
 function formatTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return (
+    formatTimeOnly(value, { hour: "2-digit", minute: "2-digit" }) || value
+  );
 }
 
 function formatDateTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return (
+    formatUtcDateTime(value, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) || value
+  );
 }
 
 export default function ClassChatWorkspace({
@@ -263,10 +260,10 @@ export default function ClassChatWorkspace({
       });
       if (result.data.contextMeta.compacted) {
         const compactedAtLabel = result.data.contextMeta.compactedAt
-          ? new Date(result.data.contextMeta.compactedAt).toLocaleTimeString([], {
+          ? formatTimeOnly(result.data.contextMeta.compactedAt, {
               hour: "2-digit",
               minute: "2-digit",
-            })
+            }) || result.data.contextMeta.compactedAt
           : null;
         setStatusNotice(
           compactedAtLabel

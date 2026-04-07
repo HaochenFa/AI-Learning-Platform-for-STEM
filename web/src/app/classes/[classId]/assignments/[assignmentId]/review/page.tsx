@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LocalizedDateTimeText } from "@/components/ui/localized-date-time";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChatTurn } from "@/lib/chat/types";
@@ -363,9 +364,11 @@ export default async function AssignmentReviewPage({
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Teacher Review</p>
           <h1 className="editorial-title mt-2 text-4xl text-ui-primary">{activity.title}</h1>
           <p className="mt-1.5 text-sm text-ui-muted">
-            {assignment.due_at
-              ? `Due ${new Date(assignment.due_at).toLocaleString()}`
-              : "No due date"}
+            {assignment.due_at ? (
+              <LocalizedDateTimeText value={assignment.due_at} prefix="Due " />
+            ) : (
+              "No due date"
+            )}
           </p>
         </header>
 
@@ -603,7 +606,8 @@ export default async function AssignmentReviewPage({
                               {attempt.score ?? parsed.scorePercent}%
                             </p>
                             <p className="text-xs text-ui-muted">
-                              Submitted {new Date(attempt.submitted_at).toLocaleString()}
+                              Submitted{" "}
+                              <LocalizedDateTimeText value={attempt.submitted_at} />
                             </p>
 
                             <div className="mt-3 space-y-3">

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppIcons } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LocalizedDateTimeText } from "@/components/ui/localized-date-time";
 import {
   refreshClassTeachingBrief,
   type TeachingBriefActionResult,
@@ -16,22 +17,6 @@ type AdaptiveTeachingBriefWidgetProps = {
   onRefresh?: () => void | Promise<void>;
 };
 
-function formatGeneratedAt(generatedAt: string | null) {
-  if (!generatedAt) return null;
-
-  const date = new Date(generatedAt);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return `Updated ${date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })}`;
-}
-
 export function AdaptiveTeachingBriefWidget({
   state,
   classId,
@@ -41,7 +26,6 @@ export function AdaptiveTeachingBriefWidget({
   const [liveState, setLiveState] = useState(state);
   const autoRefreshAttemptedRef = useRef(false);
   const refreshInFlightRef = useRef(false);
-  const generatedLabel = useMemo(() => formatGeneratedAt(liveState.generatedAt), [liveState.generatedAt]);
   const hasPayload = !!liveState.payload;
 
   useEffect(() => {
@@ -109,7 +93,18 @@ export function AdaptiveTeachingBriefWidget({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-ui-muted">
-            {generatedLabel ? <span>{generatedLabel}</span> : null}
+            {liveState.generatedAt ? (
+              <LocalizedDateTimeText
+                value={liveState.generatedAt}
+                prefix="Updated "
+                options={{
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }}
+              />
+            ) : null}
             {liveState.isStale ? <span>Outdated</span> : null}
             {liveState.isRefreshing ? <span>Refreshing</span> : null}
           </div>

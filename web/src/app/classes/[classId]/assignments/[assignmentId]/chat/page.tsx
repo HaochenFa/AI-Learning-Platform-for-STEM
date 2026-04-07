@@ -8,6 +8,7 @@ import { AppIcons } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { LocalizedDateTimeText } from "@/components/ui/localized-date-time";
 import TransientFeedbackAlert from "@/components/ui/transient-feedback-alert";
 import { parseTeacherFeedbackContent } from "@/lib/activities/teacher-feedback";
 
@@ -220,9 +221,11 @@ export default async function AssignmentChatPage({
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ui-subtle">Assignment Workspace</p>
           <h1 className="editorial-title mt-2 text-4xl text-ui-primary">{activity.title}</h1>
           <p className="mt-1.5 text-sm text-ui-muted">
-            {assignment.due_at
-              ? `Due ${new Date(assignment.due_at).toLocaleString()}`
-              : "No due date"}
+            {assignment.due_at ? (
+              <LocalizedDateTimeText value={assignment.due_at} prefix="Due " />
+            ) : (
+              "No due date"
+            )}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Badge variant="secondary">

@@ -5,6 +5,7 @@ import AuthHeader from "@/app/components/AuthHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LocalizedDateTimeText } from "@/components/ui/localized-date-time";
 
 export default async function BlueprintPublishedPage({
   params,
@@ -123,7 +124,12 @@ export default async function BlueprintPublishedPage({
               <p className="text-sm text-ui-muted">
                 Published{" "}
                 {blueprint.published_at
-                  ? new Date(blueprint.published_at).toLocaleDateString()
+                  ? (
+                      <LocalizedDateTimeText
+                        value={blueprint.published_at}
+                        kind="date"
+                      />
+                    )
                   : ""}
               </p>
             </div>
