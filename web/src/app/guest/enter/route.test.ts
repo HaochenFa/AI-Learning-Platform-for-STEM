@@ -1,16 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { startGuestSessionMock, getGuestEntryIpMock } = vi.hoisted(() => ({
+const { startGuestSessionMock } = vi.hoisted(() => ({
   startGuestSessionMock: vi.fn(),
-  getGuestEntryIpMock: vi.fn(),
 }));
 
 vi.mock("@/app/actions", () => ({
   startGuestSession: startGuestSessionMock,
-}));
-
-vi.mock("@/lib/guest/entry-rate-limit", () => ({
-  getGuestEntryIp: getGuestEntryIpMock,
 }));
 
 async function loadRoute() {
@@ -34,7 +29,6 @@ describe("POST /guest/enter", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-27T00:00:00.000Z"));
-    getGuestEntryIpMock.mockReturnValue("203.0.113.10");
   });
 
   afterEach(() => {
@@ -51,31 +45,41 @@ describe("POST /guest/enter", () => {
     const response = await POST(makeRequest());
 
     expect(startGuestSessionMock).toHaveBeenCalledTimes(1);
-    expect(startGuestSessionMock).toHaveBeenCalledWith({
-      ipAddress: "203.0.113.10",
-    });
+    expect(startGuestSessionMock).toHaveBeenCalledWith();
     expect(response.headers.get("location")).toBe("https://example.com/classes/class-1");
   });
 
-  it("blocks when the hourly IP limit is exceeded", async () => {
+  it("redirects to the new-session capacity warning when creation quota is exhausted", async () => {
     startGuestSessionMock.mockResolvedValue({
       ok: false,
-      code: "too-many-guest-sessions",
-      error: "too-many-guest-sessions",
+      code: "too-many-new-sessions",
+      error: "too-many-new-sessions",
     });
     const { POST } = await loadRoute();
 
     const response = await POST(makeRequest("203.0.113.12"));
 
-    expect(startGuestSessionMock).toHaveBeenCalledWith({
-      ipAddress: "203.0.113.10",
-    });
     expect(response.headers.get("location")).toBe(
-      "https://example.com/?error=too-many-guest-sessions",
+      "https://example.com/?error=too-many-new-sessions",
     );
   });
 
-  it("redirects to guest unavailable when provisioning returns a non-rate-limit error", async () => {
+  it("redirects to the active-session capacity warning when the global slot cap is exhausted", async () => {
+    startGuestSessionMock.mockResolvedValue({
+      ok: false,
+      code: "too-many-active-sessions",
+      error: "too-many-active-sessions",
+    });
+    const { POST } = await loadRoute();
+
+    const response = await POST(makeRequest("203.0.113.12"));
+
+    expect(response.headers.get("location")).toBe(
+      "https://example.com/?error=too-many-active-sessions",
+    );
+  });
+
+  it("redirects to guest unavailable when provisioning returns a non-quota error", async () => {
     startGuestSessionMock.mockResolvedValue({
       ok: false,
       code: "guest-auth-unavailable",
@@ -85,9 +89,6 @@ describe("POST /guest/enter", () => {
 
     const response = await POST(makeRequest("203.0.113.12"));
 
-    expect(startGuestSessionMock).toHaveBeenCalledWith({
-      ipAddress: "203.0.113.10",
-    });
     expect(response.headers.get("location")).toBe("https://example.com/?error=guest-unavailable");
   });
 
@@ -119,8 +120,7 @@ describe("POST /guest/enter", () => {
     );
   });
 
-  it("skips IP throttling when the client IP headers are unavailable", async () => {
-    getGuestEntryIpMock.mockReturnValue(null);
+  it("creates a guest session without relying on request IP headers", async () => {
     startGuestSessionMock.mockResolvedValue({
       ok: true,
       redirectTo: "/classes/class-1",
@@ -129,9 +129,7 @@ describe("POST /guest/enter", () => {
 
     const response = await POST(makeRequest(undefined));
 
-    expect(startGuestSessionMock).toHaveBeenCalledWith({
-      ipAddress: null,
-    });
+    expect(startGuestSessionMock).toHaveBeenCalledWith();
     expect(response.headers.get("location")).toBe("https://example.com/classes/class-1");
   });
 });

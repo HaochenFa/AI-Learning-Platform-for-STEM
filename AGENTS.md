@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Last updated: 2026-04-05 00:39:04 +07
+Last updated: 2026-04-07 21:05:42 +08
 
 This file provides guidance to Codex (ChatGPT) when working with code in this repository.
 
@@ -219,7 +219,7 @@ mcp__supabase__execute_sql --sql "SELECT 1"
 
 **Auth Surface**: A single `AuthSurface` component handles all auth flows (sign-in, sign-up, forgot-password). It renders as a **modal** on the home page (triggered by `?auth=sign-in` / `?auth=sign-up` query params) or as a **page** at `/login` and `/register`. The `HomeAuthDialog` wraps the modal variant. Auth helpers live in `web/src/lib/auth/ui.ts` (`getAuthHref`, `buildRedirectUrl`) and `session.ts` (`getAuthContext`).
 
-**Guest Mode**: Toggled by `NEXT_PUBLIC_GUEST_MODE_ENABLED=true`. Guests sign in via Supabase Anon Auth and get a sandboxed session (8h max, 1h inactivity, 5 sessions/hour rate limit). The entry flow is at `/guest/enter`. Guest mode is enforced at the DB layer via RLS (migrations `0015`–`0021`). Guest config lives in `web/src/lib/guest/`.
+**Guest Mode**: Toggled by `NEXT_PUBLIC_GUEST_MODE_ENABLED=true`. Guests sign in via Supabase Anon Auth and get a sandboxed session (32h max, 8h inactivity). Guest entry is created via `/guest/enter` and enforced through the global `guest_session_quota` RPC flow rather than per-IP tracking. Current defaults are 60 active guest sessions globally and 20 new guest sessions per hour; guest AI defaults are 50 chat, 10 quiz, 10 flashcards, 5 blueprint, and 15 embedding operations with 20 concurrent AI requests. Guest mode is enforced at the DB layer via RLS and quota migrations (`0015`–`0023`). Guest config lives in `web/src/lib/guest/`.
 
 **Security**: RLS enforced on all tables, input validation on every API route and server action, file uploads are size-limited and content-type checked. AI context restricted to approved materials and blueprint.
 

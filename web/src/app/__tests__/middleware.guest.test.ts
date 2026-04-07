@@ -140,7 +140,7 @@ describe("middleware guest session handling", () => {
         class_id: "class-1",
         status: "active",
         expires_at: "2026-03-27T02:00:00.000Z",
-        last_seen_at: "2026-03-26T22:59:59.000Z",
+        last_seen_at: "2026-03-26T15:59:59.000Z",
       },
       error: null,
     });

@@ -1,19 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { consumeGuestEntryRateLimitMock } = vi.hoisted(() => ({
-  consumeGuestEntryRateLimitMock: vi.fn(),
-}));
-
 vi.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminSupabaseClient: vi.fn(),
-}));
-
-vi.mock("@/lib/guest/entry-rate-limit", () => ({
-  consumeGuestEntryRateLimit: consumeGuestEntryRateLimitMock,
 }));
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -53,10 +45,31 @@ function makeMutableBuilder(result: { data?: unknown; error?: { message: string 
   });
 }
 
+function makeAdminRpcMock(
+  responses: Partial<Record<string, { data?: unknown; error?: { message: string } | null }>> = {},
+) {
+  return vi.fn().mockImplementation((fn: string) =>
+    Promise.resolve(
+      responses[fn] ??
+        (fn === "acquire_guest_session_service"
+          ? {
+              data: { ok: true },
+              error: null,
+            }
+          : {
+              data: null,
+              error: null,
+            }),
+    ),
+  );
+}
+
 function mockSupabase(overrides: Partial<Record<string, unknown>> = {}) {
   const guestSandboxBuilder = makeMutableBuilder({ data: null });
   const materialsBuilder = makeMutableBuilder({ data: [] });
   const classesBuilder = makeMutableBuilder({ data: null });
+  const adminRpcMock =
+    (overrides.adminRpc as ReturnType<typeof makeAdminRpcMock> | undefined) ?? makeAdminRpcMock();
   const adminBucket = {
     remove: vi.fn().mockResolvedValue({ error: null }),
   };
@@ -95,6 +108,7 @@ function mockSupabase(overrides: Partial<Record<string, unknown>> = {}) {
 
   vi.mocked(createServerSupabaseClient).mockResolvedValue(supabase as never);
   vi.mocked(createAdminSupabaseClient).mockReturnValue({
+    rpc: adminRpcMock,
     from: vi.fn().mockImplementation((table: string) => {
       if (table === "materials") {
         return materialsBuilder;
@@ -105,13 +119,19 @@ function mockSupabase(overrides: Partial<Record<string, unknown>> = {}) {
       from: vi.fn(() => adminBucket),
     },
   } as never);
-  return { supabase, guestSandboxBuilder, materialsBuilder, classesBuilder, adminBucket };
+  return {
+    supabase,
+    guestSandboxBuilder,
+    materialsBuilder,
+    classesBuilder,
+    adminBucket,
+    adminRpcMock,
+  };
 }
 
 describe("provisionGuestSandbox", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    consumeGuestEntryRateLimitMock.mockResolvedValue(true);
   });
 
   it("creates an anonymous session and clones a guest sandbox", async () => {
@@ -135,7 +155,7 @@ describe("provisionGuestSandbox", () => {
   });
 
   it("reuses an existing active sandbox when one is already attached to the session", async () => {
-    const { supabase } = mockSupabase({
+    const { supabase, adminRpcMock } = mockSupabase({
       auth: {
         getSession: vi.fn().mockResolvedValue({
           data: {
@@ -173,7 +193,7 @@ describe("provisionGuestSandbox", () => {
       classId: "class-existing",
       sandboxId: "sandbox-existing",
     });
-    expect(consumeGuestEntryRateLimitMock).not.toHaveBeenCalled();
+    expect(adminRpcMock).not.toHaveBeenCalledWith("acquire_guest_session_service", {});
   });
 
   it("reuses an existing anonymous session instead of replacing it", async () => {
@@ -214,15 +234,13 @@ describe("provisionGuestSandbox", () => {
     );
   });
 
-  it("consumes the hourly entry limit only when provisioning a new sandbox", async () => {
-    mockSupabase();
+  it("acquires a global session quota slot when provisioning a new sandbox", async () => {
+    const { adminRpcMock } = mockSupabase();
 
-    const result = await provisionGuestSandboxWithOptions({
-      ipAddress: "203.0.113.10",
-    });
+    const result = await provisionGuestSandboxWithOptions();
 
     expect(result.ok).toBe(true);
-    expect(consumeGuestEntryRateLimitMock).toHaveBeenCalledWith("203.0.113.10");
+    expect(adminRpcMock).toHaveBeenCalledWith("acquire_guest_session_service", {});
   });
 
   it("does not reuse an expired anonymous sandbox", async () => {
@@ -378,19 +396,63 @@ describe("provisionGuestSandbox", () => {
     });
   });
 
-  it("returns a typed rate-limit failure when entry quota cannot be checked", async () => {
-    mockSupabase();
-    consumeGuestEntryRateLimitMock.mockRejectedValueOnce(new Error("quota unavailable"));
-
-    const result = await provisionGuestSandboxWithOptions({
-      ipAddress: "203.0.113.10",
+  it("returns guest unavailable when the session quota check errors", async () => {
+    mockSupabase({
+      adminRpc: makeAdminRpcMock({
+        acquire_guest_session_service: {
+          data: null,
+          error: { message: "quota unavailable" },
+        },
+      }),
     });
+
+    const result = await provisionGuestSandboxWithOptions();
 
     expect(result).toEqual({
       ok: false,
       code: "guest-unavailable",
       error: "guest-unavailable",
-      reason: "entry-rate-limit-check",
+      reason: "session-quota-check",
+    });
+  });
+
+  it("returns the new-session cap code when hourly creation quota is exhausted", async () => {
+    mockSupabase({
+      adminRpc: makeAdminRpcMock({
+        acquire_guest_session_service: {
+          data: { ok: false, reason: "cap_creation" },
+          error: null,
+        },
+      }),
+    });
+
+    const result = await provisionGuestSandbox();
+
+    expect(result).toEqual({
+      ok: false,
+      code: "too-many-new-sessions",
+      error: "too-many-new-sessions",
+      reason: "creation-rate-cap",
+    });
+  });
+
+  it("returns the active-session cap code when the global slot limit is exhausted", async () => {
+    mockSupabase({
+      adminRpc: makeAdminRpcMock({
+        acquire_guest_session_service: {
+          data: { ok: false, reason: "cap_active" },
+          error: null,
+        },
+      }),
+    });
+
+    const result = await provisionGuestSandbox();
+
+    expect(result).toEqual({
+      ok: false,
+      code: "too-many-active-sessions",
+      error: "too-many-active-sessions",
+      reason: "active-session-cap",
     });
   });
 
@@ -536,6 +598,7 @@ describe("resetGuestSandbox", () => {
     });
 
     vi.mocked(createAdminSupabaseClient).mockReturnValue({
+      rpc: makeAdminRpcMock(),
       from: vi.fn().mockImplementation((table: string) => {
         if (table === "materials") {
           return makeMutableBuilder({
