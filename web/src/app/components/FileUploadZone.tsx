@@ -217,7 +217,7 @@ export default function FileUploadZone({
               Clear all
             </Button>
           </div>
-          <ul className="space-y-2">
+          <ul className="max-h-60 space-y-2 overflow-y-auto pr-1">
             {files.map((file) => (
               <li key={file.id}>
                 <Card className={cn("rounded-lg border p-3", file.status === "error" && "border-[rgba(244,63,94,0.3)] bg-[rgba(244,63,94,0.06)]") }>

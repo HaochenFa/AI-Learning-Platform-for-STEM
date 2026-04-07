@@ -704,7 +704,7 @@ export default async function ClassOverviewPage({
               </span>
             </div>
             <MaterialProcessingAutoRefresh processingCount={processingMaterialCount} />
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 max-h-88 space-y-2 overflow-y-auto pr-1">
               {materials && materials.length > 0 ? (
                 materials.map((material) => (
                   <div
