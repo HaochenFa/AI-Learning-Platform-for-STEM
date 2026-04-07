@@ -2,7 +2,26 @@
 
 create extension if not exists pg_net with schema extensions;
 create extension if not exists pg_cron;
-create extension if not exists vault with schema vault;
+create schema if not exists vault;
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_extension
+    where extname in ('supabase_vault', 'vault')
+  ) then
+    return;
+  end if;
+
+  begin
+    create extension if not exists supabase_vault with schema vault;
+  exception
+    when undefined_file then
+      create extension if not exists vault with schema vault;
+  end;
+end;
+$$;
 
 create or replace function public.reconcile_guest_session_quota_service(
   p_window_seconds integer default 3600
