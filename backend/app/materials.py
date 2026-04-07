@@ -13,7 +13,11 @@ from app.schemas import (
 )
 
 
-def dispatch_material_job(settings: Settings, request: MaterialDispatchRequest) -> MaterialDispatchResult:
+def dispatch_material_job(
+    settings: Settings,
+    request: MaterialDispatchRequest,
+    actor_access_token: str,
+) -> MaterialDispatchResult:
     """Enqueue a material for background processing and optionally wake the worker.
 
     Material ingestion is queue-driven: this function calls the
@@ -37,13 +41,18 @@ def dispatch_material_job(settings: Settings, request: MaterialDispatchRequest) 
         RuntimeError: If Supabase credentials are missing, if the enqueue RPC
             fails, or if the worker trigger returns an error status.
     """
-    if not settings.supabase_url or not settings.supabase_service_role_key:
+    if not settings.supabase_url:
         raise RuntimeError(
-            "Supabase service credentials are not configured on Python backend.")
+            "Supabase URL is not configured on Python backend.")
+
+    rest_api_key = settings.supabase_publishable_key or settings.supabase_service_role_key
+    if not rest_api_key:
+        raise RuntimeError(
+            "Supabase REST API credentials are not configured on Python backend.")
 
     headers = {
-        "apikey": settings.supabase_service_role_key,
-        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "apikey": rest_api_key,
+        "Authorization": f"Bearer {actor_access_token}",
         "Content-Type": "application/json",
     }
     timeout_seconds = max(5, settings.ai_request_timeout_ms / 1000)

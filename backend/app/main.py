@@ -559,12 +559,26 @@ async def embeddings(request: Request, payload: EmbeddingsRequest):
 
 @app.post("/v1/materials/dispatch")
 async def dispatch_materials(request: Request, payload: MaterialDispatchRequest):
-    settings, _, unauthorized = await _authorize_request(request)
+    settings, _, unauthorized = await _authorize_request(request, require_actor_user=True)
     if unauthorized:
         return unauthorized
 
+    actor_access_token = _parse_bearer_token(request.headers.get("authorization"))
+    if not actor_access_token or actor_access_token == settings.python_backend_api_key:
+        return _error_response(
+            request,
+            status_code=401,
+            message="A valid user bearer token is required.",
+            code="user_token_required",
+        )
+
     try:
-        result = await run_in_threadpool(dispatch_material_job, settings, payload)
+        result = await run_in_threadpool(
+            dispatch_material_job,
+            settings,
+            payload,
+            actor_access_token,
+        )
         return ApiEnvelope(
             ok=True,
             data=result.model_dump(),

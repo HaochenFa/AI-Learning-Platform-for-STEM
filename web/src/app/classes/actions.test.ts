@@ -574,6 +574,11 @@ describe("class actions", () => {
 
     const fetchMock = vi.mocked(global.fetch);
     const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect((init as RequestInit)?.headers).toEqual(
+      expect.objectContaining({
+        Authorization: "Bearer session-token",
+      }),
+    );
     const dispatchPayload = JSON.parse(String((init as RequestInit)?.body ?? "{}")) as {
       trigger_worker?: boolean;
     };
@@ -650,6 +655,56 @@ describe("class actions", () => {
     const materialsCalls = supabaseFromMock.mock.calls.filter((call) => call[0] === "materials");
     expect(materialsCalls).toHaveLength(2);
     expect(bucketMock.remove).not.toHaveBeenCalled();
+  });
+
+  it("rolls back the material when the upload context has no session token", async () => {
+    process.env.PYTHON_BACKEND_URL = "http://localhost:8001";
+    vi.mocked(sanitizeFilename).mockReturnValue("lecture.pdf");
+    vi.mocked(requireGuestOrVerifiedUser).mockResolvedValueOnce({
+      supabase: {
+        from: supabaseFromMock,
+        rpc: supabaseRpcMock,
+        storage: supabaseStorageMock,
+      },
+      user: { id: "u1", email: "user@example.com" },
+      profile: { id: "u1", account_type: "teacher" },
+      accountType: "teacher",
+      isEmailVerified: true,
+      accessToken: null,
+      isGuest: false,
+      sandboxId: null,
+      guestRole: null,
+      guestClassId: null,
+    } as never);
+
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "classes") {
+        return makeBuilder({ data: { id: "class-1", owner_id: "u1" }, error: null });
+      }
+      if (table === "enrollments") {
+        return makeBuilder({ data: null, error: null });
+      }
+      if (table === "materials") {
+        return makeBuilder({ data: { id: "m1" }, error: null });
+      }
+      return makeBuilder({ data: null, error: null });
+    });
+
+    const result = await finalizeMaterialUpload("class-1", {
+      materialId: "mat-1",
+      storagePath: "classes/class-1/mat-1/lecture.pdf",
+      title: "Lecture 1",
+      filename: "lecture.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1024,
+      triggerWorker: false,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Failed to queue material processing: Session token is missing. Please sign in again.",
+    });
+    expect(bucketMock.remove).toHaveBeenCalledWith(["classes/class-1/mat-1/lecture.pdf"]);
   });
 
   it("rolls back finalized uploads when dispatch fails deterministically", async () => {

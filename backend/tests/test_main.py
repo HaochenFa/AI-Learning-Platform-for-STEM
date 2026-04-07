@@ -183,6 +183,55 @@ class MainTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"]["code"], "user_id_mismatch")
 
+    def test_material_dispatch_route_requires_user_token(self) -> None:
+        settings = make_settings(python_backend_api_key="secret")
+        client = TestClient(app)
+        with patch("app.main.get_settings", return_value=settings):
+            response = client.post(
+                "/v1/materials/dispatch",
+                headers={"x-api-key": "secret"},
+                json={
+                    "class_id": "class-1",
+                    "material_id": "material-1",
+                    "trigger_worker": False,
+                },
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["error"]["code"], "user_token_required")
+
+    def test_material_process_route_keeps_service_auth_contract(self) -> None:
+        settings = make_settings(python_backend_api_key="secret")
+        client = TestClient(app)
+        process_result = type(
+            "MaterialProcessResultStub",
+            (),
+            {
+                "model_dump": lambda self: {
+                    "triggered": True,
+                    "processed": 1,
+                    "succeeded": 1,
+                    "failed": 0,
+                    "retried": 0,
+                    "errors": [],
+                }
+            },
+        )()
+
+        with (
+            patch("app.main.get_settings", return_value=settings),
+            patch("app.main.run_in_threadpool", return_value=process_result),
+        ):
+            response = client.post(
+                "/v1/materials/process",
+                headers={"x-api-key": "secret"},
+                json={"batch_size": 1},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertTrue(response.json()["data"]["triggered"])
+
 
 class GuestQuotaDefaultTests(unittest.TestCase):
     def test_guest_quota_defaults_match_approved_spec(self) -> None:

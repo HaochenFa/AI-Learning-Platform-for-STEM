@@ -98,6 +98,7 @@ function isDeterministicPythonDispatchTransportError(error: unknown) {
 async function dispatchMaterialJobViaPythonBackend(input: {
   classId: string;
   materialId: string;
+  accessToken: string;
   triggerWorker?: boolean;
 }) {
   const baseUrl = process.env.PYTHON_BACKEND_URL?.trim();
@@ -119,6 +120,7 @@ async function dispatchMaterialJobViaPythonBackend(input: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${input.accessToken}`,
         ...(apiKey ? { "x-api-key": apiKey } : {}),
       },
       body: JSON.stringify({
@@ -811,10 +813,25 @@ async function finalizeMaterialUploadInternal(
     };
   }
 
+  const dispatchAccessToken = accessContext.accessToken;
+  if (!dispatchAccessToken) {
+    await rollbackUploadedMaterial(
+      accessContext.storageClient,
+      accessContext.supabase,
+      materialRow.id,
+      input.storagePath,
+    );
+    return {
+      ok: false,
+      error: "Failed to queue material processing: Session token is missing. Please sign in again.",
+    };
+  }
+
   try {
     await dispatchMaterialJobViaPythonBackend({
       classId,
       materialId: materialRow.id,
+      accessToken: dispatchAccessToken,
       triggerWorker: input.triggerWorker ?? false,
     });
   } catch (error) {

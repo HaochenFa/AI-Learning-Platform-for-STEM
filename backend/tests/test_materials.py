@@ -60,7 +60,11 @@ class MaterialsTests(unittest.TestCase):
         fake_client = _FakeHttpxClient([enqueue_response, trigger_response])
 
         with patch("app.materials.httpx.Client", return_value=fake_client):
-            result = dispatch_material_job(settings, request)
+            result = dispatch_material_job(
+                settings,
+                request,
+                actor_access_token="teacher-jwt",
+            )
 
         self.assertTrue(result.enqueued)
         self.assertTrue(result.triggered)
@@ -87,6 +91,46 @@ class MaterialsTests(unittest.TestCase):
         self.assertEqual(
             worker_kwargs.get("json"),
             {"batchSize": settings.material_worker_batch},
+        )
+
+    def test_dispatch_material_job_uses_actor_token_for_enqueue_rpc(self) -> None:
+        settings = make_settings(
+            supabase_url="https://example.supabase.co",
+            supabase_publishable_key="publishable-key",
+            supabase_service_role_key="service-role",
+        )
+        request = MaterialDispatchRequest(
+            class_id="class-1",
+            material_id="material-1",
+            trigger_worker=False,
+        )
+
+        enqueue_response = _FakeResponse(
+            status_code=200,
+            payload={"ok": True},
+        )
+        fake_client = _FakeHttpxClient([enqueue_response])
+
+        with patch("app.materials.httpx.Client", return_value=fake_client):
+            result = dispatch_material_job(
+                settings,
+                request,
+                actor_access_token="teacher-jwt",
+            )
+
+        self.assertTrue(result.enqueued)
+        enqueue_url, enqueue_kwargs = fake_client.post_calls[0]
+        self.assertEqual(
+            enqueue_url,
+            "https://example.supabase.co/rest/v1/rpc/enqueue_material_job",
+        )
+        self.assertEqual(
+            enqueue_kwargs["headers"]["Authorization"],
+            "Bearer teacher-jwt",
+        )
+        self.assertEqual(
+            enqueue_kwargs["headers"]["apikey"],
+            "publishable-key",
         )
 
 
