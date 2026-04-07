@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Last updated: 2026-04-05
+Last updated: 2026-04-07
 
 This runbook describes the hosted deployment topology for the current project. The platform is not just a single Vercel app with a database. It is a coordinated deployment across a frontend, a separate Python backend, and a Supabase project with Edge Functions and background jobs.
 
@@ -172,6 +172,7 @@ npx supabase functions deploy guest-sandbox-cleanup
 ```
 
 This function deletes expired or discarded guest sandbox data, associated storage objects, and anonymous auth users.
+It is intended to be invoked by a Supabase-native `pg_cron + pg_net` dispatch job rather than a Vercel cron.
 
 ## 4. Configure Supabase Edge Function Secrets
 
@@ -198,7 +199,8 @@ npx supabase secrets set MATERIAL_WORKER_TOKEN="<strong-random-token>"
 ### Required For `guest-sandbox-cleanup`
 
 - `GUEST_SANDBOX_CLEANUP_TOKEN`
-- `GUEST_SANDBOX_CLEANUP_BATCH` if you want to tune the default cleanup batch size
+- `GUEST_SANDBOX_CLEANUP_BATCH` if you want to tune the per-iteration cleanup batch size
+- `GUEST_SANDBOX_CLEANUP_MAX_TOTAL` if you want to cap total sandboxes deleted per invocation
 
 ### Important Secret Placement Notes
 
@@ -214,11 +216,42 @@ Create the Vault secrets in each hosted project:
 ```sql
 select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
 select vault.create_secret('<material-worker-token>', 'material_worker_token');
+select vault.create_secret('<guest-sandbox-cleanup-token>', 'guest_sandbox_cleanup_token');
 ```
 
 Use the SQL editor or an equivalent trusted workflow for this step.
 
-If you operationalize guest cleanup through SQL dispatch later, keep the same principle: project-level secrets belong in Supabase, not in the frontend deployment only.
+Guest cleanup now uses the same SQL-side dispatch principle as `material-worker`: project-level secrets belong in Supabase, not in the frontend deployment only.
+
+### Guest Cleanup Dispatch
+
+The guest cleanup scheduler is installed by the guest cleanup hardening migration and should appear in `cron.job` as:
+
+- `guest-sandbox-cleanup-dispatch-5m`
+
+It runs:
+
+```sql
+select public.run_guest_sandbox_cleanup_dispatch();
+```
+
+This SQL wrapper reads `project_url` and, when available, `guest_sandbox_cleanup_token` from Vault before POSTing to `/functions/v1/guest-sandbox-cleanup`.
+
+### Production Recovery After Deploy
+
+After deploying the migration and Edge Function:
+
+1. Verify `guest-sandbox-cleanup` is deployed.
+2. Verify the cron job `guest-sandbox-cleanup-dispatch-5m` exists.
+3. Manually invoke:
+
+```sql
+select public.run_guest_sandbox_cleanup_dispatch(100, 60000);
+select public.reconcile_guest_session_quota_service();
+```
+
+4. Repeat the dispatch until stale guest sandboxes are fully drained.
+5. Confirm `guest_session_quota.active_sessions` matches the count of truly active sandbox rows.
 
 ## 6. Deploy The Python Backend
 
