@@ -1,6 +1,6 @@
 # Supabase Setup
 
-Last updated: 2026-04-05
+Last updated: 2026-04-07 22:27:51 HKT
 
 This directory contains the schema migrations, local Supabase configuration, and Edge Functions that support the STEM Learning Platform. Supabase is not just the database layer for this project. It also provides auth, storage, queue-backed background processing, guest sandbox lifecycle data, and Edge Function runtime support.
 
@@ -153,6 +153,7 @@ The hosted project should support the capabilities used by the migrations:
 - current defaults are 60 active guest sessions globally and 20 new guest sessions per hour
 - active sandboxes expire after 32 hours max or 8 hours of inactivity
 - cleanup removes guest class data and anonymous auth users
+- stale guest sessions are reconciled before new session cap checks so expired rows cannot block fresh guest entry indefinitely
 
 ## Current Guest Quota Model
 
@@ -162,6 +163,7 @@ The current guest quota model lives in `0023_guest_quota_redesign.sql`.
 - `acquire_guest_session_service` is called before sandbox creation and enforces the current active-session and hourly-creation caps
 - `release_guest_session_slot_service` is called when a session slot needs to be returned because provisioning failed or a sandbox timed out before frontend cleanup ran
 - `release_guest_sandbox_quota` and `guest-sandbox-cleanup` keep the AI and session counters aligned when expired or discarded sandboxes are deleted
+- `reconcile_guest_session_quota_service` marks stale active rows as expired and recomputes the global quota counters before the active-session cap is enforced
 
 ## Storage Notes
 
@@ -205,6 +207,12 @@ sequenceDiagram
 
 `guest-sandbox-cleanup` is responsible for cleaning expired or discarded guest sandboxes.
 
+Cleanup dispatch is now scheduled from Supabase itself, matching the material worker pattern:
+
+- SQL wrapper: `run_guest_sandbox_cleanup_dispatch`
+- cron job: `guest-sandbox-cleanup-dispatch-5m`
+- cadence: every 5 minutes
+
 ### Cleanup Responsibilities
 
 - find expired or discarded guest sandboxes
@@ -223,6 +231,7 @@ Set these in Supabase for the functions that need them:
 - `MATERIAL_WORKER_TOKEN`
 - `GUEST_SANDBOX_CLEANUP_TOKEN`
 - `GUEST_SANDBOX_CLEANUP_BATCH` if you need to tune the cleanup batch size
+- `GUEST_SANDBOX_CLEANUP_MAX_TOTAL` if you need to cap total deletions per invocation
 - provider API keys and model env vars for worker execution
 
 ### Vault Secrets
@@ -231,6 +240,7 @@ Material dispatch expects Vault secrets such as:
 
 - `project_url`
 - `material_worker_token`
+- `guest_sandbox_cleanup_token` when the cleanup Edge Function is protected by a bearer token
 
 These are used by SQL-side dispatch helpers and should be configured in each hosted environment.
 
@@ -258,6 +268,9 @@ npx supabase functions deploy guest-sandbox-cleanup
   - generate embeddings
   - update processing state
 - `guest-sandbox-cleanup`
+  - clean expired or discarded guest sandboxes
+  - release leaked quota counters and stale active-session counts
+  - run on a recurring Supabase cron schedule rather than an app-host cron
   - reclaim expired guest data
   - remove storage artifacts
   - delete anonymous users

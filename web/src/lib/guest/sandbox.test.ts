@@ -27,6 +27,8 @@ function makeMutableBuilder(result: { data?: unknown; error?: { message: string 
     insert: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn().mockResolvedValue({
       data: result.data ?? null,
@@ -244,7 +246,7 @@ describe("provisionGuestSandbox", () => {
   });
 
   it("does not reuse an expired anonymous sandbox", async () => {
-    const { supabase } = mockSupabase({
+    const { supabase, adminRpcMock } = mockSupabase({
       auth: {
         getSession: vi.fn().mockResolvedValue({
           data: {
@@ -290,6 +292,8 @@ describe("provisionGuestSandbox", () => {
 
     expect(supabase.auth.signOut).toHaveBeenCalled();
     expect(supabase.auth.signInAnonymously).toHaveBeenCalled();
+    expect(adminRpcMock).toHaveBeenCalledWith("release_guest_session_slot_service", {});
+    expect(adminRpcMock).toHaveBeenCalledWith("acquire_guest_session_service", {});
     expect(result).toEqual({
       ok: true,
       classId: "class-1",
@@ -297,6 +301,61 @@ describe("provisionGuestSandbox", () => {
     });
 
     vi.useRealTimers();
+  });
+
+  it("rotates anonymous auth when the latest sandbox was already reconciled to expired", async () => {
+    let guestSandboxLookupCount = 0;
+    const { supabase } = mockSupabase({
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session: {
+              access_token: "guest-token",
+              user: { id: "anon-existing", is_anonymous: true },
+            },
+          },
+        }),
+        signInAnonymously: vi.fn().mockResolvedValue({
+          data: {
+            user: { id: "anon-new" },
+            session: { access_token: "guest-token-2" },
+          },
+          error: null,
+        }),
+        signOut: vi.fn().mockResolvedValue({ error: null }),
+      },
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "guest_sandboxes") {
+          guestSandboxLookupCount += 1;
+          if (guestSandboxLookupCount === 1) {
+            return makeMutableBuilder({ data: null });
+          }
+
+          return makeMutableBuilder({
+            data: {
+              id: "sandbox-expired",
+              class_id: "class-existing",
+              status: "expired",
+              guest_role: "teacher",
+              expires_at: "2026-03-26T23:59:59.000Z",
+              last_seen_at: "2026-03-27T00:00:00.000Z",
+              created_at: "2026-03-26T23:00:00.000Z",
+            },
+          });
+        }
+        return makeMutableBuilder({ data: null });
+      }),
+    });
+
+    const result = await provisionGuestSandbox();
+
+    expect(supabase.auth.signOut).toHaveBeenCalled();
+    expect(supabase.auth.signInAnonymously).toHaveBeenCalled();
+    expect(result).toEqual({
+      ok: true,
+      classId: "class-1",
+      sandboxId: expect.any(String),
+    });
   });
 
   it("blocks guest provisioning when a real session already exists", async () => {

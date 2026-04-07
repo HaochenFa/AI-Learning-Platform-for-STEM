@@ -70,6 +70,23 @@ function isAnonymousUser(user: {
   return user?.is_anonymous === true || user?.app_metadata?.provider === "anonymous";
 }
 
+async function loadLatestGuestSandbox(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  userId: string,
+) {
+  return supabase
+    .from("guest_sandboxes")
+    .select("id,class_id,status,guest_role,expires_at,last_seen_at,created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<
+      ActiveSandboxRow & {
+        created_at?: string | null;
+      }
+    >();
+}
+
 /**
  * Marks a sandbox row as expired in place.
  *
@@ -251,6 +268,25 @@ export async function provisionGuestSandboxWithOptions(): Promise<GuestSandboxRe
       };
     }
 
+    let latestSandbox = existingSandbox;
+    if (!latestSandbox) {
+      const { data: latestSandboxData, error: latestSandboxError } = await loadLatestGuestSandbox(
+        supabase,
+        existingUser.id,
+      );
+
+      if (latestSandboxError && !isMaybeSingleNoRowsError(latestSandboxError)) {
+        return {
+          ok: false,
+          code: "guest-session-check-failed",
+          error: "We couldn't verify your current guest session. Please try again.",
+          reason: "latest-session-check",
+        };
+      }
+
+      latestSandbox = latestSandboxData ?? null;
+    }
+
     // --- Branch: expired sandbox ---
 
     if (existingSandbox && isGuestSandboxExpired(existingSandbox)) {
@@ -269,6 +305,24 @@ export async function provisionGuestSandboxWithOptions(): Promise<GuestSandboxRe
 
       // For an anonymous user the Auth record is only useful while the sandbox
       // is alive.  Sign them out so a fresh anonymous user can be created below.
+      await supabase.auth.signOut();
+      guestUserId = null;
+    }
+
+    // --- Branch: latest sandbox was already reconciled to a non-active state ---
+    // Reconciliation may mark the sandbox expired before the browser returns.
+    // Anonymous users must still rotate auth here so the cleanup worker deleting
+    // the old auth.users row cannot cascade a newly created sandbox away.
+    if (!existingSandbox && latestSandbox && latestSandbox.status !== "active") {
+      if (!existingUserIsAnonymous) {
+        return {
+          ok: false,
+          code: "guest-session-conflict",
+          error: getGuestSessionExpiredMessage(),
+          reason: "non-active-non-anonymous-session",
+        };
+      }
+
       await supabase.auth.signOut();
       guestUserId = null;
     }

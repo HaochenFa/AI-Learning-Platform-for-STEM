@@ -16,8 +16,9 @@ type GuestMaterialRow = {
 };
 
 const MATERIALS_BUCKET = "materials";
-const DEFAULT_BATCH_SIZE = Number(Deno.env.get("GUEST_SANDBOX_CLEANUP_BATCH") ?? "25");
+const DEFAULT_BATCH_SIZE = Number(Deno.env.get("GUEST_SANDBOX_CLEANUP_BATCH") ?? "100");
 const MAX_BATCH_SIZE = 100;
+const MAX_TOTAL_CLEANUP = Number(Deno.env.get("GUEST_SANDBOX_CLEANUP_MAX_TOTAL") ?? "500");
 const SEED_STORAGE_PREFIX = "guest-seed/";
 
 Deno.serve(async (req) => {
@@ -35,27 +36,51 @@ Deno.serve(async (req) => {
 
   const supabase = createServiceSupabaseClient();
   const batchSize = await resolveBatchSize(req);
-  const candidates = await listCleanupCandidates(supabase, batchSize);
-
+  let processed = 0;
   let cleaned = 0;
   const errors: string[] = [];
+  let lastBatchSize = 0;
 
-  for (const candidate of candidates) {
-    try {
-      await cleanupSandbox(supabase, candidate);
-      cleaned += 1;
-    } catch (error) {
-      errors.push(`${candidate.id}: ${error instanceof Error ? error.message : "Unknown cleanup failure."}`);
+  while (processed < MAX_TOTAL_CLEANUP) {
+    const remaining = MAX_TOTAL_CLEANUP - processed;
+    const candidates = await listCleanupCandidates(
+      supabase,
+      Math.min(batchSize, remaining),
+    );
+    lastBatchSize = candidates.length;
+
+    if (candidates.length === 0) {
+      break;
+    }
+
+    processed += candidates.length;
+
+    for (const candidate of candidates) {
+      try {
+        await cleanupSandbox(supabase, candidate);
+        cleaned += 1;
+      } catch (error) {
+        errors.push(`${candidate.id}: ${error instanceof Error ? error.message : "Unknown cleanup failure."}`);
+      }
+    }
+
+    if (candidates.length < batchSize) {
+      break;
     }
   }
+
+  const remainingCandidatesEstimate = await countCleanupCandidates(supabase);
 
   return json(
     {
       ok: true,
       requested_batch_size: batchSize,
-      processed: candidates.length,
+      processed,
       cleaned,
       failed: errors.length,
+      max_total_cleanup: MAX_TOTAL_CLEANUP,
+      hit_cleanup_cap: processed >= MAX_TOTAL_CLEANUP && lastBatchSize > 0,
+      remaining_candidates_estimate: remainingCandidatesEstimate,
       errors,
     },
     200,
@@ -95,18 +120,10 @@ async function resolveBatchSize(req: Request) {
 }
 
 async function listCleanupCandidates(supabase: SupabaseClient, batchSize: number) {
-  const expiryCutoff = new Date().toISOString();
-  const inactivityCutoff = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("guest_sandboxes")
     .select("id,user_id,status,active_ai_requests,created_at,expires_at,last_seen_at")
-    .or(
-      [
-        "status.in.(expired,discarded)",
-        `and(status.eq.active,expires_at.lte.${expiryCutoff})`,
-        `and(status.eq.active,last_seen_at.lte.${inactivityCutoff})`,
-      ].join(","),
-    )
+    .or(buildCleanupCandidateFilter())
     .order("expires_at", { ascending: true, nullsFirst: true })
     .order("last_seen_at", { ascending: true })
     .order("created_at", { ascending: true })
@@ -119,6 +136,30 @@ async function listCleanupCandidates(supabase: SupabaseClient, batchSize: number
   return ((data ?? []) as CleanupCandidate[]).filter(
     (candidate) => Boolean(candidate.id) && Boolean(candidate.user_id),
   );
+}
+
+async function countCleanupCandidates(supabase: SupabaseClient) {
+  const { count, error } = await supabase
+    .from("guest_sandboxes")
+    .select("id", { count: "exact", head: true })
+    .or(buildCleanupCandidateFilter());
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
+}
+
+function buildCleanupCandidateFilter() {
+  const expiryCutoff = new Date().toISOString();
+  const inactivityCutoff = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString();
+
+  return [
+    "status.in.(expired,discarded)",
+    `and(status.eq.active,expires_at.lte.${expiryCutoff})`,
+    `and(status.eq.active,last_seen_at.lte.${inactivityCutoff})`,
+  ].join(",");
 }
 
 async function cleanupSandbox(supabase: SupabaseClient, candidate: CleanupCandidate) {
